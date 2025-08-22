@@ -114,10 +114,10 @@ poetry run python manage.py runserver
 
 ```bash
 # Build the Docker image
-docker build -t conf-webapi .
+docker build -t conf-portal-api .
 
 # Run the container
-docker run -p 8000:8000 conf-webapi
+docker run -p 8000:8000 conf-portal-api
 ```
 
 ## 📚 API Documentation
@@ -162,7 +162,7 @@ poetry run pytest tests/handlers/test_account.py
 ## 📁 Project Structure
 
 ```
-conf-webapi/
+conf-portal-api/
 ├── portal/                    # Main application
 │   ├── apps/                 # Django applications
 │   │   ├── account/         # User account management

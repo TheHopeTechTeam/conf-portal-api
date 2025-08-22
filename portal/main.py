@@ -19,7 +19,6 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from starlette.middleware.cors import CORSMiddleware
 
 from portal.asgi_handler import get_asgi_application
-from portal.containers import Container
 from portal.libs.utils.lifespan import lifespan
 from portal.middlewares import CustomHTTPMiddleware
 from portal.routers import api_router

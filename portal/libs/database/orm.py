@@ -1,6 +1,7 @@
 """
 ModelBase class for SQLAlchemy ORM
 """
+import re
 import uuid
 from typing import Optional
 
@@ -67,6 +68,17 @@ class ModelBase(Base):
             return getattr(self, item)
         except AttributeError:
             raise KeyError(item)
+
+    @declared_attr
+    def __tablename__(cls) -> str:
+        """
+        Snake case table name based on class name
+        e.g., MyModel -> my_model
+        :return:
+        """
+        name = cls.__name__
+        snake = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+        return snake
 
     @declared_attr
     def __table_args__(cls) -> Optional[tuple]:

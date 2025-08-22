@@ -1,0 +1,14 @@
+---
+description: Project Development Standards
+globs:
+alwaysApply: true
+---
+# Alembic
+- Do not add, modify, or delete any files under the alembic directory.
+
+# Models
+- When creating a Constraint, you do not need to provide a name. The project's naming convention has already been configured in libs/database/orm.
+
+# API Routers
+- BaseModels defined for API request and response models must be placed under the serializers directory, aligned with the router version, rather than placing all BaseModels for API requests and responses under the schemas directory.
+- All API router prefixes should be set only at the __init__.py level.
