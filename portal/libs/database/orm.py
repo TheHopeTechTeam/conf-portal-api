@@ -1,0 +1,70 @@
+"""
+ModelBase class for SQLAlchemy ORM
+"""
+import uuid
+from typing import Optional
+
+from sqlalchemy import Column
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import DeclarativeBase
+
+from portal.config import settings
+
+
+def merge_table_args(*args) -> Optional[tuple]:
+    """
+
+    :param args:
+    :return:
+    """
+    constraints = []
+    kw = {}
+    for part in args:
+        if not part:
+            continue
+        if isinstance(part, dict):
+            kw.update(part)
+        elif isinstance(part, tuple):
+            for elem in part:
+                if isinstance(elem, dict):
+                    kw.update(elem)
+                else:
+                    constraints.append(elem)
+        else:
+            constraints.append(part)
+    if not constraints and not kw:
+        return None
+    return (*constraints, kw) if kw else tuple(constraints)
+
+
+class Base(DeclarativeBase):
+    """Base"""
+    pass
+
+
+class ModelBase(Base):
+    """ModelBase"""
+    __abstract__ = True
+    id = Column(UUID, primary_key=True, default=uuid.uuid4(), comment="Primary Key")
+
+    def __init__(self, **kwargs):
+        if "id" not in kwargs:
+            kwargs["id"] = uuid.uuid4()
+        super().__init__(**kwargs)
+
+    def __getitem__(self, item):
+        try:
+            return getattr(self, item)
+        except AttributeError:
+            raise KeyError(item)
+
+    @declared_attr
+    def __table_args__(cls) -> Optional[tuple]:
+        """
+
+        :return:
+        """
+        base_args = {"schema": settings.DATABASE_SCHEMA}
+        extra_args = getattr(cls, "__extra_table_args__", None)
+        return merge_table_args(base_args, extra_args)

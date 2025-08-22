@@ -1,6 +1,8 @@
 """
 main application
 """
+from collections import defaultdict
+
 import firebase_admin
 import sentry_sdk
 from django.conf import settings
@@ -94,26 +96,9 @@ def get_application(mount_application) -> FastAPI:
     get application
     """
     setup_tracing()
-    application = FastAPI(
-        lifespan=lifespan,
-        swagger_ui_parameters={
-            "tryItOutEnabled": True,
-            "requestSnippetsEnabled": True,
-            "requestSnippets": {
-                "generators": {
-                    "curl_bash": {
-                        "title": "cURL (bash)",
-                        "syntax": "bash"
-                    }
-                },
-            }
-        }
-    )
+    application = FastAPI(lifespan=lifespan)
     # set route class
     # application.router.route_class = LogRouting
-    # set container
-    container = Container()
-    application.container = container
 
     # init firebase
     try:
@@ -168,11 +153,10 @@ async def exception_handler(request: Request, exc):
     :param exc:
     :return:
     """
-    content = {
-        "detail": {
-            "message": "Internal Server Error",
-            "url": str(request.url)
-        }
+    content = defaultdict()
+    content["detail"] = {
+        "message": "Internal Server Error",
+        "url": str(request.url)
     }
     if settings.DEBUG:
         content["debug_detail"] = f"{exc.__class__.__name__}: {exc}"

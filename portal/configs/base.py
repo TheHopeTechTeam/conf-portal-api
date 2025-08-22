@@ -46,7 +46,7 @@ DEBUG = env("DEBUG")
 # ------------------------------------------------------------------------------
 # Environment variables
 
-APP_NAME: str = "conf-webapi"
+APP_NAME: str = "conf-portal-api"
 
 # [AWS]
 AWS_ACCESS_KEY_ID: str = env("AWS_ACCESS_KEY_ID", default="")

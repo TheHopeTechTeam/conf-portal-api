@@ -1,5 +1,4 @@
 import re
-import warnings
 from datetime import datetime, date
 
 # integer

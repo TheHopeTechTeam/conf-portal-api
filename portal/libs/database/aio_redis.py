@@ -3,7 +3,7 @@ AioRedis
 """
 from redis.asyncio import Redis, from_url
 
-from django.conf import settings
+from portal.config import settings
 
 
 class RedisPool:
