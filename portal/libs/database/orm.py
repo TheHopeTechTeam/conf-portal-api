@@ -42,6 +42,7 @@ def merge_table_args(*args) -> Optional[tuple]:
 class Base(DeclarativeBase):
     """Base"""
     metadata = MetaData(
+        schema=settings.DATABASE_SCHEMA,
         naming_convention={
             "ix": "ix_%(table_name)s_%(column_0_N_name)s",
             "uq": "uq_%(table_name)s_%(column_0_N_name)s",
@@ -49,7 +50,6 @@ class Base(DeclarativeBase):
             "fk": "fk_%(table_name)s_%(column_0_N_name)s_%(referred_table_name)s",
             "pk": "pk_%(table_name)s"
         }
-
     )
 
 
@@ -89,3 +89,5 @@ class ModelBase(Base):
         base_args = {"schema": settings.DATABASE_SCHEMA}
         extra_args = getattr(cls, "__extra_table_args__", None)
         return merge_table_args(base_args, extra_args)
+
+

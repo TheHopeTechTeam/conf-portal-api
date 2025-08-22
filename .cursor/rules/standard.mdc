@@ -3,12 +3,32 @@ description: Project Development Standards
 globs:
 alwaysApply: true
 ---
-# Alembic
+# Project Rules
+
+## Basic
+
+- Use snake_case for all variable names.
+- Use snake_case for all function names.
+- Use snake_case for all file names.
+- Use PascalCase for all class names.
+- Use uppercase for all constant names and environment variables. (e.g. `UPPER_CASE` or `UPPER_CASE_ENV_VAR`)
+- All comments should be in English.
+- Do not check linting rules. (e.g. black, isort, flake8, etc.)
+
+## Alembic
+
 - Do not add, modify, or delete any files under the alembic directory.
 
-# Models
-- When creating a Constraint, you do not need to provide a name. The project's naming convention has already been configured in libs/database/orm.
+## Models
 
-# API Routers
+- When creating a Constraint, you do not need to provide a name. The project's naming convention has already been configured in libs/database/orm.
+- Choose the appropriate mixins from models/mixins to inherit based on the table’s requirements, and avoid redundant mixin design.
+
+## API Routers
+
 - BaseModels defined for API request and response models must be placed under the serializers directory, aligned with the router version, rather than placing all BaseModels for API requests and responses under the schemas directory.
 - All API router prefixes should be set only at the __init__.py level.
+
+## Other
+
+- Currently being refactored, removing all Django-related functionality.

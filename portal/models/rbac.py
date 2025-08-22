@@ -61,14 +61,14 @@ class PortalUserThirdPartyAuth(ModelBase, DeletedMixin, AuditMixin):
     )
     user_id = Column(
         UUID,
-        sa.ForeignKey(PortalUser.id, ondelete="CASCADE"),
+        sa.ForeignKey(PortalUser.id, ondelete="CASCADE", name="fk_user_third_party_auth_user"),
         nullable=False,
         comment="User ID",
         index=True
     )
     provider_id = Column(
         UUID,
-        sa.ForeignKey(PortalThirdPartyProvider.id, ondelete="CASCADE"),
+        sa.ForeignKey(PortalThirdPartyProvider.id, ondelete="CASCADE", name="fk_user_third_party_auth_provider"),
         nullable=False,
         comment="Provider ID"
     )

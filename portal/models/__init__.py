@@ -12,6 +12,8 @@ from .rbac import (
     PortalVerb,
     PortalPermission
 )
+from .file import PortalFile, PortalFileRendition, PortalFileAssociation
+from .log import PortalLog
 
 __all__ = [
     # rbac
@@ -22,7 +24,13 @@ __all__ = [
     "PortalRole",
     "PortalResource",
     "PortalVerb",
-    "PortalPermission"
+    "PortalPermission",
+    # file
+    "PortalFile",
+    "PortalFileRendition",
+    "PortalFileAssociation",
+    # system log
+    "PortalLog",
 ]
 
 if settings.IS_DEV:
