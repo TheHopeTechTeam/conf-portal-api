@@ -52,17 +52,6 @@ class Base(DeclarativeBase):
         }
     )
 
-
-class ModelBase(Base):
-    """ModelBase"""
-    __abstract__ = True
-    id = Column(UUID, primary_key=True, default=uuid.uuid4(), comment="Primary Key")
-
-    def __init__(self, **kwargs):
-        if "id" not in kwargs:
-            kwargs["id"] = uuid.uuid4()
-        super().__init__(**kwargs)
-
     def __getitem__(self, item):
         try:
             return getattr(self, item)
@@ -91,3 +80,12 @@ class ModelBase(Base):
         return merge_table_args(base_args, extra_args)
 
 
+class ModelBase(Base):
+    """ModelBase"""
+    __abstract__ = True
+    id = Column(UUID, primary_key=True, default=uuid.uuid4(), comment="Primary Key")
+
+    def __init__(self, **kwargs):
+        if "id" not in kwargs:
+            kwargs["id"] = uuid.uuid4()
+        super().__init__(**kwargs)

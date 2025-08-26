@@ -5,6 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 
+from portal.libs.consts.enums import FileStatus
 from portal.libs.database.orm import ModelBase
 from .mixins import SortableMixin, AuditMixin, RemarkMixin
 
@@ -27,10 +28,10 @@ class PortalFile(ModelBase, AuditMixin, RemarkMixin):
     width = Column(sa.Integer, nullable=True, comment="Image width in pixels")
     height = Column(sa.Integer, nullable=True, comment="Image height in pixels")
     duration_seconds = Column(sa.Float, nullable=True, comment="Media duration in seconds")
-    status = Column(sa.Integer, nullable=False, default="uploading", comment="File status, refer to PortalFileStatus enum")
+    status = Column(sa.Integer, nullable=False, default=FileStatus.UPLOADING, comment="File status, refer to FileStatus enum")
     version = Column(sa.Integer, nullable=False, default=1, comment="File version number")
     is_public = Column(sa.Boolean, server_default=sa.text("false"), nullable=False, comment="Whether the file is public")
-    source = Column(sa.Integer, nullable=True, comment="Upload source, refer to PortalUploadSource enum")
+    source = Column(sa.Integer, nullable=True, comment="Upload source, refer to UploadSource enum")
 
 
 class PortalFileRendition(ModelBase, AuditMixin):

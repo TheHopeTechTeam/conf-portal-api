@@ -1,9 +1,9 @@
 """
 Create file-related and log tables
 --------------------------------------------------
-Revision ID: 62d95e59fc2d
+Revision ID: 504ce418befa
 Revises: 4372a1805460
-Create Date: 2025-08-22 06:57:20.092962
+Create Date: 2025-08-25 19:54:04.072328
 """
 from typing import Sequence, Union
 
@@ -12,7 +12,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '62d95e59fc2d'
+revision: str = '504ce418befa'
 down_revision: Union[str, None] = '4372a1805460'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -37,10 +37,10 @@ def upgrade() -> None:
         sa.Column('width', sa.Integer(), nullable=True, comment='Image width in pixels'),
         sa.Column('height', sa.Integer(), nullable=True, comment='Image height in pixels'),
         sa.Column('duration_seconds', sa.Float(), nullable=True, comment='Media duration in seconds'),
-        sa.Column('status', sa.Integer(), nullable=False, comment='File status, refer to PortalFileStatus enum'),
+        sa.Column('status', sa.Integer(), nullable=False, comment='File status, refer to FileStatus enum'),
         sa.Column('version', sa.Integer(), nullable=False, comment='File version number'),
         sa.Column('is_public', sa.Boolean(), server_default=sa.text('false'), nullable=False, comment='Whether the file is public'),
-        sa.Column('source', sa.Integer(), nullable=True, comment='Upload source, refer to PortalUploadSource enum'),
+        sa.Column('source', sa.Integer(), nullable=True, comment='Upload source, refer to UploadSource enum'),
         sa.Column('created_by_id', sa.UUID(), nullable=True, comment='Create User ID'),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False, comment='Create Date'),
         sa.Column('created_by', sa.String(length=64), nullable=False, comment='Create User Name'),
@@ -67,9 +67,6 @@ def upgrade() -> None:
         sa.Column('created_by_id', sa.UUID(), nullable=True, comment='Create User ID'),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False, comment='Create Date'),
         sa.Column('created_by', sa.String(length=64), nullable=False, comment='Create User Name'),
-        sa.Column('updated_by_id', sa.UUID(), nullable=True, comment='Update User ID'),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False, comment='Update Date'),
-        sa.Column('updated_by', sa.String(length=64), nullable=False, comment='Update User Name'),
         sa.Column('remark', sa.String(length=256), nullable=True, comment='Remark'),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_portal_log')),
         schema='public'
@@ -125,8 +122,46 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_portal_file_rendition_key'), 'portal_file_rendition', ['key'], unique=False, schema='public')
     op.create_index(op.f('ix_portal_file_rendition_original_file_id'), 'portal_file_rendition', ['original_file_id'], unique=False, schema='public')
-    op.drop_constraint('fk_portal_user_third_party_auth_provider_id_portal_thir_4df8', 'portal_user_third_party_auth', type_='foreignkey')
+    op.create_index(op.f('ix_portal_permission_resource_id'), 'portal_permission', ['resource_id'], unique=False, schema='public')
+    op.create_index(op.f('ix_portal_permission_verb_id'), 'portal_permission', ['verb_id'], unique=False, schema='public')
+    op.create_unique_constraint(op.f('uq_portal_permission_code'), 'portal_permission', ['code'], schema='public')
+    op.add_column('portal_role_permission', sa.Column('id', sa.UUID(), nullable=False, comment='Primary Key'))
+    op.alter_column(
+        'portal_role_permission', 'expire_date',
+        existing_type=postgresql.TIMESTAMP(),
+        type_=sa.DateTime(timezone=True),
+        existing_comment='Expiration time, can be used for temporary authorization',
+        existing_nullable=True
+    )
+    op.create_index(op.f('ix_portal_role_permission_permission_id'), 'portal_role_permission', ['permission_id'], unique=False, schema='public')
+    op.create_index(op.f('ix_portal_role_permission_role_id'), 'portal_role_permission', ['role_id'], unique=False, schema='public')
+    op.create_unique_constraint(
+        op.f('uq_portal_role_permission_role_id_permission_id'),
+        'portal_role_permission',
+        ['role_id', 'permission_id'],
+        schema='public'
+    )
+    op.alter_column(
+        'portal_user', 'email',
+        existing_type=sa.VARCHAR(length=64),
+        type_=sa.String(length=255),
+        existing_comment='Email, unique identifier',
+        existing_nullable=True
+    )
+    op.add_column('portal_user_role', sa.Column('id', sa.UUID(), nullable=False, comment='Primary Key'))
+    op.create_index(op.f('ix_portal_user_role_role_id'), 'portal_user_role', ['role_id'], unique=False, schema='public')
+    op.create_index(op.f('ix_portal_user_role_user_id'), 'portal_user_role', ['user_id'], unique=False, schema='public')
+    op.add_column('portal_user_third_party_auth', sa.Column('provider_uid', sa.String(length=255), nullable=False, comment='Provider UID'))
+    op.drop_constraint('uq_portal_user_third_party_auth_user_id_provider_id', 'portal_user_third_party_auth', type_='unique')
+    op.create_index(op.f('ix_portal_user_third_party_auth_provider_id'), 'portal_user_third_party_auth', ['provider_id'], unique=False, schema='public')
+    op.create_unique_constraint(
+        op.f('uq_portal_user_third_party_auth_user_id_provider_id_provider_uid'),
+        'portal_user_third_party_auth',
+        ['user_id', 'provider_id', 'provider_uid'],
+        schema='public'
+    )
     op.drop_constraint('fk_portal_user_third_party_auth_user_id_portal_user', 'portal_user_third_party_auth', type_='foreignkey')
+    op.drop_constraint('fk_portal_user_third_party_auth_provider_id_portal_thir_4df8', 'portal_user_third_party_auth', type_='foreignkey')
     op.create_foreign_key(
         'fk_user_third_party_auth_provider',
         'portal_user_third_party_auth',
@@ -156,14 +191,6 @@ def downgrade() -> None:
     op.drop_constraint('fk_user_third_party_auth_user', 'portal_user_third_party_auth', schema='public', type_='foreignkey')
     op.drop_constraint('fk_user_third_party_auth_provider', 'portal_user_third_party_auth', schema='public', type_='foreignkey')
     op.create_foreign_key(
-        'fk_portal_user_third_party_auth_user_id_portal_user',
-        'portal_user_third_party_auth',
-        'portal_user',
-        ['user_id'],
-        ['id'],
-        ondelete='CASCADE'
-    )
-    op.create_foreign_key(
         'fk_portal_user_third_party_auth_provider_id_portal_thir_4df8',
         'portal_user_third_party_auth',
         'portal_third_party_provider',
@@ -171,6 +198,47 @@ def downgrade() -> None:
         ['id'],
         ondelete='CASCADE'
     )
+    op.create_foreign_key(
+        'fk_portal_user_third_party_auth_user_id_portal_user',
+        'portal_user_third_party_auth',
+        'portal_user',
+        ['user_id'],
+        ['id'],
+        ondelete='CASCADE'
+    )
+    op.drop_constraint(
+        op.f('uq_portal_user_third_party_auth_user_id_provider_id_provider_uid'),
+        'portal_user_third_party_auth',
+        schema='public',
+        type_='unique'
+    )
+    op.drop_index(op.f('ix_portal_user_third_party_auth_provider_id'), table_name='portal_user_third_party_auth', schema='public')
+    op.create_unique_constraint('uq_portal_user_third_party_auth_user_id_provider_id', 'portal_user_third_party_auth', ['user_id', 'provider_id'])
+    op.drop_column('portal_user_third_party_auth', 'provider_uid')
+    op.drop_index(op.f('ix_portal_user_role_user_id'), table_name='portal_user_role', schema='public')
+    op.drop_index(op.f('ix_portal_user_role_role_id'), table_name='portal_user_role', schema='public')
+    op.drop_column('portal_user_role', 'id')
+    op.alter_column(
+        'portal_user', 'email',
+        existing_type=sa.String(length=255),
+        type_=sa.VARCHAR(length=64),
+        existing_comment='Email, unique identifier',
+        existing_nullable=True
+    )
+    op.drop_constraint(op.f('uq_portal_role_permission_role_id_permission_id'), 'portal_role_permission', schema='public', type_='unique')
+    op.drop_index(op.f('ix_portal_role_permission_role_id'), table_name='portal_role_permission', schema='public')
+    op.drop_index(op.f('ix_portal_role_permission_permission_id'), table_name='portal_role_permission', schema='public')
+    op.alter_column(
+        'portal_role_permission', 'expire_date',
+        existing_type=sa.DateTime(timezone=True),
+        type_=postgresql.TIMESTAMP(),
+        existing_comment='Expiration time, can be used for temporary authorization',
+        existing_nullable=True
+    )
+    op.drop_column('portal_role_permission', 'id')
+    op.drop_constraint(op.f('uq_portal_permission_code'), 'portal_permission', schema='public', type_='unique')
+    op.drop_index(op.f('ix_portal_permission_verb_id'), table_name='portal_permission', schema='public')
+    op.drop_index(op.f('ix_portal_permission_resource_id'), table_name='portal_permission', schema='public')
     op.drop_index(op.f('ix_portal_file_rendition_original_file_id'), table_name='portal_file_rendition', schema='public')
     op.drop_index(op.f('ix_portal_file_rendition_key'), table_name='portal_file_rendition', schema='public')
     op.drop_table('portal_file_rendition', schema='public')

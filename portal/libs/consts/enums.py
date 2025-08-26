@@ -1,7 +1,7 @@
 """
 Enums for the application
 """
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, StrEnum
 
 
 class MenuOrder(IntEnum):
@@ -38,6 +38,7 @@ class Rendition(Enum):
     MAX_900x900 = "max-900x900"
     MAX_1000x1000 = "max-1000x1000"
 
+
 class LoginMethod(Enum):
     """
     Login method
@@ -47,7 +48,6 @@ class LoginMethod(Enum):
     # FACEBOOK = "facebook"
     # APPLE = "apple"
     FIREBASE = "firebase"
-
 
 
 class Provider(Enum):
@@ -81,6 +81,26 @@ class Gender(IntEnum):
         :return:
         """
         return [(key.value, key.name.title()) for key in cls]
+
+
+class FileStatus(IntEnum):
+    """
+    File status
+    """
+    UPLOADING = 0
+    UPLOADED = 1
+    PROCESSING = 2
+    PROCESSED = 3
+    FAILED = 4
+    DELETED = 5
+
+
+class FileUploadSource(IntEnum):
+    """
+    File upload source
+    """
+    ADMIN = 0
+    APP = 1
 
 
 class FeedbackStatus(IntEnum):
@@ -128,6 +148,7 @@ class NotificationType(IntEnum):
     """
     INDIVIDUAL = 0
     MULTIPLE = 1
+
     # SYSTEM = 2
 
     @classmethod
@@ -171,3 +192,14 @@ class NotificationHistoryStatus(IntEnum):
         :return:
         """
         return [(key.value, key.name.title()) for key in cls]
+
+
+
+class Identity(Enum):
+    """Identity"""
+    SENIOR_PASTOR = "senior_pastor"
+    PASTOR = "pastor"
+    EVANGELIST = "evangelist"
+    THEOLOGY_STUDENT = "theology_student"
+    MINISTRY_LEADER = "ministry_leader"
+    CONGREGANT = "congregant"

@@ -2,6 +2,17 @@
 Top-level package for models.
 """
 from portal.config import settings
+from .conference import PortalConference, PortalConferenceInstructors
+from .event_info import PortalEventSchedule
+from .faq import PortalFaqCategory, PortalFaq
+from .fcm_device import PortalFcmDevice, PortalFcmUserDevice
+from .feedback import PortalFeedback
+from .file import PortalFile, PortalFileRendition, PortalFileAssociation
+from .instructor import PortalInstructor
+from .language import PortalLanguage, PortalTranslation
+from .location import PortalLocation
+from .log import PortalLog
+from .notification import PortalNotification, PortalNotificationHistory
 from .rbac import (
     PortalUser,
     PortalUserProfile,
@@ -10,12 +21,43 @@ from .rbac import (
     PortalRole,
     PortalResource,
     PortalVerb,
-    PortalPermission
+    PortalPermission,
+    PortalUserRole,
+    PortalRolePermission
 )
-from .file import PortalFile, PortalFileRendition, PortalFileAssociation
-from .log import PortalLog
+from .testimony import PortalTestimony
+from .workshop import PortalWorkshop, PortalWorkshopRegistration
 
 __all__ = [
+    # conference
+    "PortalConference",
+    "PortalConferenceInstructors",
+    # event_info
+    "PortalEventSchedule",
+    # faq
+    "PortalFaqCategory",
+    "PortalFaq",
+    # fcm_device
+    "PortalFcmDevice",
+    "PortalFcmUserDevice",
+    # feedback
+    "PortalFeedback",
+    # file
+    "PortalFile",
+    "PortalFileRendition",
+    "PortalFileAssociation",
+    # instructor
+    "PortalInstructor",
+    # language
+    "PortalLanguage",
+    "PortalTranslation",
+    # location
+    "PortalLocation",
+    # log
+    "PortalLog",
+    # notification
+    "PortalNotification",
+    "PortalNotificationHistory",
     # rbac
     "PortalUser",
     "PortalUserProfile",
@@ -25,12 +67,13 @@ __all__ = [
     "PortalResource",
     "PortalVerb",
     "PortalPermission",
-    # file
-    "PortalFile",
-    "PortalFileRendition",
-    "PortalFileAssociation",
-    # system log
-    "PortalLog",
+    "PortalUserRole",
+    "PortalRolePermission",
+    # testimony
+    "PortalTestimony",
+    # workshop
+    "PortalWorkshop",
+    "PortalWorkshopRegistration",
 ]
 
 if settings.IS_DEV:

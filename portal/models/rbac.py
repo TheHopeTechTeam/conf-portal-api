@@ -7,9 +7,8 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from portal.libs.consts.enums import Gender
-from portal.libs.database.orm import ModelBase
+from portal.libs.database.orm import ModelBase, Base
 from .mixins import AuditMixin, DeletedMixin, RemarkMixin, DescriptionMixin, BaseMixin
-from .relationships import portal_user_role, portal_role_permission
 
 
 class PortalUser(ModelBase, RemarkMixin, DeletedMixin, AuditMixin):
@@ -20,10 +19,10 @@ class PortalUser(ModelBase, RemarkMixin, DeletedMixin, AuditMixin):
         unique=True,
         comment="Phone number, unique identifier"
     )
-    email = Column(sa.String(64), nullable=True, unique=True, comment="Email, unique identifier")
+    email = Column(sa.String(255), nullable=True, unique=True, comment="Email, unique identifier")
     password_hash = Column(sa.String(512), nullable=True, comment="Password hash")
     salt = Column(sa.String(128), nullable=True, comment="Salt for password hash")
-    is_active = Column(sa.Boolean, default=True, comment="Is active")
+    is_active = Column(sa.Boolean, default=True, index=True, comment="Is active")
     verified = Column(sa.Boolean, default=False, comment="Is verified")
     last_login_at = Column(sa.TIMESTAMP(timezone=True), comment="Last login")
     password_changed_at = Column(sa.TIMESTAMP(timezone=True), comment="Password last changed time")
@@ -32,7 +31,7 @@ class PortalUser(ModelBase, RemarkMixin, DeletedMixin, AuditMixin):
     is_admin = Column(sa.Boolean, default=False, comment="Is admin")
 
     # Relationships
-    roles = relationship("PortalRole", secondary=lambda: portal_user_role, back_populates="users", passive_deletes=True)
+    roles = relationship("PortalRole", secondary=lambda: PortalUserRole.__table__, back_populates="users", passive_deletes=True)
 
 
 class PortalUserProfile(ModelBase, DeletedMixin, AuditMixin, DescriptionMixin):
@@ -57,7 +56,7 @@ class PortalThirdPartyProvider(ModelBase, DeletedMixin, AuditMixin, RemarkMixin)
 class PortalUserThirdPartyAuth(ModelBase, DeletedMixin, AuditMixin):
     """Portal User Third Party Auth Model"""
     __extra_table_args__ = (
-        sa.UniqueConstraint("user_id", "provider_id"),
+        sa.UniqueConstraint("user_id", "provider_id", "provider_uid"),
     )
     user_id = Column(
         UUID,
@@ -70,8 +69,10 @@ class PortalUserThirdPartyAuth(ModelBase, DeletedMixin, AuditMixin):
         UUID,
         sa.ForeignKey(PortalThirdPartyProvider.id, ondelete="CASCADE", name="fk_user_third_party_auth_provider"),
         nullable=False,
-        comment="Provider ID"
+        comment="Provider ID",
+        index=True
     )
+    provider_uid = Column(sa.String(255), nullable=False, comment="Provider UID")
     access_token = Column(sa.String(255), comment="Access token")
     refresh_token = Column(sa.String(255), comment="Refresh token")
     token_expires_at = Column(sa.TIMESTAMP(timezone=True), comment="Token expiration time")
@@ -84,8 +85,8 @@ class PortalRole(ModelBase, BaseMixin):
     name = Column(sa.String(64), comment="Role name")
     is_active = Column(sa.Boolean, default=True, comment="Is role active")
     # Relationships
-    users = relationship("PortalUser", secondary=lambda: portal_user_role, back_populates="roles", passive_deletes=True)
-    permissions = relationship("PortalPermission", secondary=lambda: portal_role_permission, back_populates="roles", passive_deletes=True)
+    users = relationship("PortalUser", secondary=lambda: PortalUserRole.__table__, back_populates="roles", passive_deletes=True)
+    permissions = relationship("PortalPermission", secondary=lambda: PortalRolePermission.__table__, back_populates="roles", passive_deletes=True)
 
 
 class PortalResource(ModelBase, BaseMixin):
@@ -107,12 +108,51 @@ class PortalPermission(ModelBase, BaseMixin):
     __extra_table_args__ = (
         sa.UniqueConstraint("resource_id", "verb_id"),
     )
-    resource_id = Column(UUID, sa.ForeignKey(PortalResource.id, ondelete="CASCADE"), nullable=False, comment="Resource ID")
-    verb_id = Column(UUID, sa.ForeignKey(PortalVerb.id, ondelete="CASCADE"), nullable=False, comment="Verb ID")
-    code = Column(sa.String(128), nullable=False, comment="Permission Code (e.g., user:read)")
+    resource_id = Column(UUID, sa.ForeignKey(PortalResource.id, ondelete="CASCADE"), nullable=False, comment="Resource ID", index=True)
+    verb_id = Column(UUID, sa.ForeignKey(PortalVerb.id, ondelete="CASCADE"), nullable=False, comment="Verb ID", index=True)
+    code = Column(sa.String(128), nullable=False, unique=True, comment="Permission Code (e.g., user:read)")
     display_name = Column(sa.String(128), comment="Display name")
-    expire_date = Column(sa.DateTime(timezone=True), comment="Expiration time, can be used for temporary authorization")
     is_active = Column(sa.Boolean, default=True, comment="Is permission active")
 
     # Relationships
-    roles = relationship("PortalRole", secondary=lambda: portal_role_permission, back_populates="permissions", passive_deletes=True)
+    roles = relationship("PortalRole", secondary=lambda: PortalRolePermission.__table__, back_populates="permissions", passive_deletes=True)
+
+
+class PortalUserRole(Base):
+    """Association object for User-Role relationship"""
+    user_id = Column(
+        UUID,
+        sa.ForeignKey(PortalUser.id, ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+        primary_key=True
+    )
+    role_id = Column(
+        UUID,
+        sa.ForeignKey(PortalRole.id, ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+        primary_key=True
+    )
+
+
+class PortalRolePermission(Base):
+    """Association object for Role-Permission relationship"""
+    __extra_table_args__ = (
+        sa.UniqueConstraint('role_id', 'permission_id'),
+    )
+    role_id = Column(
+        UUID,
+        sa.ForeignKey(PortalRole.id, ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+        primary_key=True
+    )
+    permission_id = Column(
+        UUID,
+        sa.ForeignKey(PortalPermission.id, ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+        primary_key=True
+    )
+    expire_date = Column(sa.DateTime(timezone=True), index=True, comment='Expiration time, can be used for temporary authorization')
