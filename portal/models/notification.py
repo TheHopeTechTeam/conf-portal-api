@@ -36,7 +36,7 @@ class PortalNotificationHistory(ModelBase, BaseMixin):
     )
     notification_id = Column(
         UUID,
-        sa.ForeignKey(PortalNotification.id, ondelete="CASCADE"),
+        sa.ForeignKey(PortalNotification.id, ondelete="CASCADE", name="fk_notification_history_notification_id"),
         nullable=False,
         comment="Notification ID",
         index=True

@@ -19,7 +19,6 @@ class PortalEventSchedule(ModelBase, BaseMixin, SortableMixin):
         index=True
     )
     title = Column(sa.String(255), nullable=False, comment="Event title")
-    description = Column(sa.Text, comment="Event description")
     start_datetime = Column(sa.TIMESTAMP(timezone=True), nullable=False, comment="Start DateTime")
     end_datetime = Column(sa.TIMESTAMP(timezone=True), nullable=False, comment="End DateTime")
     text_color = Column(sa.String(7), comment="Text color in hex format")

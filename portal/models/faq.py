@@ -12,7 +12,6 @@ from .mixins import BaseMixin, SortableMixin
 class PortalFaqCategory(ModelBase, BaseMixin, SortableMixin):
     """FAQ Category Model"""
     name = Column(sa.String(255), nullable=False, comment="Category name")
-    description = Column(sa.Text, comment="Category description")
 
 
 class PortalFaq(ModelBase, BaseMixin, SortableMixin):

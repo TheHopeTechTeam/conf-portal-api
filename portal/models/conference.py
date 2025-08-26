@@ -12,10 +12,9 @@ from .mixins import BaseMixin, SortableMixin
 class PortalConference(ModelBase, BaseMixin):
     """Portal Conference Model"""
     title = Column(sa.String(255), nullable=False, comment="Conference title")
-    description = Column(sa.Text, comment="Conference description")
     start_date = Column(sa.Date, nullable=False, comment="Conference start date")
     end_date = Column(sa.Date, nullable=False, comment="Conference end date")
-    active = Column(sa.Boolean, default=True, comment="Is conference active")
+    is_active = Column(sa.Boolean, default=True, comment="Is conference active")
     location_id = Column(
         UUID,
         sa.ForeignKey("portal_location.id", ondelete="SET NULL"),
@@ -29,14 +28,14 @@ class PortalConferenceInstructors(Base, SortableMixin):
     """Portal Conference Instructors Model"""
     conference_id = Column(
         UUID,
-        sa.ForeignKey(PortalConference.id, ondelete="CASCADE"),
+        sa.ForeignKey(PortalConference.id, ondelete="CASCADE", name="fk_conference_instructors_conference_id"),
         nullable=False,
         index=True,
         primary_key=True
     )
     instructor_id = Column(
         UUID,
-        sa.ForeignKey("portal_instructor.id", ondelete="CASCADE"),
+        sa.ForeignKey("portal_instructor.id", ondelete="CASCADE", name="fk_conference_instructors_instructor_id"),
         nullable=False,
         index=True,
         primary_key=True
