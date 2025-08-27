@@ -46,6 +46,7 @@ class PortalUserProfile(ModelBase, DeletedMixin, AuditMixin, DescriptionMixin):
     )
     display_name = Column(sa.String(64), comment="Display name")
     gender = Column(sa.Integer, default=Gender.UNKNOWN.value, comment="Refer to Gender enum")
+    is_ministry = Column(sa.Boolean, nullable=False, server_default=sa.text('false'), comment="Is ministry")
 
 
 class PortalThirdPartyProvider(ModelBase, DeletedMixin, AuditMixin, RemarkMixin):

@@ -7,7 +7,7 @@ from dependency_injector.wiring import inject, Provide
 from fastapi import APIRouter, Request, Response, Depends
 from starlette import status
 
-from portal.containers import Container
+from portal.container import Container
 from portal.handlers import AccountHandler
 from portal.libs.depends import (
     check_access_token,

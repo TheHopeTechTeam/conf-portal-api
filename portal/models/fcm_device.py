@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
-from portal.libs.database.orm import ModelBase
+from portal.libs.database.orm import ModelBase, Base
 from .mixins import BaseMixin
 
 
@@ -17,19 +17,22 @@ class PortalFcmDevice(ModelBase, BaseMixin):
     additional_data = Column(JSONB, comment="Additional device data")
 
 
-class PortalFcmUserDevice(ModelBase, BaseMixin):
+class PortalFcmUserDevice(Base):
     """FCM User Device Model"""
+    __extra_table_args__ = (
+        sa.UniqueConstraint("user_id", "device_id"),
+    )
     user_id = Column(
         UUID,
         sa.ForeignKey("portal_user.id", ondelete="CASCADE"),
         nullable=False,
-        comment="User ID",
-        index=True
+        index=True,
+        primary_key=True
     )
     device_id = Column(
         UUID,
         sa.ForeignKey(PortalFcmDevice.id, ondelete="CASCADE"),
         nullable=False,
-        comment="FCM Device ID",
-        index=True
+        index=True,
+        primary_key=True
     )

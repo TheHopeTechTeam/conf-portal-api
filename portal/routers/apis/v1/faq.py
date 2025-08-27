@@ -7,7 +7,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends
 from starlette import status
 
-from portal.containers import Container
+from portal.container import Container
 from portal.handlers import FAQHandler
 from portal.route_classes import LogRoute
 from portal.serializers.v1.faq import FaqCategoryBase, FaqCategoryList, FaqBase, FaqList

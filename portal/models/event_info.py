@@ -21,5 +21,6 @@ class PortalEventSchedule(ModelBase, BaseMixin, SortableMixin):
     title = Column(sa.String(255), nullable=False, comment="Event title")
     start_datetime = Column(sa.TIMESTAMP(timezone=True), nullable=False, comment="Start DateTime")
     end_datetime = Column(sa.TIMESTAMP(timezone=True), nullable=False, comment="End DateTime")
+    timezone = Column(sa.String(255), nullable=False, comment="Timezone")
     text_color = Column(sa.String(7), comment="Text color in hex format")
     background_color = Column(sa.String(7), comment="Background color in hex format")

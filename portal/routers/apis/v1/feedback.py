@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request, Response, Depends
 from fastapi.params import Header
 from starlette import status
 
-from portal.containers import Container
+from portal.container import Container
 from portal.handlers import FeedbackHandler
 from portal.route_classes import LogRoute
 from portal.serializers.base import HeaderInfo

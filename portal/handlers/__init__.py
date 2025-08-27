@@ -34,3 +34,10 @@ __all__ = [
     # workshop
     "WorkshopHandler"
 ]
+
+from ..config import settings
+
+if settings.IS_DEV:
+    from .demo import DemoHandler
+
+    __all__.append("DemoHandler")

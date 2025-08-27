@@ -6,7 +6,7 @@ import uuid
 import pytest
 
 from portal.apps.account.models import Account
-from portal.containers import Container
+from portal.container import Container
 from portal.handlers import WorkshopHandler
 from portal.libs.contexts.api_context import set_api_context, APIContext
 

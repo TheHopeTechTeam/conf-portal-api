@@ -5,7 +5,7 @@ from fastapi import Request, Response
 from starlette import status
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from portal.containers import Container
+from portal.container import Container
 
 
 class CustomHTTPMiddleware(BaseHTTPMiddleware):

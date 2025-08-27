@@ -3,6 +3,7 @@ Container
 """
 from dependency_injector import containers, providers
 
+from portal.config import settings
 from portal.handlers import (
     AccountHandler,
     ConferenceHandler,
@@ -14,7 +15,10 @@ from portal.handlers import (
     TestimonyHandler,
     WorkshopHandler,
 )
-from portal.libs.database import RedisPool
+from portal.libs.database import RedisPool, PostgresConnection, Session
+
+if settings.IS_DEV:
+    from portal.handlers import DemoHandler
 
 
 # pylint: disable=too-few-public-methods,c-extension-no-member
@@ -26,8 +30,21 @@ class Container(containers.DeclarativeContainer):
         packages=["portal.handlers", "portal.routers"],
     )
 
-    # [database]
+    # [App Base]
+    config = providers.Configuration()
+    config.from_pydantic(settings)
+
+    # [Database]
     redis_pool = providers.Singleton(RedisPool)
+    postgres_connection = providers.Singleton(PostgresConnection)
+    db_session = providers.Factory(Session, postgres_connection=postgres_connection)
+
+    # [Handlers]
+    if settings.IS_DEV:
+        demo_handler = providers.Factory(
+            DemoHandler,
+            db_session=db_session
+        )
 
     # [handlers]
     file_handler = providers.Factory(FileHandler)

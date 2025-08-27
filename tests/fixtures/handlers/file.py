@@ -3,7 +3,7 @@ Fixtures for file handler tests.
 """
 import pytest
 
-from portal.containers import Container
+from portal.container import Container
 from portal.handlers import FileHandler
 
 

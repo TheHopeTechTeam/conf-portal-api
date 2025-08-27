@@ -14,6 +14,7 @@ class PortalWorkshop(ModelBase, BaseMixin):
     title = Column(sa.String(255), nullable=False, comment="Workshop title")
     start_datetime = Column(sa.TIMESTAMP(timezone=True), nullable=False, comment="Start datetime")
     end_datetime = Column(sa.TIMESTAMP(timezone=True), nullable=False, comment="End datetime")
+    timezone = Column(sa.String(255), nullable=False, comment="Timezone")
     conference_id = Column(
         UUID,
         sa.ForeignKey("portal_conference.id", ondelete="CASCADE"),

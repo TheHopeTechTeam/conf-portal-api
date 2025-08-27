@@ -14,6 +14,7 @@ class PortalConference(ModelBase, BaseMixin):
     title = Column(sa.String(255), nullable=False, comment="Conference title")
     start_date = Column(sa.Date, nullable=False, comment="Conference start date")
     end_date = Column(sa.Date, nullable=False, comment="Conference end date")
+    timezone = Column(sa.String(255), nullable=False, comment="Timezone")
     is_active = Column(sa.Boolean, default=True, comment="Is conference active")
     location_id = Column(
         UUID,
