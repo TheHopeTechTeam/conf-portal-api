@@ -14,6 +14,7 @@ alwaysApply: true
 - Use uppercase for all constant names and environment variables. (e.g. `UPPER_CASE` or `UPPER_CASE_ENV_VAR`)
 - All comments should be in English.
 - Do not check linting rules. (e.g. black, isort, flake8, etc.)
+- Project is using Poetry for dependency management.
 
 ## Alembic
 
@@ -28,6 +29,66 @@ alwaysApply: true
 
 - BaseModels defined for API request and response models must be placed under the serializers directory, aligned with the router version, rather than placing all BaseModels for API requests and responses under the schemas directory.
 - All API router prefixes should be set only at the __init__.py level.
+
+## Testing
+
+- Use pytest for testing.
+- Use pytest-mock for mocking.
+- Use pytest-asyncio for async testing and use `pytest.mark.asyncio` decorator for async tests, such as:
+  ```python
+  @pytest.mark.asyncio
+  async def test_<async_function>():
+      ...
+  ```
+- Test files should be placed under the tests directory.
+- Test files should be named like test_<module_name>.py.
+- Test functions should be named like test_<function_name>, such as:
+  ```python
+  def test_<function_name>():
+      ...
+  ```
+- Test folder structure should be similar to the project's folder structure, such as:
+  - tests/
+    - <folder_name>/
+      - test_<module_name>.py
+      - test_<module_name>.py
+      - ...
+    - <folder_name>/
+      - test_<module_name>.py
+      - test_<module_name>.py
+      - ...
+- Fixtures should be placed under the tests/fixtures directory and use `pytest.fixture` decorator, such as:
+  ```python
+  @pytest.fixture
+  def <fixture_name>():
+      ...
+  ```
+- Test Data should be placed under the tests/data directory and use `pytest.fixture` decorator, such as:
+  ```python
+  @pytest.fixture
+  def <data_name>() -> <data_type>:
+      return <data>
+  ```
+- Define handlers and providers in the Container should use `pytest.fixture` decorator, such as:
+  ```python
+  @pytest.fixture
+  def <handler_or_provider_name>(container: Container) -> <handler_or_provider_type>:
+      return container.<handler_or_provider_name>
+  ```
+- Overall, the test file should be like this:
+  ```python
+  import pytest
+  from portal.libs.container import Container
+  from portal.libs.container.handlers import <handler_name>
+  from portal.libs.container.providers import <provider_name>
+
+  @pytest.mark.asyncio
+  async def test_<async_function>(
+      <handler_or_provider_name>: <handler_or_provider_name>,
+      <mock_data>: <mock_data>, # if needed
+  ):
+      ...
+  ```
 
 ## Other
 

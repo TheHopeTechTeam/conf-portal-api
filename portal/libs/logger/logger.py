@@ -3,7 +3,7 @@ Logger
 """
 import logging
 
-from django.conf import settings
+from portal.config import settings
 from .generator import LoggerGenerator
 
 

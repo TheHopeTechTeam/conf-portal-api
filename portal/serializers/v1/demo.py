@@ -1,7 +1,7 @@
 """
 Demo serializers
 """
-from typing import Optional
+from typing import Optional, ClassVar
 
 from pydantic import BaseModel, Field
 

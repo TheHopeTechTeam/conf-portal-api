@@ -3,7 +3,7 @@ Util functions for lifespan
 """
 from contextlib import asynccontextmanager
 
-from django.conf import settings
+from portal.config import settings
 from fastapi import FastAPI
 from fastapi_limiter import FastAPILimiter
 

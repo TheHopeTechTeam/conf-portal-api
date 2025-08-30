@@ -1,7 +1,7 @@
 """
 Constants for Cache keys
 """
-from django.conf import settings
+from portal.config import settings
 
 
 def get_cache_key(key: str) -> str:
@@ -20,3 +20,37 @@ def get_firebase_signed_url_key(image_id: int) -> str:
     :return:
     """
     return get_cache_key(f"firebase:signed_url:{image_id}")
+
+
+def get_token_blacklist_key(token_hash: str) -> str:
+    """
+    Get token blacklist key
+    :param token_hash: SHA256 hash of the token
+    :return: Token blacklist key
+    """
+    return get_cache_key(f"token_blacklist:{token_hash}")
+
+
+def get_refresh_token_blacklist_key(token_hash: str) -> str:
+    """
+    Get refresh token blacklist key
+    :param token_hash: SHA256 hash of the refresh token
+    :return: Refresh token blacklist key
+    """
+    return get_cache_key(f"refresh_token_blacklist:{token_hash}")
+
+
+def get_token_blacklist_pattern() -> str:
+    """
+    Get token blacklist pattern for scanning
+    :return: Pattern for token blacklist keys
+    """
+    return get_cache_key("token_blacklist:*")
+
+
+def get_refresh_token_blacklist_pattern() -> str:
+    """
+    Get refresh token blacklist pattern for scanning
+    :return: Pattern for refresh token blacklist keys
+    """
+    return get_cache_key("refresh_token_blacklist:*")

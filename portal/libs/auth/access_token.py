@@ -6,9 +6,8 @@ from typing import Optional
 from fastapi import Request
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 
-from portal.apps.account.models import Account, AccountAuthProvider
 from portal.exceptions.auth import UnauthorizedException, InvalidTokenException
-from portal.handlers import AuthHandler
+from portal.handlers.auth import AuthHandler
 from portal.libs.contexts.api_context import APIContext, set_api_context
 from portal.schemas.auth import FirebaseTokenPayload
 
@@ -42,11 +41,7 @@ class AccessTokenAuth(HTTPBearer):
             payload: FirebaseTokenPayload = await auth_handler.verify_firebase_token(token=token)
         except Exception:
             raise InvalidTokenException()
-        try:
-            account_auth_provider = await AccountAuthProvider.objects.aget(provider_id=payload.user_id)
-            account = await Account.objects.aget(id=account_auth_provider.account_id)
-        except (Account.DoesNotExist, AccountAuthProvider.DoesNotExist):
-            account = None
+
         return APIContext(
             token=token,
             token_payload=payload,
@@ -58,5 +53,4 @@ class AccessTokenAuth(HTTPBearer):
             url=str(request.url),
             path=request.url.path,
             verified=True,
-            account=account
         )

@@ -30,7 +30,7 @@ class GenericQueryBaseModel(OrderByQueryBaseModel):
     deleted: bool = Field(False, description="Deleted items only")
 
 
-class PaginationBaseResponseModel(BaseModel, abc.ABC):
+class PaginationBaseResponseModel(BaseModel):
     """
     Base serializer mixin for all paginated response models.
     """
@@ -38,9 +38,6 @@ class PaginationBaseResponseModel(BaseModel, abc.ABC):
     page_size: int = Field(..., description="Page size")
     total: int = Field(..., description="Total number of items")
 
-    @property
-    @abc.abstractmethod
-    def items(self) -> Optional[list[Any]]:
-        """
-        Items in the current page
-        """
+    def __init_subclass__(cls, **kwargs):
+        if not hasattr(cls, "items"):
+            raise ValueError("items field is required")

@@ -1,66 +1,70 @@
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "portal.settings.dev"
 testpaths = [
     "portal",
     "tests"
 ]
 
-[tool.poetry]
+[project]
 name = "conf-portal-api"
 version = "0.1.0"
 description = ""
-authors = ["Jay Hsia <jayhsia1997@gmail.com>"]
-license = ""
+authors = [{ name = "Jay Hsia", email = "jayhsia1997@gmail.com" }]
 readme = "README.md"
-package-mode = false
+requires-python = "^3.13"
+dependencies = [
+    # base
+    "dependency-injector",
+    "fastapi",
+    "fastapi-limiter==0.1.6",
+    "gunicorn",
+    "uvicorn",
+    "pydantic",
+    "pydantic-settings",
+    "python-dotenv",
+    # django
+    "django>=5.1,<6.0",
+    "django-environ==0.12.0",
+    "django-redis==5.4.0",
+    "django-model-utils==5.0",
+    "django-auditlog==3.0.0",
+    "wagtail>=6.3,<7.0",
+    "wagtail-modeladmin==2.1.0",
+    "whitenoise[brotli]",
+    "django-storages[google]",
+    "wagtail-autocomplete==0.12.0",
+    # db
+    "asyncpg",
+    "redis",
+    "sqlalchemy",
+    "psycopg2-binary==2.9.10",
+    # firebase
+    "firebase-admin==6.5.0",
+    # security
+    "pyjwt",
+    # utils
+    "boto3",
+    "cryptography",
+    "email-validator",
+    "httpx",
+    "ujson",
+    "pytz",
+    "pandas==2.2.3",
+    "numpy==2.2.1",
+    "phonenumbers",
+    "pyotp",
+    "python-dateutil==2.9.0.post0",
+    "python-multipart==0.0.20",
+    "sentry-sdk[fastapi]",
+]
 
-[tool.poetry.dependencies]
-python = "^3.13"
-# base
-dependency-injector = "*"
-fastapi = "*"
-fastapi-limiter = "^0.1.6"
-gunicorn = "*"
-uvicorn = "*"
-pydantic = "*"
-pydantic-settings = "*"
-python-dotenv = "*"
-# django
-django = "^5.1"
-django-environ = "^0.12.0"
-django-redis = "^5.4.0"
-django-model-utils = "^5.0"
-django-auditlog = "^3.0.0"
-wagtail = "^6.3"
-wagtail-modeladmin = "^2.1.0"
-whitenoise = { version = "*", extras = ["brotli"] }
-django-storages = { version = "*", extras = ["google"] }
-wagtail-autocomplete = "^0.12.0"
-# db
-asyncpg = "*"
-redis = "*"
-sqlalchemy = "*"
-psycopg2-binary = "^2.9.9"
-# firebase
-firebase-admin = "^6.5.0"
-# security
-pyjwt = "*"
-# utils
-httpx = "*"
-ujson = "*"
-pytz = "^2024.1"
-pandas = "^2.2.3"
-numpy = "2.2.1"
-phonenumbers = "^8.13.53"
-python-dateutil = "^2.9.0.post0"
-python-multipart = "^0.0.20"
-boto3 = "^1.37.4"
-sentry-sdk = {extras = ["fastapi"], version = "*"}
+[tool.poetry]
 
 [tool.poetry.group.dev.dependencies]
+alembic = "*"
 pytest = "*"
 pytest-asyncio = "*"
-alembic = "*"
+pytest-mock = "*"
+click = "*"
 
 [build-system]
 requires = ["poetry-core"]

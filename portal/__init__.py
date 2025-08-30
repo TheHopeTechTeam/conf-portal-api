@@ -1,4 +1,10 @@
 """
 Top level package for the portal
 """
-from .asgi import app
+from .main import app
+from .cli import main
+
+__all__ = [
+    "app",
+    "main"
+]

@@ -5,7 +5,6 @@ from collections import defaultdict
 
 import firebase_admin
 import sentry_sdk
-from django.conf import settings
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
@@ -17,8 +16,10 @@ from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import RedirectResponse
 
-from portal.asgi_handler import get_asgi_application
+from portal.config import settings
+from portal.container import Container
 from portal.libs.utils.lifespan import lifespan
 from portal.middlewares import CustomHTTPMiddleware
 from portal.routers import api_router
@@ -90,7 +91,7 @@ def init_firebase():
     )
 
 
-def get_application(mount_application) -> FastAPI:
+def get_application() -> FastAPI:
     """
     get application
     """
@@ -98,6 +99,8 @@ def get_application(mount_application) -> FastAPI:
     application = FastAPI(lifespan=lifespan)
     # set route class
     # application.router.route_class = LogRouting
+    # set container
+    application.container = Container()
 
     # init firebase
     try:
@@ -107,13 +110,20 @@ def get_application(mount_application) -> FastAPI:
     register_middleware(application=application)
     register_router(application=application)
 
-    # mount Django application
-    application.mount("/", mount_application)
-
     return application
 
 
-app = get_application(get_asgi_application())
+app = get_application()
+
+
+@app.get("/")
+async def root():
+    """
+    Root path redirects to /docs in development environment
+    """
+    if settings.IS_DEV:
+        return RedirectResponse(url="/docs")
+    return {"message": "Welcome to Conferences Portal API"}
 
 
 # @app.exception_handler(InvalidAuthorizationToken)

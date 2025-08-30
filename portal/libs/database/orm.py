@@ -5,6 +5,7 @@ import re
 import uuid
 from typing import Optional
 
+import sqlalchemy as sa
 from sqlalchemy import Column, MetaData
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declared_attr
@@ -83,7 +84,7 @@ class Base(DeclarativeBase):
 class ModelBase(Base):
     """ModelBase"""
     __abstract__ = True
-    id = Column(UUID, primary_key=True, default=uuid.uuid4(), comment="Primary Key")
+    id = Column(UUID, server_default=sa.text("gen_random_uuid()"), primary_key=True, comment="Primary Key")
 
     def __init__(self, **kwargs):
         if "id" not in kwargs:

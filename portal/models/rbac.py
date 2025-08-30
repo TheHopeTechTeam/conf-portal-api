@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 
 from portal.libs.consts.enums import Gender
 from portal.libs.database.orm import ModelBase, Base
-from .mixins import AuditMixin, DeletedMixin, RemarkMixin, DescriptionMixin, BaseMixin
+from .mixins import AuditMixin, DeletedMixin, RemarkMixin, DescriptionMixin, BaseMixin, SortableMixin
 
 
 class PortalUser(ModelBase, RemarkMixin, DeletedMixin, AuditMixin):
@@ -22,13 +22,13 @@ class PortalUser(ModelBase, RemarkMixin, DeletedMixin, AuditMixin):
     email = Column(sa.String(255), nullable=True, unique=True, comment="Email, unique identifier")
     password_hash = Column(sa.String(512), nullable=True, comment="Password hash")
     salt = Column(sa.String(128), nullable=True, comment="Salt for password hash")
-    is_active = Column(sa.Boolean, default=True, index=True, comment="Is active")
     verified = Column(sa.Boolean, default=False, comment="Is verified")
-    last_login_at = Column(sa.TIMESTAMP(timezone=True), comment="Last login")
+    is_active = Column(sa.Boolean, default=True, index=True, comment="Is active")
+    is_superuser = Column(sa.Boolean, default=False, comment="Is superuser")  # Top-level admin can access all resources in the admin panel
+    is_admin = Column(sa.Boolean, default=False, comment="Is admin")  # Can access the admin panel
     password_changed_at = Column(sa.TIMESTAMP(timezone=True), comment="Password last changed time")
     password_expires_at = Column(sa.TIMESTAMP(timezone=True), comment="Password expiration time")
-    is_superuser = Column(sa.Boolean, default=False, comment="Is superuser")
-    is_admin = Column(sa.Boolean, default=False, comment="Is admin")
+    last_login_at = Column(sa.TIMESTAMP(timezone=True), comment="Last login")
 
     # Relationships
     roles = relationship("PortalRole", secondary=lambda: PortalUserRole.__table__, back_populates="users", passive_deletes=True)
@@ -90,11 +90,21 @@ class PortalRole(ModelBase, BaseMixin):
     permissions = relationship("PortalPermission", secondary=lambda: PortalRolePermission.__table__, back_populates="roles", passive_deletes=True)
 
 
-class PortalResource(ModelBase, BaseMixin):
-    """Portal Resource Model for RBAC"""
-    code = Column(sa.String(32), nullable=False, unique=True, comment="Resource code (e.g., user, course, article)")
+class PortalResource(ModelBase, BaseMixin, SortableMixin):
+    """
+    Portal Resource Model for RBAC
+    Example:
+        key: SYSTEM_USER, SYSTEM_ROLE, SYSTEM_PERMISSION
+        code: system:user, system:role, system:permission
+    """
+    pid = Column(UUID, sa.ForeignKey("portal_resource.id", ondelete="CASCADE"), comment="Parent resource id")
     name = Column(sa.String(64), comment="Resource name")
-    is_active = Column(sa.Boolean, default=True, comment="Is resource active")
+    key = Column(sa.String(128), nullable=False, unique=True, comment="Resource key and front-end corresponding")
+    code = Column(sa.String(32), nullable=False, unique=True, comment="Resource code (e.g., user, course, article)")
+    icon = Column(sa.String(32), comment="Resource icon")
+    path = Column(sa.String(256), comment="Resource path")
+    is_visible = Column(sa.Boolean, nullable=False, server_default=sa.text("true"), comment="Is resource visible")
+    children = relationship("PortalResource", passive_deletes=True)
 
 
 class PortalVerb(ModelBase, BaseMixin):

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union, overload, AsyncIterator
 
 import httpx
-from django.conf import settings
+from portal.config import settings
 from httpx._types import FileTypes  # noqa
 
 request_logger = logging.getLogger("http_client")

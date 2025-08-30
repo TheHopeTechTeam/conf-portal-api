@@ -1,10 +1,15 @@
 """
 Configuration
 """
+import json
+import logging
 import os
+from pathlib import PosixPath, Path
 from typing import Optional, Any, Type, Tuple
 
 from dotenv import load_dotenv
+from google.oauth2 import service_account
+from pydantic import field_validator, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, EnvSettingsSource, PydanticBaseSettingsSource
 
@@ -72,6 +77,7 @@ class Configuration(BaseSettings):
 
     # [Redis]
     REDIS_URL: Optional[str] = os.getenv(key="REDIS_URL")
+    REDIS_DB: int = int(os.getenv(key="REDIS_DB", default="0"))
 
     # [Database]
     DATABASE_HOST: str = os.getenv(key="DATABASE_HOST", default="localhost")
@@ -82,14 +88,71 @@ class Configuration(BaseSettings):
     DATABASE_SCHEMA: str = os.getenv(key="DATABASE_SCHEMA", default="public")
     DATABASE_CONNECTION_POOL_MAX_SIZE: int = os.getenv("DATABASE_CONNECTION_POOL_MAX_SIZE", 10)
     DATABASE_APPLICATION_NAME: str = APP_NAME
+
     DATABASE_POOL: bool = os.getenv("DATABASE_POOL", True)
     SQL_ECHO: bool = os.getenv("SQL_ECHO", False)
     SQLALCHEMY_DATABASE_URI: str = f'postgresql://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
     ASYNC_DATABASE_URL: str = f'postgresql+asyncpg://{DATABASE_USER}:{DATABASE_PASSWORD}@' \
                               f'{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
 
+    # [JWT]
+    JWT_SECRET_KEY: str = os.getenv(key="JWT_SECRET_KEY")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv(key="JWT_ACCESS_TOKEN_EXPIRE_MINUTES", default="60"))
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv(key="JWT_REFRESH_TOKEN_EXPIRE_DAYS", default="7"))
+
+    # [Token Blacklist]
+    TOKEN_BLACKLIST_REDIS_DB: int = int(os.getenv(key="TOKEN_BLACKLIST_REDIS_DB", default="1"))
+    TOKEN_BLACKLIST_CLEANUP_INTERVAL: int = int(os.getenv(key="TOKEN_BLACKLIST_CLEANUP_INTERVAL", default="3600"))
+
     # [Sentry]
     SENTRY_URL: Optional[str] = os.getenv(key="SENTRY_URL")
+
+    # [Firebase]
+    FIREBASE_TEST_PHONE_NUMBER: str = os.getenv(key="FIREBASE_TEST_PHONE_NUMBER")
+
+    # [Google Cloud]
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = os.getenv(
+        key="GOOGLE_APPLICATION_CREDENTIALS"
+    )
+    GS_CREDENTIALS: Optional[service_account.Credentials] = None
+    GOOGLE_FIREBASE_CERTIFICATE: dict = {}
+
+    @model_validator(mode="after")
+    def _load_google_cloud_credentials(self) -> "Configuration":
+        """
+        Load Google Cloud credentials and Firebase certificate from, in order:
+        1) GOOGLE_APPLICATION_CREDENTIALS env var (if provided)
+        2) env/google_certificate.json
+        3) /etc/secrets/google_certificate.json
+        """
+        if self.GS_CREDENTIALS is not None and self.GOOGLE_FIREBASE_CERTIFICATE:
+            return self
+
+        candidate_paths: list[str] = []
+        if self.GOOGLE_APPLICATION_CREDENTIALS:
+            candidate_paths.append(self.GOOGLE_APPLICATION_CREDENTIALS)
+        candidate_paths.extend([
+            "env/google_certificate.json",
+            "/etc/secrets/google_certificate.json",
+        ])
+
+        for candidate_path in candidate_paths:
+            try:
+                google_certificate_path: Path = Path(candidate_path)
+                credentials = service_account.Credentials.from_service_account_file(
+                    candidate_path
+                )
+                certificate_dict: dict = json.loads(google_certificate_path.read_text())
+                self.GS_CREDENTIALS = credentials
+                self.GOOGLE_FIREBASE_CERTIFICATE = certificate_dict
+                break
+            except FileNotFoundError:
+                continue
+            except Exception as exc:
+                logger = logging.getLogger(self.APP_NAME)
+                logger.warning(f"Failed to load Google Firebase certificate from {candidate_path}: {exc}")
+
+        return self
 
 
 settings: Configuration = Configuration()
