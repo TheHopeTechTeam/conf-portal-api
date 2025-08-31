@@ -54,3 +54,9 @@ def get_refresh_token_blacklist_pattern() -> str:
     :return: Pattern for refresh token blacklist keys
     """
     return get_cache_key("refresh_token_blacklist:*")
+
+
+def create_permission_key(user_id: str, permission_code: str = None):
+    if not permission_code:
+        return get_cache_key(f"perm:{user_id}")
+    return get_cache_key(f"perm:{user_id}:{permission_code}")

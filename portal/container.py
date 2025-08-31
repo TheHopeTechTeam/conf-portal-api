@@ -7,6 +7,7 @@ from portal.config import settings
 from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.handlers import (
     AdminAuthHandler,
+    AdminPermissionHandler,
 )
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
@@ -59,10 +60,18 @@ class Container(containers.DeclarativeContainer):
         )
 
     # [Admin]
+    admin_permission_handler = providers.Factory(
+        AdminPermissionHandler,
+        session=db_session,
+        redis_client=redis_client,
+    )
     admin_auth_handler = providers.Factory(
         AdminAuthHandler,
         session=db_session,
+        redis_client=redis_client,
         jwt_provider=jwt_provider,
         password_provider=password_provider,
-        token_blacklist_provider=token_blacklist_provider
+        token_blacklist_provider=token_blacklist_provider,
+        admin_permission_handler=admin_permission_handler
     )
+
