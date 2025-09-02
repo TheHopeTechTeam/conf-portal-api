@@ -8,17 +8,20 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from portal.container import Container
 
 
-class CustomHTTPMiddleware(BaseHTTPMiddleware):
-    """Custom HTTP Middleware"""
+class DatabaseSessionMiddleware(BaseHTTPMiddleware):
+    """Database Session Middleware"""
 
     async def dispatch(self, request: Request, call_next):
+        container: Container = request.app.container
+        db_session = container.db_session()
         try:
             response: Response = await call_next(request)
-            return response
-        except RuntimeError as exc:
-            if str(exc) == 'No response returned.' and await request.is_disconnected():
-                return Response(status_code=status.HTTP_204_NO_CONTENT)
+        except Exception:
+            print("Error in database session middleware")
+            await db_session.rollback()
             raise
+        else:
+            await db_session.commit()
+            return response
         finally:
-            container: Container = request.app.container
             container.reset_singletons()

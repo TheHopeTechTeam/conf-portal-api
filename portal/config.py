@@ -98,7 +98,9 @@ class Configuration(BaseSettings):
     # [JWT]
     JWT_SECRET_KEY: str = os.getenv(key="JWT_SECRET_KEY")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv(key="JWT_ACCESS_TOKEN_EXPIRE_MINUTES", default="60"))
-    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv(key="JWT_REFRESH_TOKEN_EXPIRE_DAYS", default="7"))
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv(key="REFRESH_TOKEN_EXPIRE_DAYS", default="7"))
+    REFRESH_TOKEN_HASH_SALT: str = os.getenv(key="REFRESH_TOKEN_HASH_SALT", default="")
+    REFRESH_TOKEN_HASH_PEPPER: str = os.getenv(key="REFRESH_TOKEN_HASH_PEPPER", default="")
 
     # [Token Blacklist]
     TOKEN_BLACKLIST_REDIS_DB: int = int(os.getenv(key="TOKEN_BLACKLIST_REDIS_DB", default="1"))

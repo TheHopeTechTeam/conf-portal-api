@@ -6,7 +6,7 @@ import pandas as pd
 import phonenumbers
 import pytz
 from dateutil import parser
-from django.conf import settings
+from portal.config import settings
 from fastapi import APIRouter, Request, UploadFile
 from firebase_admin import auth
 from firebase_admin.auth import PhoneNumberAlreadyExistsError, UserRecord

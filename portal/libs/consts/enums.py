@@ -203,3 +203,15 @@ class Identity(Enum):
     THEOLOGY_STUDENT = "theology_student"
     MINISTRY_LEADER = "ministry_leader"
     CONGREGANT = "congregant"
+
+
+class OperationType(Enum):
+    """Operation Type"""
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+    RESTORE = "restore"
+    RECYCLE = "recycle"
+    LOGIN = "login"
+    LOGOUT = "logout"
+    OTHER = "other"

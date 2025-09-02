@@ -2,11 +2,14 @@
 Admin handlers
 """
 from .auth import AdminAuthHandler
-from .resource import AdminResourceHandler
 from .permission import AdminPermissionHandler
+from .resource import AdminResourceHandler
+from .role import AdminRoleHandler
 
 __all__ = [
     "AdminAuthHandler",
-    "AdminResourceHandler",
     "AdminPermissionHandler",
+    "AdminResourceHandler",
+    "AdminRoleHandler",
 ]
+

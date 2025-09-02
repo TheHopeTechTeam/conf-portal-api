@@ -57,6 +57,21 @@ def get_refresh_token_blacklist_pattern() -> str:
 
 
 def create_permission_key(user_id: str, permission_code: str = None):
+    """
+    Get permission key
+    :param user_id:
+    :param permission_code:
+    :return:
+    """
     if not permission_code:
         return get_cache_key(f"perm:{user_id}")
     return get_cache_key(f"perm:{user_id}:{permission_code}")
+
+
+def create_user_role_key(user_id: str):
+    """
+    Get user role key
+    :param user_id:
+    :return:
+    """
+    return get_cache_key(f"role:{user_id}")

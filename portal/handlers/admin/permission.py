@@ -1,7 +1,7 @@
 """
 AdminPermissionHandler
 """
-from typing import Optional
+from typing import Optional, Union
 import sqlalchemy as sa
 from uuid import UUID
 
@@ -12,7 +12,7 @@ from portal.libs.consts.cache_keys import create_permission_key
 from portal.libs.database import Session, RedisPool
 from portal.models import PortalPermission, PortalVerb, PortalResource, PortalRole, PortalUser, PortalRolePermission
 from portal.schemas.permission import PermissionBase
-from portal.schemas.user import UserBase
+from portal.schemas.user import UserBase, UserDetail
 
 
 class AdminPermissionHandler:
@@ -26,7 +26,7 @@ class AdminPermissionHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    async def init_user_permissions_cache(self, user: UserBase, expire: int):
+    async def init_user_permissions_cache(self, user: Union[UserBase, UserDetail], expire: int) -> Optional[list[str]]:
         """
         Initialize user permissions cache
         :param user:
@@ -36,12 +36,15 @@ class AdminPermissionHandler:
         await self.clear_user_permissions_cache(user_id=user.id)
         permissions: Optional[list[PermissionBase]] = await self._get_user_role_permissions(user=user)
         if not permissions:
-            return
+            return None
         key = create_permission_key(str(user.id))
+        permission_codes = []
         for permission in permissions:
             permission_code = permission.code
+            permission_codes.append(permission_code)
             await self._redis.hset(key, permission_code, permission.model_dump_json())
         await self._redis.expire(key, expire)
+        return permission_codes
 
     async def clear_user_permissions_cache(self, user_id: UUID):
         """
@@ -52,7 +55,7 @@ class AdminPermissionHandler:
         key = create_permission_key(str(user_id))
         await self._redis.delete(key)
 
-    async def _get_user_role_permissions(self, user: UserBase) -> Optional[list[PermissionBase]]:
+    async def _get_user_role_permissions(self, user: Union[UserBase, UserDetail]) -> Optional[list[PermissionBase]]:
         """
         Get permissions by user role
         :param user:

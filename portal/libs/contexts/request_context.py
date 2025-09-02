@@ -1,0 +1,39 @@
+"""
+Request Context (per-request)
+"""
+from contextvars import ContextVar, Token
+from typing import Optional
+
+from pydantic import BaseModel
+
+
+request_context_var: ContextVar["RequestContext"] = ContextVar("RequestContext")
+
+
+class RequestContext(BaseModel):
+    """Per-request HTTP information"""
+
+    ip: Optional[str] = None
+    client_ip: Optional[str] = None
+    user_agent: Optional[str] = None
+    method: Optional[str] = None
+    host: Optional[str] = None
+    url: Optional[str] = None
+    path: Optional[str] = None
+    request_id: Optional[str] = None
+
+
+def set_request_context(context: "RequestContext") -> Token:
+    """
+    Set the request context for current request.
+    """
+    return request_context_var.set(context)
+
+
+def get_request_context() -> "RequestContext":
+    """
+    Get current request's request context.
+    """
+    return request_context_var.get()
+
+

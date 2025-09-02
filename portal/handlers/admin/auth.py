@@ -2,15 +2,14 @@
 Admin authentication handlers
 """
 from datetime import datetime, timezone
-from typing import Optional
-from uuid import UUID
+from typing import Optional, Tuple
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from pydantic import EmailStr
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.handlers import AdminPermissionHandler
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalUserProfile
@@ -18,13 +17,17 @@ from portal.models.rbac import PortalUser, PortalRole, PortalPermission, PortalR
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
+from portal.schemas.base import RefreshTokenData
+from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.schemas.user import UserDetail, UserBase
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminTokenResponse,
     AdminInfo,
-    AdminLoginResponse,
+    AdminLoginResponse, RefreshTokenRequest,
 )
+from .permission import AdminPermissionHandler
+from .role import AdminRoleHandler
 
 
 class AdminAuthHandler:
@@ -37,7 +40,9 @@ class AdminAuthHandler:
         jwt_provider: JWTProvider,
         password_provider: PasswordProvider,
         token_blacklist_provider: TokenBlacklistProvider,
-        admin_permission_handler: AdminPermissionHandler
+        admin_permission_handler: AdminPermissionHandler,
+        admin_role_handler: AdminRoleHandler,
+        refresh_token_provider: RefreshTokenProvider
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
@@ -45,6 +50,8 @@ class AdminAuthHandler:
         self._password_provider = password_provider
         self._token_blacklist_provider = token_blacklist_provider
         self._admin_permission_handler = admin_permission_handler
+        self._admin_role_handler = admin_role_handler
+        self._refresh_token_provider = refresh_token_provider
         self._expires_in = 60 * 60 * 24  # 24 hours
 
     @distributed_trace()
@@ -92,67 +99,6 @@ class AdminAuthHandler:
         return user
 
     @distributed_trace()
-    async def get_admin_roles_and_permissions(self, user_id: UUID) -> tuple[list[str], list[str]]:
-        """
-        Get admin user roles and permissions
-        """
-        # Get user to check admin status
-        user: UserBase = await self._session.select(PortalUser).where(PortalUser.id == user_id).fetchrow(as_model=UserBase)
-        if not user:
-            return [], []
-
-        # If superuser, return all permissions
-        if user.is_superuser:
-            all_permissions = await (
-                self._session.select(
-                    PortalPermission.display_name.label("name")
-                )
-                .join(PortalResource, PortalPermission.resource_id == PortalResource.id)
-                .join(PortalVerb, PortalPermission.verb_id == PortalVerb.id)
-                .where(PortalPermission.is_active == True)
-                .where(PortalVerb.is_active == True)
-                .fetch()
-            )
-
-            permissions = [row["name"] for row in all_permissions]
-            permissions.sort()
-            return ["superuser"], permissions
-
-        # If admin, get roles and permissions from RBAC
-        if user["is_admin"]:
-            # Get user roles
-            roles_result = await (
-                self._session.select(PortalRole.name)
-                .join(PortalRole.users)
-                .where(PortalUser.id == user_id)
-                .where(PortalRole.is_active == True)
-                .fetch()
-            )
-
-            roles = [row["name"] for row in roles_result]
-
-            # Get user permissions
-            permissions_result = await (
-                self._session.select(PortalPermission.display_name.label("name"))
-                .join(PortalResource, PortalPermission.resource_id == PortalResource.id)
-                .join(PortalVerb, PortalPermission.verb_id == PortalVerb.id)
-                .join(PortalPermission.roles)
-                .join(PortalRole.users)
-                .where(PortalUser.id == user_id)
-                .where(PortalRole.is_active == True)
-                .where(PortalPermission.is_active == True)
-                .where(PortalResource.is_visible == True)
-                .where(PortalVerb.is_active == True)
-                .fetch()
-            )
-
-            permissions = [row["name"] for row in permissions_result]
-
-            return roles, permissions
-
-        return [], []
-
-    @distributed_trace()
     async def update_last_login(self, user_id: UUID, last_login_at: Optional[datetime] = None) -> None:
         """
         Update admin's last login timestamp
@@ -165,12 +111,14 @@ class AdminAuthHandler:
             .values(last_login_at=last_login_at)
             .execute()
         )
-        await self._session.commit()
 
     @distributed_trace()
-    async def login(self, login_data: AdminLoginRequest) -> AdminLoginResponse:
+    async def login(self, login_data: AdminLoginRequest, device_id: UUID) -> AdminLoginResponse:
         """
         Admin login
+        :param login_data:
+        :param device_id:
+        :return:
         """
         # Authenticate admin
         user: UserDetail = await self.authenticate_admin(login_data.email, login_data.password)
@@ -181,27 +129,34 @@ class AdminAuthHandler:
             )
 
         # Get admin roles and permissions
-        await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
-        roles, permissions = await self.get_admin_roles_and_permissions(user.id)
+        roles = await self._admin_role_handler.init_user_roles_cache(user, self._expires_in)
+        permissions = await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
 
         # Update last login
         last_login_at = datetime.now(timezone.utc)
         await self.update_last_login(user.id, last_login_at)
 
-        # Create tokens
+        # Generate family id for this login chain
+        family_id = uuid4()
+
+        # Create access token with family id
         access_token = self._jwt_provider.create_admin_access_token(
-            subject=str(user.id),
             user_id=user.id,
             email=user.email,
             display_name=user.display_name or user.email,
             roles=roles,
-            permissions=permissions
+            permissions=permissions,
+            family_id=family_id,
         )
-
-        refresh_token = self._jwt_provider.create_admin_refresh_token(
-            subject=str(user.id),
-            user_id=user.id
-        )
+        # Issue opaque refresh token bound to device and family
+        try:
+            refresh_token = await self._refresh_token_provider.issue(
+                user_id=user.id,
+                device_id=device_id,
+                family_id=family_id,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
         # Create response
         admin_info = AdminInfo(
@@ -222,27 +177,39 @@ class AdminAuthHandler:
 
         return AdminLoginResponse(admin=admin_info, tokens=tokens)
 
-    async def refresh_token(self, refresh_token: str) -> AdminTokenResponse:
+    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> AdminTokenResponse:
         """
-        Refresh admin access token with blacklist check
+        Refresh admin access token
+        :param refresh_data:
+        :return:
         """
-        # Verify refresh token with blacklist check
-        payload = await self._jwt_provider.verify_refresh_token_with_blacklist(refresh_token)
-        if not payload or payload.get("type") != "admin_refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or blacklisted refresh token"
-            )
+        try:
+            refresh_token, rt_data = await self._refresh_token_provider.rotate(refresh_token=refresh_data.refresh_token)  # type: str, RefreshTokenData
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
-        user_id = UUID(payload.get("user_id"))
-
-        # Get user
         user: UserDetail = await (
-            self._session.select(PortalUser)
-            .where(PortalUser.id == user_id)
+            self._session.select(
+                PortalUser.id,
+                PortalUser.phone_number,
+                PortalUser.email,
+                PortalUser.password_hash,
+                PortalUser.verified,
+                PortalUser.is_active,
+                PortalUser.is_superuser,
+                PortalUser.is_admin,
+                PortalUser.password_changed_at,
+                PortalUser.password_expires_at,
+                PortalUser.last_login_at,
+                PortalUserProfile.display_name,
+                PortalUserProfile.gender,
+                PortalUserProfile.is_ministry,
+            )
+            .join(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
+            .where(PortalUser.id == rt_data.user_id)
             .where(PortalUser.is_deleted == False)
             .where(PortalUser.is_active == True)
-            .fetchrow(UserDetail)
+            .fetchrow(as_model=UserDetail)
         )
 
         if not user:
@@ -252,33 +219,24 @@ class AdminAuthHandler:
             )
 
         # Get admin roles and permissions
-        roles, permissions = await self.get_admin_roles_and_permissions(user.id)
+        roles = await self._admin_role_handler.init_user_roles_cache(user, self._expires_in)
+        permissions = await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
 
-        # Create new access token
+        # Create new access token with same family id
         access_token = self._jwt_provider.create_admin_access_token(
-            subject=str(user.id),
             user_id=user.id,
             email=user.email,
             display_name=user.display_name or user.email,
             roles=roles,
-            permissions=permissions
+            permissions=permissions,
+            family_id=rt_data.family_id
         )
 
-        # Create new refresh token
-        new_refresh_token = self._jwt_provider.create_admin_refresh_token(
-            subject=str(user.id),
-            user_id=user.id
-        )
-
-        # Blacklist the old refresh token
-        if self._token_blacklist_provider:
-            old_refresh_exp = self._jwt_provider.get_token_expiration(refresh_token)
-            if old_refresh_exp:
-                await self._token_blacklist_provider.add_refresh_token_to_blacklist(refresh_token, old_refresh_exp)
+        # no blacklist; rotation handles invalidation
 
         return AdminTokenResponse(
             access_token=access_token,
-            refresh_token=new_refresh_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             expires_in=self._jwt_provider.access_token_expire_minutes * 60
         )
@@ -305,7 +263,7 @@ class AdminAuthHandler:
 
     async def logout(self, access_token: str, refresh_token: str = None) -> bool:
         """
-        Logout admin user by blacklisting tokens
+        Logout admin user: blacklist AT and revoke RT family via provider
         """
         try:
             if not self._token_blacklist_provider:
@@ -316,11 +274,9 @@ class AdminAuthHandler:
             if access_exp:
                 await self._token_blacklist_provider.add_to_blacklist(access_token, access_exp)
 
-            # Blacklist refresh token if provided
+            # Revoke refresh token (and family)
             if refresh_token:
-                refresh_exp = self._jwt_provider.get_token_expiration(refresh_token)
-                if refresh_exp:
-                    await self._token_blacklist_provider.add_refresh_token_to_blacklist(refresh_token, refresh_exp)
+                await self._refresh_token_provider.revoke_by_token(refresh_token, revoke_family=True)
 
             return True
         except Exception:

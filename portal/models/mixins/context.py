@@ -1,17 +1,19 @@
 import uuid
 
-from portal.libs.contexts.api_context import get_api_context
+from portal.libs.contexts.user_context import get_user_context
 
 
 def get_current_username():
     try:
-        return get_api_context().username
+        ctx = get_user_context()
+        return ctx.username if ctx and ctx.username else "system"
     except:
         return "system"
 
 
 def get_current_id():
     try:
-        return get_api_context().user_id
+        ctx = get_user_context()
+        return ctx.user_id if ctx and ctx.user_id else uuid.UUID("00000000-0000-0000-0000-000000000000")
     except:
         return uuid.UUID("00000000-0000-0000-0000-000000000000")

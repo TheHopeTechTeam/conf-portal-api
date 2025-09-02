@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 
 import pandas as pd
 import phonenumbers
-from django.conf import settings
+from portal.config import settings
 from django.core.management.base import BaseCommand
 from pydantic import BaseModel
 from firebase_admin import auth

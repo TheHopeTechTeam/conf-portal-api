@@ -46,6 +46,23 @@ class ApiBaseException(HTTPException):
         return self.detail or ""
 
 
+class BadRequestException(ApiBaseException):
+    """Bad Request Exception"""
+
+    def __init__(
+        self,
+        detail: str = None,
+        headers: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
+        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail, headers=headers)
+        self.debug_detail = kwargs.pop('debug_detail', None)
+
+
+class ParamError(BadRequestException):
+    """Param Error"""
+
+
 class NotFoundException(ApiBaseException):
     """
     Not Found Exception
@@ -92,19 +109,3 @@ class NotImplementedException(ApiBaseException):
     ):
         super().__init__(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=detail, headers=headers)
         self.debug_detail = kwargs.pop('debug_detail', None)
-
-
-class ApiException(Exception):
-    """API Exception"""
-
-    def __init__(self, code, *args, **kwargs):
-        self.code = code
-        self.rollback = kwargs.pop('rollback', True)
-        super().__init__(*args)
-
-
-class ParamError(ApiException):
-    """Param Error"""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(500, *args, **kwargs)

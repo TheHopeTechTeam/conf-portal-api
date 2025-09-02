@@ -1,32 +1,63 @@
 """
 Auth Exception
 """
+from typing import Optional, Dict, Any
+
 from starlette import status
 
-from .api_base import APIException
+from .api_base import ApiBaseException
 
 
-class InvalidTokenException(APIException):
+class InvalidTokenException(ApiBaseException):
     """
     Invalid Token Exception
     """
-    def __init__(self, message: str = None):
-        if message is None:
-            message = "Invalid authorization token"
-        else:
-            message = f"Invalid authorization token: {message}"
+
+    def __init__(
+        self,
+        detail: str = "Invalid authorization token",
+        headers: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            message=message
+            detail=detail,
+            headers=headers,
+            **kwargs
         )
 
 
-class UnauthorizedException(APIException):
+class UnauthorizedException(ApiBaseException):
     """
     Unauthorized Exception
     """
-    def __init__(self):
+
+    def __init__(
+        self,
+        detail: Any = "Unauthorized",
+        headers: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            message="Unauthorized"
+            detail=detail,
+            headers=headers,
+            **kwargs
+        )
+
+
+class RefreshTokenInvalidException(UnauthorizedException):
+    """
+    Refresh Token Invalid Exception
+    """
+    def __init__(
+        self,
+        detail: Any = "Refresh token invalid",
+        headers: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
+        super().__init__(
+            detail=detail,
+            headers=headers,
+            **kwargs
         )

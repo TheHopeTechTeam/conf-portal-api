@@ -8,10 +8,13 @@ from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.handlers import (
     AdminAuthHandler,
     AdminPermissionHandler,
+    AdminResourceHandler,
+    AdminRoleHandler
 )
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
+from portal.providers.refresh_token_provider import RefreshTokenProvider
 
 if settings.IS_DEV:
     from portal.handlers import DemoHandler
@@ -35,7 +38,7 @@ class Container(containers.DeclarativeContainer):
 
     # [Database]
     postgres_connection = providers.Singleton(PostgresConnection)
-    db_session = providers.Factory(Session, postgres_connection=postgres_connection)
+    db_session = providers.Singleton(Session, postgres_connection=postgres_connection)
 
     # [Redis]
     redis_client = providers.Singleton(RedisPool)
@@ -51,6 +54,10 @@ class Container(containers.DeclarativeContainer):
         token_blacklist_provider=token_blacklist_provider
     )
     password_provider = providers.Singleton(PasswordProvider)
+    refresh_token_provider = providers.Factory(
+        RefreshTokenProvider,
+        session=db_session,
+    )
 
     # [Handlers]
     if settings.IS_DEV:
@@ -65,6 +72,11 @@ class Container(containers.DeclarativeContainer):
         session=db_session,
         redis_client=redis_client,
     )
+    admin_role_handler = providers.Factory(
+        AdminRoleHandler,
+        session=db_session,
+        redis_client=redis_client,
+    )
     admin_auth_handler = providers.Factory(
         AdminAuthHandler,
         session=db_session,
@@ -72,6 +84,8 @@ class Container(containers.DeclarativeContainer):
         jwt_provider=jwt_provider,
         password_provider=password_provider,
         token_blacklist_provider=token_blacklist_provider,
-        admin_permission_handler=admin_permission_handler
+        admin_permission_handler=admin_permission_handler,
+        admin_role_handler=admin_role_handler,
+        refresh_token_provider=refresh_token_provider,
     )
 

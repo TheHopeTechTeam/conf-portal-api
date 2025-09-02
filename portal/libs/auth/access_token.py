@@ -8,7 +8,7 @@ from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 
 from portal.exceptions.auth import UnauthorizedException, InvalidTokenException
 from portal.handlers.auth import AuthHandler
-from portal.libs.contexts.api_context import APIContext, set_api_context
+from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.schemas.auth import FirebaseTokenPayload
 
 
@@ -18,18 +18,26 @@ class AccessTokenAuth(HTTPBearer):
     def __init__(self) -> None:
         super().__init__(auto_error=False)
 
-    async def __call__(self, request: Request) -> Optional[APIContext]:
+    async def __call__(self, request: Request) -> Optional[UserContext]:
         result: Optional[HTTPAuthorizationCredentials] = await super().__call__(
             request=request
         )
         if not result:
             raise UnauthorizedException()
-        api_context = await self.authenticate(request=request, token=result.credentials)
-        set_api_context(api_context)
-        return api_context
+        user_context = await self.authenticate(request=request, token=result.credentials)
+        # mutate only, do not set ContextVar here
+        current = get_user_context()
+        current.user_id = user_context.user_id
+        current.email = user_context.email
+        current.username = user_context.username
+        current.display_name = user_context.display_name
+        current.token = user_context.token
+        current.token_payload = user_context.token_payload
+        current.verified = user_context.verified
+        return current
 
     @staticmethod
-    async def authenticate(request: Request, token) -> Optional[APIContext]:
+    async def authenticate(request: Request, token) -> Optional[UserContext]:
         """
 
         :param request:
@@ -42,15 +50,12 @@ class AccessTokenAuth(HTTPBearer):
         except Exception:
             raise InvalidTokenException()
 
-        return APIContext(
+        return UserContext(
             token=token,
             token_payload=payload,
-            uid=payload.user_id,
+            user_id=payload.user_id,
             email=payload.email,
             username=payload.name,
             display_name=payload.name,
-            host=request.client.host,
-            url=str(request.url),
-            path=request.url.path,
             verified=True,
         )

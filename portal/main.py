@@ -18,10 +18,12 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
+from fixtures import db_session
 from portal.config import settings
 from portal.container import Container
+from portal.libs.database import Session
 from portal.libs.utils.lifespan import lifespan
-from portal.middlewares import CustomHTTPMiddleware
+from portal.middlewares import DatabaseSessionMiddleware, RequestContextMiddleware
 from portal.routers import api_router
 
 __all__ = ["app"]
@@ -66,7 +68,9 @@ def register_middleware(application: FastAPI) -> None:
     :param application:
     :return:
     """
-    application.add_middleware(CustomHTTPMiddleware)
+    # RequestContextMiddleware should come early to make contexts available to subsequent layers
+    application.add_middleware(RequestContextMiddleware)
+    application.add_middleware(DatabaseSessionMiddleware)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ALLOWED_ORIGINS,
@@ -151,6 +155,9 @@ async def root_http_exception_handler(request, exc: HTTPException):
     :param exc:
     :return:
     """
+    container: Container = request.app.container
+    db_session: Session = container.db_session()
+    await db_session.rollback()
     return await http_exception_handler(request, exc)
 
 

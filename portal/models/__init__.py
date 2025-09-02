@@ -27,6 +27,7 @@ from .rbac import (
 )
 from .testimony import PortalTestimony
 from .workshop import PortalWorkshop, PortalWorkshopRegistration
+from .auth import PortalAuthDevice, PortalRefreshToken
 
 __all__ = [
     # conference
@@ -74,6 +75,9 @@ __all__ = [
     # workshop
     "PortalWorkshop",
     "PortalWorkshopRegistration",
+    # auth
+    "PortalAuthDevice",
+    "PortalRefreshToken",
 ]
 
 if settings.IS_DEV:

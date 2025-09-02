@@ -34,8 +34,8 @@ async def test_authenticate_admin_success(admin_auth_handler: AdminAuthHandler, 
     }
 
     # Use SessionMock
-    admin_auth_handler.session = SessionMock()
-    admin_auth_handler.session.select(PortalUser).where(
+    admin_auth_handler._session = SessionMock()
+    admin_auth_handler._session.select(PortalUser).where(
             and_(
                 PortalUser.email == email,
                 PortalUser.is_deleted == False,
@@ -43,14 +43,14 @@ async def test_authenticate_admin_success(admin_auth_handler: AdminAuthHandler, 
             )
         ).mock_fetchrow(mock_user)
 
-    admin_auth_handler.password_provider.verify_password = mocker.Mock(return_value=True)  # type: Mock
+    admin_auth_handler._password_provider.verify_password = mocker.Mock(return_value=True)  # type: Mock
 
     # Act
     result = await admin_auth_handler.authenticate_admin(email, password)
 
     # Assert
     assert result == mock_user
-    admin_auth_handler.password_provider.verify_password.assert_called_once_with(
+    admin_auth_handler._password_provider.verify_password.assert_called_once_with(
         password, mock_user["password_hash"]
     )
 
@@ -73,8 +73,8 @@ async def test_authenticate_admin_superuser_success(admin_auth_handler: AdminAut
         "is_deleted": False
     }
 
-    admin_auth_handler.session = SessionMock()
-    admin_auth_handler.session.select(PortalUser).where(
+    admin_auth_handler._session = SessionMock()
+    admin_auth_handler._session.select(PortalUser).where(
         and_(
             PortalUser.email == email,
             PortalUser.is_deleted == False,
@@ -82,7 +82,7 @@ async def test_authenticate_admin_superuser_success(admin_auth_handler: AdminAut
         )
     ).mock_fetchrow(mock_user)
 
-    admin_auth_handler.password_provider.verify_password = mocker.Mock(return_value=True)
+    admin_auth_handler._password_provider.verify_password = mocker.Mock(return_value=True)
 
     # Act
     result = await admin_auth_handler.authenticate_admin(email, password)
