@@ -7,9 +7,6 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-request_context_var: ContextVar["RequestContext"] = ContextVar("RequestContext")
-
-
 class RequestContext(BaseModel):
     """Per-request HTTP information"""
 
@@ -23,17 +20,18 @@ class RequestContext(BaseModel):
     request_id: Optional[str] = None
 
 
-def set_request_context(context: "RequestContext") -> Token:
+request_context_var: ContextVar[RequestContext] = ContextVar("RequestContext")
+
+
+def set_request_context(context: RequestContext) -> Token:
     """
     Set the request context for current request.
     """
     return request_context_var.set(context)
 
 
-def get_request_context() -> "RequestContext":
+def get_request_context() -> RequestContext:
     """
     Get current request's request context.
     """
     return request_context_var.get()
-
-

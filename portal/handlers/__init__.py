@@ -2,12 +2,11 @@
 Top level handlers package
 """
 from portal.config import settings
-from .admin import (
-    AdminAuthHandler,
-    AdminPermissionHandler,
-    AdminResourceHandler,
-    AdminRoleHandler,
-)
+from .admin.auth import AdminAuthHandler
+from .admin.permission import AdminPermissionHandler
+from .admin.resource import AdminResourceHandler
+from .admin.role import AdminRoleHandler
+from .admin.user import AdminUserHandler
 
 __all__ = [
     # admin
@@ -15,6 +14,7 @@ __all__ = [
     "AdminPermissionHandler",
     "AdminResourceHandler",
     "AdminRoleHandler",
+    "AdminUserHandler"
 ]
 
 if settings.IS_DEV:

@@ -3,6 +3,7 @@ Schema of User model.
 """
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import Field
 
@@ -34,3 +35,10 @@ class UserDetail(UserBase):
     display_name: Optional[str] = Field(..., description="User's display name")
     gender: Optional[Gender] = Field(None, description="User's gender")
     is_ministry: bool = Field(False, description="Is the user a ministry")
+
+
+class UserThirdParty(UserDetail):
+    provider_id: UUID = Field(..., description="Provider ID")
+    provider: str = Field(..., description="Provider name")
+    provider_uid: str = Field(..., description="Provider UID")
+    additional_data: Optional[dict] = Field(None, description="Additional Data from the provider")

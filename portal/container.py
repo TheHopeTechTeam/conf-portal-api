@@ -9,7 +9,8 @@ from portal.handlers import (
     AdminAuthHandler,
     AdminPermissionHandler,
     AdminResourceHandler,
-    AdminRoleHandler
+    AdminRoleHandler,
+    AdminUserHandler
 )
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
@@ -77,6 +78,11 @@ class Container(containers.DeclarativeContainer):
         session=db_session,
         redis_client=redis_client,
     )
+    admin_user_handler = providers.Factory(
+        AdminUserHandler,
+        session=db_session,
+        redis_client=redis_client,
+    )
     admin_auth_handler = providers.Factory(
         AdminAuthHandler,
         session=db_session,
@@ -85,7 +91,8 @@ class Container(containers.DeclarativeContainer):
         password_provider=password_provider,
         token_blacklist_provider=token_blacklist_provider,
         admin_permission_handler=admin_permission_handler,
-        admin_role_handler=admin_role_handler,
         refresh_token_provider=refresh_token_provider,
+        admin_role_handler=admin_role_handler,
+        admin_user_handler=admin_user_handler,
     )
 

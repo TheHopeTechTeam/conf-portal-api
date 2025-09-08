@@ -4,6 +4,8 @@ Top level router for v1 API
 from fastapi import APIRouter
 
 from portal.config import settings
+from portal.libs.depends import DEFAULT_RATE_LIMITERS
+from portal.route_classes import LogRoute
 from .account import router as account_router
 from .admin import router as admin_router
 from .conference import router as conference_router
@@ -14,7 +16,12 @@ from .feedback import router as feedback_router
 from .testimony import router as testimony_router
 from .workshop import router as workshop_router
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[
+        *DEFAULT_RATE_LIMITERS
+    ],
+    route_class=LogRoute
+)
 router.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
 if settings.IS_DEV:

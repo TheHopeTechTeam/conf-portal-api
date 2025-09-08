@@ -11,7 +11,7 @@ from .mixins import UUIDBaseModel
 
 class TokenPayload(BaseModel):
     """Token Payload"""
-    sub: str = Field(..., description="Subject")
+    sub: UUID = Field(..., description="Subject. Unique identifier for the user")
     exp: int = Field(..., description="Expiration time")
     aud: str = Field(..., description="Audience")
     iat: int = Field(..., description="Issued at")

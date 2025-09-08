@@ -3,6 +3,7 @@ import uuid
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from portal.container import Container
 from portal.libs.contexts.request_context import (
     RequestContext,
     set_request_context,
@@ -20,12 +21,14 @@ def _resolve_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-class RequestContextMiddleware(BaseHTTPMiddleware):
+class CoreRequestMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        request_token = None
+        req_ctx_token = None
+        container: Container = request.app.container
+        db_session = container.db_session()
         try:
             # initialize request context
-            request_token = set_request_context(
+            req_ctx_token = set_request_context(
                 RequestContext(
                     ip=_resolve_ip(request),
                     client_ip=(request.client.host if request.client else None),
@@ -38,9 +41,15 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 )
             )
             response = await call_next(request)
+        except Exception as e:
+            print("Error in database session middleware")
+            await db_session.rollback()
+            raise e
+        else:
+            await db_session.commit()
             return response
         finally:
-            if request_token is not None:
-                request_context_var.reset(request_token)
-
-
+            if req_ctx_token is not None:
+                request_context_var.reset(req_ctx_token)
+            await db_session.close()
+            container.reset_singletons()

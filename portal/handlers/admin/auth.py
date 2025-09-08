@@ -2,7 +2,7 @@
 Admin authentication handlers
 """
 from datetime import datetime, timezone
-from typing import Optional, Tuple
+from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
@@ -10,16 +10,16 @@ from pydantic import EmailStr
 from redis.asyncio import Redis
 
 from portal.config import settings
+from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models import PortalUserProfile
-from portal.models.rbac import PortalUser, PortalRole, PortalPermission, PortalResource, PortalVerb
+from portal.models import PortalUser
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
+from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.base import RefreshTokenData
-from portal.providers.refresh_token_provider import RefreshTokenProvider
-from portal.schemas.user import UserDetail, UserBase
+from portal.schemas.user import UserDetail
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminTokenResponse,
@@ -28,6 +28,7 @@ from portal.serializers.v1.admin.auth import (
 )
 from .permission import AdminPermissionHandler
 from .role import AdminRoleHandler
+from .user import AdminUserHandler
 
 
 class AdminAuthHandler:
@@ -40,19 +41,29 @@ class AdminAuthHandler:
         jwt_provider: JWTProvider,
         password_provider: PasswordProvider,
         token_blacklist_provider: TokenBlacklistProvider,
+        refresh_token_provider: RefreshTokenProvider,
         admin_permission_handler: AdminPermissionHandler,
         admin_role_handler: AdminRoleHandler,
-        refresh_token_provider: RefreshTokenProvider
+        admin_user_handler: AdminUserHandler,
     ):
+        self._expires_in = 60 * 60 * 24  # 24 hours
+        # db
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        # providers
         self._jwt_provider = jwt_provider
         self._password_provider = password_provider
         self._token_blacklist_provider = token_blacklist_provider
+        self._refresh_token_provider = refresh_token_provider
+        # handlers
         self._admin_permission_handler = admin_permission_handler
         self._admin_role_handler = admin_role_handler
-        self._refresh_token_provider = refresh_token_provider
-        self._expires_in = 60 * 60 * 24  # 24 hours
+        self._admin_user_handler = admin_user_handler
+
+        try:
+            self._user_ctx: Optional[UserContext] = get_user_context()
+        except Exception:
+            self._user_ctx = None
 
     @distributed_trace()
     async def authenticate_admin(self, email: EmailStr, password: str) -> Optional[UserDetail]:
@@ -60,30 +71,7 @@ class AdminAuthHandler:
         Authenticate admin user with email and password
         """
         # Find user by email
-        user: UserDetail = await (
-            self._session.select(
-                PortalUser.id,
-                PortalUser.phone_number,
-                PortalUser.email,
-                PortalUser.password_hash,
-                PortalUser.verified,
-                PortalUser.is_active,
-                PortalUser.is_superuser,
-                PortalUser.is_admin,
-                PortalUser.password_changed_at,
-                PortalUser.password_expires_at,
-                PortalUser.last_login_at,
-                PortalUserProfile.display_name,
-                PortalUserProfile.gender,
-                PortalUserProfile.is_ministry,
-            )
-            .join(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
-            .where(PortalUser.email == email)
-            .where(PortalUser.is_deleted == False)
-            .where(PortalUser.is_active == True)
-            .fetchrow(as_model=UserDetail)
-        )
-
+        user: UserDetail = await self._admin_user_handler.get_user_detail_by_email(email)
         if not user:
             return None
 
@@ -188,30 +176,7 @@ class AdminAuthHandler:
         except Exception as exc:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
-        user: UserDetail = await (
-            self._session.select(
-                PortalUser.id,
-                PortalUser.phone_number,
-                PortalUser.email,
-                PortalUser.password_hash,
-                PortalUser.verified,
-                PortalUser.is_active,
-                PortalUser.is_superuser,
-                PortalUser.is_admin,
-                PortalUser.password_changed_at,
-                PortalUser.password_expires_at,
-                PortalUser.last_login_at,
-                PortalUserProfile.display_name,
-                PortalUserProfile.gender,
-                PortalUserProfile.is_ministry,
-            )
-            .join(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
-            .where(PortalUser.id == rt_data.user_id)
-            .where(PortalUser.is_deleted == False)
-            .where(PortalUser.is_active == True)
-            .fetchrow(as_model=UserDetail)
-        )
-
+        user: UserDetail = await self._admin_user_handler.get_user_detail_by_id(rt_data.user_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -241,25 +206,34 @@ class AdminAuthHandler:
             expires_in=self._jwt_provider.access_token_expire_minutes * 60
         )
 
-    async def get_current_admin_from_token(self, token: str) -> Optional[dict]:
+    async def get_me(self) -> AdminInfo:
         """
-        Get current admin from JWT token with blacklist check
+
+        :return:
         """
-        payload = await self._jwt_provider.verify_token_with_blacklist(token)
-        if not payload or payload.get("type") != "admin_access":
-            return None
+        if not self._user_ctx:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not authenticated"
+            )
+        user: UserDetail = await self._admin_user_handler.get_user_detail_by_id(user_id=self._user_ctx.user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
 
-        user_id = UUID(payload.get("user_id"))
+        roles = await self._admin_role_handler.init_user_roles_cache(user, self._expires_in)
+        permissions = await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
 
-        user = await (
-            self._session.select(PortalUser)
-            .where(PortalUser.id == user_id)
-            .where(PortalUser.is_deleted == False)
-            .where(PortalUser.is_active == True)
-            .fetchrow()
+        return AdminInfo(
+            id=user.id,
+            email=user.email,
+            display_name=user.display_name or user.email,
+            roles=roles,
+            permissions=permissions,
+            last_login_at=user.last_login_at
         )
-
-        return user
 
     async def logout(self, access_token: str, refresh_token: str = None) -> bool:
         """

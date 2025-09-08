@@ -8,6 +8,7 @@ import json
 import sys
 import time
 import uuid
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
@@ -18,7 +19,7 @@ from portal.libs.logger import logger
 from portal.models import (
     PortalConference, PortalConferenceInstructors, PortalEventSchedule,
     PortalFaqCategory, PortalFaq, PortalFcmDevice, PortalFcmUserDevice,
-    PortalFeedback, PortalInstructor, PortalLocation, PortalUser, PortalUserProfile, PortalTestimony, PortalWorkshop, PortalWorkshopRegistration,
+    PortalFeedback, PortalInstructor, PortalLocation, PortalUser, PortalUserProfile, PortalUserThirdPartyAuth, PortalTestimony, PortalWorkshop, PortalWorkshopRegistration,
 )
 
 
@@ -42,6 +43,7 @@ class AsyncDataMigrator:
         self.base_timestamp = time.time()
         # Load workshop time slots mapping
         self.workshop_time_slots = self.load_workshop_time_slots()
+        self.provider_id = uuid.UUID("3025cf66-45e8-4cc7-acf1-1098129bbdec")
 
     async def __aenter__(self):
         # Get db_session from container
@@ -85,7 +87,11 @@ class AsyncDataMigrator:
         if not value:
             return None
         try:
-            return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            normalized = value.replace('Z', '+00:00')
+            # Normalize timezone like +00 to +00:00 or -08 to -08:00
+            if re.search(r"[+-]\d{2}$", normalized):
+                normalized = normalized + ":00"
+            return datetime.fromisoformat(normalized)
         except (ValueError, AttributeError):
             return None
 
@@ -614,6 +620,55 @@ class AsyncDataMigrator:
             logger.error(f"✗ Failed to migrate users: {e}")
             raise
 
+    async def migrate_user_third_party_auth(self):
+        """Migrate user third-party auth data"""
+        logger.info("=== Migrating User Third Party Auth ===")
+        data = self.load_json_file("portal_account_auth_provider.json")
+
+        def process_third_party_auth_record(record, index):
+            extra = record.get("extra_data")
+            additional_data = None
+            if isinstance(extra, dict):
+                additional_data = extra
+            elif isinstance(extra, str) and extra:
+                try:
+                    additional_data = json.loads(extra)
+                except Exception:
+                    additional_data = None
+
+            return {
+                "id": self.convert_uuid(record["id"]),
+                "user_id": self.convert_uuid(record["account_id"]),
+                "provider_id": self.provider_id,
+                "provider_uid": record.get("provider_id"),
+                "access_token": record.get("access_token"),
+                "refresh_token": record.get("refresh_token"),
+                "token_expires_at": self.convert_datetime(record.get("token_expires_at")),
+                "additional_data": json.dumps(additional_data) if additional_data else None,
+                "created_at": self.current_timestamp,
+                "updated_at": self.current_timestamp,
+                "created_by": record.get("created_by", "system"),
+                "updated_by": record.get("updated_by", "system"),
+            }
+
+        try:
+            for i in range(0, len(data), self.batch_size):
+                batch = data[i:i + self.batch_size]
+                await self.process_batch(
+                    batch,
+                    "portal_user_third_party_auth",
+                    process_third_party_auth_record,
+                    PortalUserThirdPartyAuth,
+                )
+
+            # Commit after all third-party auth records are processed
+            await self.session.commit()
+            logger.info(f"✓ Successfully migrated {len(data)} user third-party auth records")
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"✗ Failed to migrate user third-party auth: {e}")
+            raise
+
     async def migrate_workshops(self):
         """Migrate workshop data"""
         logger.info("=== Migrating Workshops ===")
@@ -696,19 +751,20 @@ class AsyncDataMigrator:
         logger.info("Starting async data migration from old_datas to new database models...")
 
         # Migrate in dependency order
-        await self.migrate_users()
-        await self.migrate_locations()
-        await self.migrate_instructors()
-        await self.migrate_conferences()
-        await self.migrate_conference_instructors()
-        await self.migrate_event_schedules()
-        await self.migrate_faq_categories()
-        await self.migrate_faqs()
-        await self.migrate_fcm_devices()
-        await self.migrate_fcm_user_devices()
-        await self.migrate_feedback()
-        await self.migrate_testimonies()
-        await self.migrate_workshops()
+        # await self.migrate_users()
+        await self.migrate_user_third_party_auth()
+        # await self.migrate_locations()
+        # await self.migrate_instructors()
+        # await self.migrate_conferences()
+        # await self.migrate_conference_instructors()
+        # await self.migrate_event_schedules()
+        # await self.migrate_faq_categories()
+        # await self.migrate_faqs()
+        # await self.migrate_fcm_devices()
+        # await self.migrate_fcm_user_devices()
+        # await self.migrate_feedback()
+        # await self.migrate_testimonies()
+        # await self.migrate_workshops()
         # await self.migrate_workshop_registrations()
 
         # Print migration summary

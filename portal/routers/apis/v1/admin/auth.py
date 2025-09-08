@@ -9,6 +9,7 @@ from fastapi.params import Cookie
 
 from portal.container import Container
 from portal.handlers import AdminAuthHandler
+from portal.libs.depends import check_admin_access_token
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminLoginResponse,
@@ -22,7 +23,11 @@ from portal.serializers.v1.admin.auth import (
 router = APIRouter()
 
 
-@router.post("/login", response_model=AdminLoginResponse)
+@router.post(
+    path="/login",
+    response_model=AdminLoginResponse,
+    status_code=status.HTTP_200_OK,
+)
 @inject
 async def admin_login(
     response: Response,
@@ -55,7 +60,11 @@ async def admin_login(
         return result
 
 
-@router.post("/refresh", response_model=AdminTokenResponse)
+@router.post(
+    path="/refresh",
+    response_model=AdminTokenResponse,
+    status_code=status.HTTP_200_OK,
+)
 @inject
 async def admin_refresh_token(
     refresh_data: RefreshTokenRequest,
@@ -70,19 +79,26 @@ async def admin_refresh_token(
     return await admin_auth_handler.refresh_token(refresh_data)
 
 
-@router.get("/me", response_model=AdminInfo)
+@router.get(
+    path="/me",
+    response_model=AdminInfo,
+    status_code=status.HTTP_200_OK,
+    dependencies=[check_admin_access_token]
+)
 @inject
 async def get_current_admin_info(
     admin_auth_handler: AdminAuthHandler = Depends(Provide[Container.admin_auth_handler])
-):
+) -> AdminInfo:
     """
     Get current admin information
     """
+    return await admin_auth_handler.get_me()
 
 
 @router.post(
-    "/logout",
-    response_model=LogoutResponse
+    path="/logout",
+    response_model=LogoutResponse,
+    status_code=status.HTTP_200_OK,
 )
 @inject
 async def admin_logout(
