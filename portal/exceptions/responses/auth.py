@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 
 from starlette import status
 
-from .api_base import ApiBaseException
+from .base import ApiBaseException
 
 
 class InvalidTokenException(ApiBaseException):

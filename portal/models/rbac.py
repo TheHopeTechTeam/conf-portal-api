@@ -6,7 +6,7 @@ from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
-from portal.libs.consts.enums import Gender
+from portal.libs.consts.enums import Gender, ResourceType
 from portal.libs.database.orm import ModelBase, Base
 from .mixins import AuditMixin, DeletedMixin, RemarkMixin, DescriptionMixin, BaseMixin, SortableMixin
 
@@ -103,6 +103,7 @@ class PortalResource(ModelBase, BaseMixin, SortableMixin):
     code = Column(sa.String(32), nullable=False, unique=True, comment="Resource code (e.g., user, course, article)")
     icon = Column(sa.String(32), comment="Resource icon")
     path = Column(sa.String(256), comment="Resource path")
+    type = Column(sa.Integer, default=ResourceType.GENERAL.value, nullable=False, comment="Resource type, Enum: ResourceType")
     is_visible = Column(sa.Boolean, nullable=False, server_default=sa.text("true"), comment="Is resource visible")
     children = relationship("PortalResource", passive_deletes=True)
 

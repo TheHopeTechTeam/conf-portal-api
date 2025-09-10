@@ -1,5 +1,5 @@
 import inspect
-from portal.exceptions.api_base import ParamError
+from portal.exceptions.responses import ParamError
 from portal.libs.shared import validator
 
 

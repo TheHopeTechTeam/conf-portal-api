@@ -83,6 +83,14 @@ class Gender(IntEnum):
         return [(key.value, key.name.title()) for key in cls]
 
 
+class ResourceType(IntEnum):
+    """
+    Resource type
+    """
+    SYSTEM = 0
+    GENERAL = 1
+
+
 class FileStatus(IntEnum):
     """
     File status

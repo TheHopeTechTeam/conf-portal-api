@@ -51,7 +51,7 @@ async def create_superuser(
                 password_hash=password_hash,
                 verified=True,
                 is_active=True,
-                is_admin=False,
+                is_admin=True,
                 is_superuser=True,
             )
             .execute()

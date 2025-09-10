@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 from uuid import UUID
 
 from portal.config import settings
-from portal.exceptions.auth import RefreshTokenInvalidException
+from portal.exceptions.responses import RefreshTokenInvalidException
 from portal.libs.contexts.request_context import get_request_context, RequestContext
 from portal.libs.database import Session
 from portal.libs.logger import logger

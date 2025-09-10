@@ -35,3 +35,12 @@ def get_request_context() -> RequestContext:
     Get current request's request context.
     """
     return request_context_var.get()
+
+
+def reset_request_context(token) -> None:
+    """
+    Reset the request context for current request.
+    :param token:
+    :return:
+    """
+    request_context_var.reset(token)

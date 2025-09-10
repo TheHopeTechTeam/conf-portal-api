@@ -26,7 +26,7 @@ class UserContext(BaseModel):
     is_ministry: bool = False
     # token
     token: Optional[str] = None
-    token_payload: Optional[object] = None
+    token_payload: Optional[dict] = None
     # other
     username: Optional[str] = None
 
@@ -49,3 +49,10 @@ def get_user_context() -> UserContext:
     return user_context_var.get()
 
 
+def reset_user_context(token) -> None:
+    """
+    Reset the user context for current request.
+    :param token:
+    :return:
+    """
+    user_context_var.reset(token)

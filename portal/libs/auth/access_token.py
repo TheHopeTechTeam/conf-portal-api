@@ -7,7 +7,7 @@ from fastapi import Request
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 
 from portal.container import Container
-from portal.exceptions.auth import UnauthorizedException, InvalidTokenException
+from portal.exceptions.responses import UnauthorizedException, InvalidTokenException
 from portal.handlers import AdminUserHandler
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.firebase import FirebaseProvider

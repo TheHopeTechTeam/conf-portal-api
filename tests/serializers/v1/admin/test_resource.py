@@ -250,8 +250,8 @@ def test_invalid_four_level_tree_item():
 
 def test_valid_empty_tree():
     """Test creating an empty ResourceTree."""
-    tree = ResourceTree(root=None)
-    assert tree.root is None
+    tree = ResourceTree(items=[])
+    assert tree.items == []
 
 
 def test_valid_single_level_tree():
@@ -265,8 +265,8 @@ def test_valid_single_level_tree():
         children=None
     )
 
-    tree = ResourceTree(root=root_item)
-    assert tree.root.name == "系統管理"
+    tree = ResourceTree(items=[root_item])
+    assert tree.items[0].name == "系統管理"
 
 
 def test_valid_three_level_tree():
@@ -301,8 +301,8 @@ def test_valid_three_level_tree():
         children=[level2_item]
     )
 
-    tree = ResourceTree(root=root_item)
-    assert tree.root.name == "系統管理"
+    tree = ResourceTree(items=[root_item])
+    assert tree.items[0].name == "系統管理"
 
 
 def test_invalid_four_level_tree():
@@ -494,18 +494,18 @@ def test_complex_three_level_tree():
         children=level2_items
     )
 
-    tree = ResourceTree(root=root_item)
+    tree = ResourceTree(items=[root_item])
 
     # 驗證結構
-    assert tree.root.name == "系統管理"
-    assert len(tree.root.children) == 2
-    assert tree.root.children[0].name == "使用者管理"
-    assert tree.root.children[1].name == "角色管理"
-    assert len(tree.root.children[0].children) == 3
-    assert tree.root.children[0].children[0].name == "新增使用者"
-    assert tree.root.children[0].children[1].name == "編輯使用者"
-    assert tree.root.children[0].children[2].name == "刪除使用者"
-    assert tree.root.children[1].children is None
+    assert tree.items[0].name == "系統管理"
+    assert len(tree.items[0].children) == 2
+    assert tree.items[0].children[0].name == "使用者管理"
+    assert tree.items[0].children[1].name == "角色管理"
+    assert len(tree.items[0].children[0].children) == 3
+    assert tree.items[0].children[0].children[0].name == "新增使用者"
+    assert tree.items[0].children[0].children[1].name == "編輯使用者"
+    assert tree.items[0].children[0].children[2].name == "刪除使用者"
+    assert tree.items[0].children[1].children is None
 
 
 def test_tree_with_mixed_depths():
@@ -549,10 +549,10 @@ def test_tree_with_mixed_depths():
         children=[level2_with_children, level2_without_children]
     )
 
-    tree = ResourceTree(root=root_item)
+    tree = ResourceTree(items=[root_item])
 
     # 驗證結構
-    assert len(tree.root.children) == 2
-    assert tree.root.children[0].children is not None
-    assert tree.root.children[1].children is None
-    assert len(tree.root.children[0].children) == 1
+    assert len(tree.items[0].children) == 2
+    assert tree.items[0].children[0].children is not None
+    assert tree.items[0].children[1].children is None
+    assert len(tree.items[0].children[0].children) == 1

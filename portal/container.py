@@ -73,6 +73,11 @@ class Container(containers.DeclarativeContainer):
         session=db_session,
         redis_client=redis_client,
     )
+    admin_resource_handler = providers.Factory(
+        AdminResourceHandler,
+        session=db_session,
+        redis_client=redis_client,
+    )
     admin_role_handler = providers.Factory(
         AdminRoleHandler,
         session=db_session,

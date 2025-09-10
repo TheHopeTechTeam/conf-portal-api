@@ -7,7 +7,7 @@ from portal.container import Container
 from portal.libs.contexts.request_context import (
     RequestContext,
     set_request_context,
-    request_context_var,
+    reset_request_context,
 )
 
 
@@ -50,6 +50,6 @@ class CoreRequestMiddleware(BaseHTTPMiddleware):
             return response
         finally:
             if req_ctx_token is not None:
-                request_context_var.reset(req_ctx_token)
+                reset_request_context(req_ctx_token)
             await db_session.close()
             container.reset_singletons()

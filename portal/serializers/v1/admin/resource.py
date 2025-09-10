@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import Field, BaseModel, field_validator
 
+from portal.libs.consts.enums import ResourceType
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import PaginationBaseResponseModel
 
@@ -18,6 +19,7 @@ class ResourceItem(UUIDBaseModel):
     code: str = Field(..., description="Code")
     icon: Optional[str] = Field(None, description="Icon")
     path: Optional[str] = Field(None, description="Path")
+    type: ResourceType = Field(..., description="Resource type")
     description: Optional[str] = Field(None, description="Description")
     remark: Optional[str] = Field(None, description="Remark")
     sequence: float = Field(..., description="Sequence")
@@ -49,7 +51,7 @@ class ResourceTreeItem(ResourceItem):
     def validate_node_depth(cls, node: "ResourceTreeItem", current_depth: int):
         """validate node depth"""
         if current_depth > 3:
-            raise ValueError(f"Tree depth exceed limit, current depth: {current_depth}")
+            raise ValueError("Tree structure exceeds three levels limit")
 
         if node.children:
             for child in node.children:
@@ -58,16 +60,15 @@ class ResourceTreeItem(ResourceItem):
 
 class ResourceTree(BaseModel):
     """Resource Tree - Max 3 levels"""
-    root: Optional[ResourceTreeItem] = Field(None, description="Resource root")
+    items: Optional[list[ResourceTreeItem]] = Field(None, description="Root resource items")
 
-    @field_validator('root')
+    @field_validator('items')
     def validate_tree_depth(cls, v):
         """validate tree depth not exceed limit"""
-        if v is not None:
-            ResourceTreeItem.validate_node_depth(v, 1)  # start from first level
+        if v:
+            for root in v:
+                ResourceTreeItem.validate_node_depth(root, 1)  # start from first level
         return v
-
-
 
 
 class ResourceCreate(BaseModel):
@@ -76,8 +77,10 @@ class ResourceCreate(BaseModel):
     name: str = Field(..., description="Name")
     key: str = Field(..., description="Key")
     code: str = Field(..., description="Code")
-    icon: Optional[str] = Field(None, description="Icon")
-    path: Optional[str] = Field(None, description="Path")
+    icon: str = Field(..., description="Icon")
+    path: str = Field(..., description="Path")
+    type: ResourceType = Field(..., description="Resource type")
+    is_visible: bool = Field(True, description="Is visible")
     description: Optional[str] = Field(None, description="Description")
     remark: Optional[str] = Field(None, description="Remark")
 
