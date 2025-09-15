@@ -41,7 +41,8 @@ class AccessTokenAuth(HTTPBearer):
         """
         if self.is_admin:
             await self.verify_admin(request=request, token=token)
-        await self.verify_user(request=request, token=token)
+        else:
+            await self.verify_user(request=request, token=token)
 
     @staticmethod
     async def verify_admin(request: Request, token: str):
@@ -79,7 +80,7 @@ class AccessTokenAuth(HTTPBearer):
             gender=user.gender,
             is_ministry=user.is_ministry,
             token=token,
-            token_payload=payload,
+            token_payload=payload.model_dump(),
             username=user.email.split("@")[0]
         )
         set_user_context(user_context)

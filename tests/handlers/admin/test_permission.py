@@ -139,3 +139,17 @@ async def test_clear_user_permissions_cache(
     admin_permission_handler._redis.delete = AsyncMock()
     await admin_permission_handler.clear_user_permissions_cache(user_id)
     admin_permission_handler._redis.delete.assert_awaited_once_with(key)
+
+
+@pytest.mark.asyncio
+async def test_get_permission_by_id(
+    admin_permission_handler,
+):
+    """
+
+    :param admin_permission_handler:
+    :return:
+    """
+    permission_id = UUID("b30d72f6-0425-44a8-9f25-2839b0684c92")
+    permission = await admin_permission_handler.get_permission_by_id(permission_id)
+    assert permission.id == permission_id

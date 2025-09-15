@@ -35,18 +35,22 @@ alwaysApply: true
 - Use pytest for testing.
 - Use pytest-mock for mocking.
 - Use pytest-asyncio for async testing and use `pytest.mark.asyncio` decorator for async tests, such as:
+
   ```python
   @pytest.mark.asyncio
   async def test_<async_function>():
       ...
   ```
+
 - Test files should be placed under the tests directory.
 - Test files should be named like test_<module_name>.py.
 - Test functions should be named like test_<function_name>, such as:
+
   ```python
   def test_<function_name>():
       ...
   ```
+
 - Test folder structure should be similar to the project's folder structure, such as:
   - tests/
     - <folder_name>/
@@ -58,24 +62,31 @@ alwaysApply: true
       - test_<module_name>.py
       - ...
 - Fixtures should be placed under the tests/fixtures directory and use `pytest.fixture` decorator, such as:
+
   ```python
   @pytest.fixture
   def <fixture_name>():
       ...
   ```
+
 - Test Data should be placed under the tests/data directory and use `pytest.fixture` decorator, such as:
+
   ```python
   @pytest.fixture
   def <data_name>() -> <data_type>:
       return <data>
   ```
+
 - Define handlers and providers in the Container should use `pytest.fixture` decorator, such as:
+
   ```python
   @pytest.fixture
   def <handler_or_provider_name>(container: Container) -> <handler_or_provider_type>:
       return container.<handler_or_provider_name>
   ```
+
 - Overall, the test file should be like this:
+
   ```python
   import pytest
   from portal.libs.container import Container
@@ -87,6 +98,25 @@ alwaysApply: true
       <handler_or_provider_name>: <handler_or_provider_name>,
       <mock_data>: <mock_data>, # if needed
   ):
+      ...
+  ```
+
+## Tracing
+
+- Use OpenTelemetry for tracing.
+- Every functions in handlers and providers should be decorated with `distributed_trace` decorator. For example:
+
+  ```python
+  @distributed_trace()
+  def <function_name>(*args, **kwargs):
+      ...
+  ```
+
+  or
+
+  ```python
+  @distributed_trace()
+  async def <async_function>(*args, **kwargs):
       ...
   ```
 

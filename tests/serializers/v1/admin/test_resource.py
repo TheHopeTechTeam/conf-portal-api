@@ -2,9 +2,11 @@
 Tests for resource serializers.
 """
 import uuid
+
 import pytest
 from pydantic import ValidationError
 
+from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.resource import (
     ResourceItem,
     ResourcePages,
@@ -556,3 +558,24 @@ def test_tree_with_mixed_depths():
     assert tree.items[0].children[0].children is not None
     assert tree.items[0].children[1].children is None
     assert len(tree.items[0].children[0].children) == 1
+
+
+def test_resource_delete_without_reason():
+    """Test creating DeleteBaseModel without reason."""
+    with pytest.raises(ValueError) as exc_info:
+        DeleteBaseModel(permanent=False)
+    assert "Reason is required for non-permanent delete" in str(exc_info.value)
+
+
+def test_resource_delete_with_reason():
+    """Test creating DeleteBaseModel with reason."""
+    model = DeleteBaseModel(permanent=False, reason="test reason")
+    assert model.permanent is False
+    assert model.reason == "test reason"
+
+
+def test_resource_delete_permanent():
+    """Test creating DeleteBaseModel with permanent True."""
+    model = DeleteBaseModel(permanent=True)
+    assert model.permanent is True
+    assert model.reason is None

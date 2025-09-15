@@ -7,7 +7,17 @@ import pytest
 
 from portal.libs.consts.enums import Gender
 from portal.libs.contexts.request_context import RequestContext, set_request_context, reset_request_context
+from portal.libs.contexts.request_session_context import set_request_session, reset_request_session
 from portal.libs.contexts.user_context import UserContext, set_user_context, reset_user_context
+
+
+@pytest.fixture(autouse=True)
+def session_context(db_session):
+    token = set_request_session(db_session)
+    try:
+        yield db_session
+    finally:
+        reset_request_session(token)
 
 
 @pytest.fixture(autouse=True)

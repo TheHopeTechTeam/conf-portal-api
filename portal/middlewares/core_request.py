@@ -9,6 +9,10 @@ from portal.libs.contexts.request_context import (
     set_request_context,
     reset_request_context,
 )
+from portal.libs.contexts.request_session_context import (
+    set_request_session,
+    reset_request_session,
+)
 
 
 def _resolve_ip(request: Request) -> str | None:
@@ -26,6 +30,7 @@ class CoreRequestMiddleware(BaseHTTPMiddleware):
         req_ctx_token = None
         container: Container = request.app.container
         db_session = container.db_session()
+        session_ctx_token = set_request_session(db_session)
         try:
             # initialize request context
             req_ctx_token = set_request_context(
@@ -52,4 +57,5 @@ class CoreRequestMiddleware(BaseHTTPMiddleware):
             if req_ctx_token is not None:
                 reset_request_context(req_ctx_token)
             await db_session.close()
-            container.reset_singletons()
+            reset_request_session(session_ctx_token)
+            # container.reset_singletons()

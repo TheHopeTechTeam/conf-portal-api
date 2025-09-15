@@ -8,6 +8,7 @@ from typing import List, Callable, overload, Tuple, Union, TypeVar, Type, Any, O
 
 import asyncpg
 import sqlalchemy as sa
+from asyncpg import Record
 from asyncpg.transaction import TransactionState
 from pydantic import BaseModel
 from sqlalchemy import String, Numeric, Integer, Float, Boolean, DateTime, Date, ColumnExpressionArgument
@@ -46,7 +47,7 @@ def _format_value(value):
     return Converter.format_value(value)
 
 
-def _format_dict(item, as_model: Type[BaseModel] = None):
+def _format_dict(item: Record, as_model: Type[BaseModel] = None):
     if item is None:
         return item
     if as_model:

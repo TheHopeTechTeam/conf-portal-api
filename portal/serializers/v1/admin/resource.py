@@ -4,7 +4,8 @@ Resource serializers
 from typing import Optional
 from uuid import UUID
 
-from pydantic import Field, BaseModel, field_validator
+import pydantic
+from pydantic import Field, BaseModel, field_validator, field_serializer
 
 from portal.libs.consts.enums import ResourceType
 from portal.schemas.mixins import UUIDBaseModel

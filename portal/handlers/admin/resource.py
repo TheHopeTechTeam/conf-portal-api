@@ -8,12 +8,21 @@ from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses import ApiBaseException, ResourceExistsException, UnauthorizedException
+from portal.exceptions.responses import ApiBaseException, ResourceExistsException, UnauthorizedException, NotFoundException
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.models import PortalResource, PortalPermission, PortalRole, PortalUser, PortalRolePermission
-from portal.serializers.mixins import GenericQueryBaseModel
-from portal.serializers.v1.admin.resource import ResourceCreate, ResourceUpdate, ResourceChangeSequence, ResourceItem, ResourceTree, ResourceTreeItem
+from portal.schemas.mixins import UUIDBaseModel
+from portal.serializers.mixins import DeleteBaseModel
+from portal.serializers.v1.admin.resource import (
+    ResourceCreate,
+    ResourceUpdate,
+    ResourceChangeSequence,
+    ResourceItem,
+    ResourceTree,
+    ResourceTreeItem,
+    ResourceList,
+)
 
 
 class AdminResourceHandler:
@@ -28,14 +37,34 @@ class AdminResourceHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._user_ctx: UserContext = get_user_context()
 
-    async def get_resources(self, query: GenericQueryBaseModel):
+    async def get_resource(self, resource_id: uuid.UUID) -> ResourceItem:
         """
 
-        :param query:
+        :param resource_id:
         :return:
         """
+        resource: ResourceItem = await (
+            self._session.select(
+                PortalResource.id,
+                PortalResource.pid,
+                PortalResource.name,
+                PortalResource.key,
+                PortalResource.code,
+                PortalResource.icon,
+                PortalResource.path,
+                PortalResource.type,
+                PortalResource.description,
+                PortalResource.remark,
+                PortalResource.sequence
+            )
+            .where(PortalResource.id == resource_id)
+            .fetchrow(as_model=ResourceItem)
+        )
+        if not resource:
+            raise NotFoundException(detail=f"Resource {resource_id} not found")
+        return resource
 
-    async def create_resource(self, model: ResourceCreate):
+    async def create_resource(self, model: ResourceCreate) -> UUIDBaseModel:
         """
         Create a resource
         TODO: Log action
@@ -63,6 +92,8 @@ class AdminResourceHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            return UUIDBaseModel(id=rid)
 
     async def update_resource(self, resource_id: uuid.UUID, model: ResourceUpdate):
         """
@@ -122,21 +153,20 @@ class AdminResourceHandler:
                 debug_detail=str(e),
             )
 
-    async def delete_resource(self, resource_id: uuid.UUID, delete_reason: str = None, permanent: bool = False):
+    async def delete_resource(self, resource_id: uuid.UUID, model: DeleteBaseModel):
         """
         Delete a resource or soft delete. If permanent is True, then delete permanently.
         If resource_id is a parent resource, then all its children will be deleted as well.
         TODO: Log action
         :param resource_id:
-        :param delete_reason:
-        :param permanent:
+        :param model:
         :return:
         """
         try:
-            if not permanent:
+            if not model.permanent:
                 await (
                     self._session.update(PortalResource)
-                    .values(is_deleted=True, deleted_reason=delete_reason)
+                    .values(is_deleted=True, deleted_reason=model.reason)
                     .where(sa.and_(PortalResource.id == resource_id, PortalResource.pid == resource_id))
                     .execute()
                 )
@@ -269,7 +299,7 @@ class AdminResourceHandler:
         )
         return resources
 
-    async def get_user_permission_menus(self):
+    async def get_user_permission_menus(self) -> ResourceList:
         """
 
         :return:
@@ -278,6 +308,8 @@ class AdminResourceHandler:
             raise UnauthorizedException()
 
         if self._user_ctx.is_superuser:
-            return await self.get_resource_menus()
+            resource_items = await self.get_resource_menus()
         else:
-            return await self.get_resource_by_user_id(user_id=self._user_ctx.user_id)
+            resource_items = await self.get_resource_by_user_id(user_id=self._user_ctx.user_id)
+
+        return ResourceList(items=resource_items)

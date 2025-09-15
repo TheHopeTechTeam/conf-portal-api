@@ -156,14 +156,14 @@ class AdminAuthHandler:
             last_login_at=last_login_at
         )
 
-        tokens = AdminTokenResponse(
+        token = AdminTokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
             expires_in=self._jwt_provider.access_token_expire_minutes * 60
         )
 
-        return AdminLoginResponse(admin=admin_info, tokens=tokens)
+        return AdminLoginResponse(admin=admin_info, token=token)
 
     async def refresh_token(self, refresh_data: RefreshTokenRequest) -> AdminTokenResponse:
         """

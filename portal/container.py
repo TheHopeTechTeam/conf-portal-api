@@ -5,6 +5,7 @@ from dependency_injector import containers, providers
 
 from portal.config import settings
 from portal.libs.database import RedisPool, PostgresConnection, Session
+from portal.libs.database.session_proxy import SessionProxy
 from portal.handlers import (
     AdminAuthHandler,
     AdminPermissionHandler,
@@ -39,7 +40,10 @@ class Container(containers.DeclarativeContainer):
 
     # [Database]
     postgres_connection = providers.Singleton(PostgresConnection)
-    db_session = providers.Singleton(Session, postgres_connection=postgres_connection)
+    # Real session factory (per-use); lifecycle is handled by middleware request context
+    db_session = providers.Factory(Session, postgres_connection=postgres_connection)
+    # Request-scoped session proxy that resolves to the ContextVar session
+    request_session = providers.Factory(SessionProxy)
 
     # [Redis]
     redis_client = providers.Singleton(RedisPool)
@@ -64,33 +68,33 @@ class Container(containers.DeclarativeContainer):
     if settings.IS_DEV:
         demo_handler = providers.Factory(
             DemoHandler,
-            db_session=db_session
+            db_session=request_session
         )
 
     # [Admin]
     admin_permission_handler = providers.Factory(
         AdminPermissionHandler,
-        session=db_session,
+        session=request_session,
         redis_client=redis_client,
     )
     admin_resource_handler = providers.Factory(
         AdminResourceHandler,
-        session=db_session,
+        session=request_session,
         redis_client=redis_client,
     )
     admin_role_handler = providers.Factory(
         AdminRoleHandler,
-        session=db_session,
+        session=request_session,
         redis_client=redis_client,
     )
     admin_user_handler = providers.Factory(
         AdminUserHandler,
-        session=db_session,
+        session=request_session,
         redis_client=redis_client,
     )
     admin_auth_handler = providers.Factory(
         AdminAuthHandler,
-        session=db_session,
+        session=request_session,
         redis_client=redis_client,
         jwt_provider=jwt_provider,
         password_provider=password_provider,

@@ -21,6 +21,7 @@ from starlette.responses import RedirectResponse
 from portal.config import settings
 from portal.container import Container
 from portal.libs.database import Session
+from portal.libs.contexts.request_session_context import get_request_session
 from portal.libs.utils.lifespan import lifespan
 from portal.middlewares import CoreRequestMiddleware
 from portal.routers import api_router
@@ -150,9 +151,9 @@ async def root_http_exception_handler(request, exc: HTTPException):
     :param exc:
     :return:
     """
-    container: Container = request.app.container
-    db_session: Session = container.db_session()
-    await db_session.rollback()
+    session = get_request_session()
+    if session is not None:
+        await session.rollback()
     return await http_exception_handler(request, exc)
 
 

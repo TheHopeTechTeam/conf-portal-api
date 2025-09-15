@@ -5,7 +5,8 @@ from .base import (
     PaginationQueryBaseModel,
     OrderByQueryBaseModel,
     GenericQueryBaseModel,
-    PaginationBaseResponseModel
+    PaginationBaseResponseModel,
+    DeleteBaseModel
 )
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "OrderByQueryBaseModel",
     "GenericQueryBaseModel",
     "PaginationBaseResponseModel",
+    "DeleteBaseModel",
 ]

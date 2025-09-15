@@ -34,7 +34,7 @@ class AdminInfo(BaseModel):
 class AdminLoginResponse(BaseModel):
     """Admin login response"""
     admin: AdminInfo = Field(..., description="Admin info")
-    tokens: AdminTokenResponse = Field(..., description="Auth tokens")
+    token: AdminTokenResponse = Field(..., description="Auth token")
 
 
 class RefreshTokenRequest(BaseModel):

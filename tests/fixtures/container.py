@@ -18,7 +18,7 @@ def container() -> Container:
 
 
 @pytest.fixture
-def postgres_pool(container: Container) -> PostgresConnection:
+def postgres_connection(container: Container) -> PostgresConnection:
     """
     Fixture for PostgresPool
     :return:
@@ -27,11 +27,11 @@ def postgres_pool(container: Container) -> PostgresConnection:
 
 
 @pytest.fixture
-def db_session(container: Container, postgres_pool: PostgresConnection) -> Session:
+def db_session(container: Container, postgres_connection: PostgresConnection) -> Session:
     """
     Fixture for database session
     :param container:
-    :param postgres_pool:
+    :param postgres_connection:
     :return:
     """
-    return container.db_session(postgres_pool=postgres_pool)
+    return container.db_session(postgres_connection=postgres_connection)

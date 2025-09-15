@@ -3,16 +3,27 @@ AdminPermissionHandler
 """
 from typing import Optional, Union
 import sqlalchemy as sa
+import uuid
 from uuid import UUID
 
 from redis.asyncio import Redis
+from asyncpg import UniqueViolationError
 
 from portal.config import settings
+from portal.exceptions.responses import ApiBaseException, ResourceExistsException
 from portal.libs.consts.cache_keys import create_permission_key
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalPermission, PortalVerb, PortalResource, PortalRole, PortalUser, PortalRolePermission
 from portal.schemas.permission import PermissionBase
 from portal.schemas.user import UserBase, UserDetail
+from portal.schemas.mixins import UUIDBaseModel
+from portal.serializers.mixins import DeleteBaseModel
+from portal.serializers.v1.admin.permission import (
+    PermissionItem,
+    PermissionCreate,
+    PermissionUpdate,
+)
 
 
 class AdminPermissionHandler:
@@ -87,19 +98,22 @@ class AdminPermissionHandler:
             .where(PortalVerb.is_active == True)
             .where(PortalResource.is_deleted == False)
             .where(PortalResource.is_visible == True)
-            .where(sa.or_(
-                PortalRolePermission.expire_date.is_(None),
-                PortalRolePermission.expire_date > sa.func.now()
-            ))
+            .where(
+                sa.or_(
+                    PortalRolePermission.expire_date.is_(None),
+                    PortalRolePermission.expire_date > sa.func.now()
+                )
+            )
             .distinct()
-            .order_by([
-                PortalResource.code,
-                PortalVerb.action,
-                PortalPermission.code,
-            ])
+            .order_by(
+                [
+                    PortalResource.code,
+                    PortalVerb.action,
+                    PortalPermission.code,
+                ]
+            )
             .fetch(as_model=PermissionBase)
         )
-
 
     async def _get_all_permissions(self) -> Optional[list[PermissionBase]]:
         """
@@ -117,3 +131,176 @@ class AdminPermissionHandler:
             .where(PortalPermission.is_active == True)
             .fetch(as_model=PermissionBase)
         )
+
+    @distributed_trace()
+    async def get_permission_by_id(self, permission_id: UUID) -> Optional[PermissionItem]:
+        """
+        Get permission by id
+        func.array_agg(func.json_build_object(
+           cast('id', VARCHAR(40)), sa.func.replace(sa.cast(SysSite.id, sa.String), '-', ''),
+           cast('site_no', VARCHAR(40)), SysSite.site_no,
+           cast('is_cdn_opened', VARCHAR(40)), SysSite.is_cdn_opened)).label('site_info_array'),
+        :param permission_id:
+        :return:
+        """
+        try:
+            item: Optional[PermissionItem] = await (
+                self._session.select(
+                    PortalPermission.id,
+                    PortalPermission.display_name,
+                    PortalPermission.code,
+                    sa.func.json_build_object(
+                        sa.cast("id", sa.VARCHAR(4)), PortalResource.id,
+                        sa.cast("name", sa.VARCHAR(4)), PortalResource.name,
+                        sa.cast("key", sa.VARCHAR(4)), PortalResource.key,
+                        sa.cast("code", sa.VARCHAR(4)), PortalResource.code
+                    ).label('resource'),
+                    sa.func.json_build_object(
+                        sa.cast("id", sa.VARCHAR(4)), PortalVerb.id,
+                        sa.cast("display_name", sa.VARCHAR(16)), PortalVerb.display_name,
+                        sa.cast("action", sa.VARCHAR(8)), PortalVerb.action
+                    ).label('verb'),
+                    PortalPermission.is_active,
+                    PortalPermission.description,
+                    PortalPermission.remark
+                )
+                .outerjoin(PortalResource, PortalPermission.resource_id == PortalResource.id)
+                .outerjoin(PortalVerb, PortalPermission.verb_id == PortalVerb.id)
+                .where(PortalPermission.id == permission_id)
+                .fetchrow(as_model=PermissionItem)
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
+        else:
+            return item
+
+    @distributed_trace()
+    async def create_permission(self, model: PermissionCreate) -> UUIDBaseModel:
+        """
+        Create a permission
+        :param model:
+        :return:
+        """
+        permission_id = uuid.uuid4()
+        try:
+            await (
+                self._session.insert(PortalPermission)
+                .values(
+                    model.model_dump(exclude_none=True),
+                    id=permission_id,
+                )
+                .execute()
+            )
+        except UniqueViolationError as e:
+            raise ResourceExistsException(
+                detail=f"Permission {model.code} already exists",
+                debug_detail=str(e),
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
+        else:
+            return UUIDBaseModel(id=permission_id)
+
+    @distributed_trace()
+    async def update_permission(self, permission_id: UUID, model: PermissionUpdate) -> None:
+        """
+        Update a permission
+        :param permission_id:
+        :param model:
+        :return:
+        """
+        try:
+            result = await (
+                self._session.update(PortalPermission)
+                .values(model.model_dump())
+                .where(PortalPermission.id == permission_id)
+                .where(PortalPermission.is_deleted == False)
+                .execute()
+            )
+            if result == 0:
+                raise ApiBaseException(
+                    status_code=404,
+                    detail=f"Permission {permission_id} not found",
+                )
+        except UniqueViolationError as e:
+            raise ResourceExistsException(
+                detail=f"Permission {model.code} already exists",
+                debug_detail=str(e),
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
+
+    @distributed_trace()
+    async def delete_permission(self, permission_id: UUID, model: DeleteBaseModel) -> None:
+        """
+        Delete a permission
+        :param permission_id:
+        :param model:
+        :return:
+        """
+        try:
+            if model.permanent:
+                # Hard delete - permanently remove from database
+                result = await (
+                    self._session.delete(PortalPermission)
+                    .where(PortalPermission.id == permission_id)
+                    .execute()
+                )
+            else:
+                # Soft delete - mark as deleted with reason
+                result = await (
+                    self._session.update(PortalPermission)
+                    .values(
+                        is_deleted=True,
+                        delete_reason=model.reason
+                    )
+                    .where(PortalPermission.id == permission_id)
+                    .where(PortalPermission.is_deleted == False)
+                    .execute()
+                )
+
+            if result == 0:
+                raise ApiBaseException(
+                    status_code=404,
+                    detail=f"Permission {permission_id} not found",
+                )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
+
+    @distributed_trace()
+    async def restore_permission(self, permission_id: UUID) -> None:
+        """
+        Restore a permission
+        :param permission_id:
+        :return:
+        """
+        try:
+            await (
+                self._session.update(PortalPermission)
+                .values(is_deleted=False, delete_reason=None)
+                .where(PortalPermission.id == permission_id)
+                .where(PortalPermission.is_deleted == True)
+                .execute()
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )

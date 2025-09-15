@@ -4,6 +4,7 @@ Base serializer mixin for all serializers.
 import abc
 from typing import Any, Optional
 
+import pydantic
 from pydantic import BaseModel, Field
 
 
@@ -41,3 +42,17 @@ class PaginationBaseResponseModel(BaseModel):
     def __init_subclass__(cls, **kwargs):
         if not hasattr(cls, "items"):
             raise ValueError("items field is required")
+
+class DeleteBaseModel(BaseModel):
+    """
+    Base serializer mixin for all delete models.
+    """
+    reason: Optional[str] = Field(None, description="Delete reason")
+    permanent: bool = Field(False, description="Permanent delete")
+
+    @pydantic.model_validator(mode='after')
+    def validate_reason(self):
+        """validate reason required if not permanent delete"""
+        if not self.permanent and self.reason is None:
+            raise ValueError("Reason is required for non-permanent delete")
+        return self
