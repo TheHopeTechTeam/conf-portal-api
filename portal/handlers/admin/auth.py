@@ -19,7 +19,7 @@ from portal.providers.password_provider import PasswordProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.base import RefreshTokenData
-from portal.schemas.user import UserDetail
+from portal.schemas.user import SUserSensitive
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminTokenResponse,
@@ -66,12 +66,12 @@ class AdminAuthHandler:
             self._user_ctx = None
 
     @distributed_trace()
-    async def authenticate_admin(self, email: EmailStr, password: str) -> Optional[UserDetail]:
+    async def authenticate_admin(self, email: EmailStr, password: str) -> Optional[SUserSensitive]:
         """
         Authenticate admin user with email and password
         """
         # Find user by email
-        user: UserDetail = await self._admin_user_handler.get_user_detail_by_email(email)
+        user: SUserSensitive = await self._admin_user_handler.get_user_detail_by_email(email)
         if not user:
             return None
 
@@ -109,7 +109,7 @@ class AdminAuthHandler:
         :return:
         """
         # Authenticate admin
-        user: UserDetail = await self.authenticate_admin(login_data.email, login_data.password)
+        user: SUserSensitive = await self.authenticate_admin(login_data.email, login_data.password)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -176,7 +176,7 @@ class AdminAuthHandler:
         except Exception as exc:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
-        user: UserDetail = await self._admin_user_handler.get_user_detail_by_id(rt_data.user_id)
+        user: SUserSensitive = await self._admin_user_handler.get_user_detail_by_id(rt_data.user_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -216,7 +216,7 @@ class AdminAuthHandler:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not authenticated"
             )
-        user: UserDetail = await self._admin_user_handler.get_user_detail_by_id(user_id=self._user_ctx.user_id)
+        user: SUserSensitive = await self._admin_user_handler.get_user_detail_by_id(user_id=self._user_ctx.user_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

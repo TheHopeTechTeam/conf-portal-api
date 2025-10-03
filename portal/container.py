@@ -61,14 +61,14 @@ class Container(containers.DeclarativeContainer):
     password_provider = providers.Singleton(PasswordProvider)
     refresh_token_provider = providers.Factory(
         RefreshTokenProvider,
-        session=db_session,
+        session=request_session,
     )
 
     # [Handlers]
     if settings.IS_DEV:
         demo_handler = providers.Factory(
             DemoHandler,
-            db_session=request_session
+            session=request_session
         )
 
     # [Admin]

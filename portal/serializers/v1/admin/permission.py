@@ -1,15 +1,13 @@
 """
 Permission serializers
 """
-import ujson as json
 from typing import Optional
 from uuid import UUID
 
-import pydantic
-from pydantic import Field, BaseModel, field_validator, field_serializer, model_serializer, model_validator
+import ujson
+from pydantic import Field, BaseModel, model_validator
 
 from portal.schemas.mixins import UUIDBaseModel
-from portal.serializers.mixins import PaginationBaseResponseModel
 
 
 class PermissionResourceItem(UUIDBaseModel):
@@ -19,7 +17,7 @@ class PermissionResourceItem(UUIDBaseModel):
     code: str = Field(..., description="Code")
 
     @model_validator(mode="before")
-    def validate_json_string(cls, values):
+    def validate_ujson_string(cls, values):
         """
 
         :param values:
@@ -27,8 +25,8 @@ class PermissionResourceItem(UUIDBaseModel):
         """
         if isinstance(values, str):
             try:
-                values = json.loads(values)
-            except json.JSONDecodeError as e:
+                values = ujson.loads(values)
+            except ujson.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON string: {e}")
         return values
 
@@ -47,8 +45,8 @@ class PermissionVerbItem(UUIDBaseModel):
         """
         if isinstance(values, str):
             try:
-                values = json.loads(values)
-            except json.JSONDecodeError as e:
+                values = ujson.loads(values)
+            except ujson.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON string: {e}")
         return values
 
@@ -77,3 +75,8 @@ class PermissionCreate(BaseModel):
 
 class PermissionUpdate(PermissionCreate):
     """PermissionUpdate"""
+
+
+class PermissionList(BaseModel):
+    """PermissionList"""
+    items: Optional[list[PermissionItem]] = Field(..., description="Permissions")

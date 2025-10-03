@@ -1,13 +1,13 @@
 """
 AdminPermissionHandler
 """
-from typing import Optional, Union
-import sqlalchemy as sa
 import uuid
+from typing import Optional
 from uuid import UUID
 
-from redis.asyncio import Redis
+import sqlalchemy as sa
 from asyncpg import UniqueViolationError
+from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, ResourceExistsException
@@ -15,9 +15,9 @@ from portal.libs.consts.cache_keys import create_permission_key
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalPermission, PortalVerb, PortalResource, PortalRole, PortalUser, PortalRolePermission
-from portal.schemas.permission import PermissionBase
-from portal.schemas.user import UserBase, UserDetail
 from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.permission import PermissionBase
+from portal.schemas.user import SUserSensitive
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.permission import (
     PermissionItem,
@@ -37,7 +37,7 @@ class AdminPermissionHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    async def init_user_permissions_cache(self, user: Union[UserBase, UserDetail], expire: int) -> Optional[list[str]]:
+    async def init_user_permissions_cache(self, user: SUserSensitive, expire: int) -> Optional[list[str]]:
         """
         Initialize user permissions cache
         :param user:
@@ -66,7 +66,7 @@ class AdminPermissionHandler:
         key = create_permission_key(str(user_id))
         await self._redis.delete(key)
 
-    async def _get_user_role_permissions(self, user: Union[UserBase, UserDetail]) -> Optional[list[PermissionBase]]:
+    async def _get_user_role_permissions(self, user: SUserSensitive) -> Optional[list[PermissionBase]]:
         """
         Get permissions by user role
         :param user:

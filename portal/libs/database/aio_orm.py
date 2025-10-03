@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from asyncpg import Record
 from asyncpg.transaction import TransactionState
 from pydantic import BaseModel
-from sqlalchemy import String, Numeric, Integer, Float, Boolean, DateTime, Date, ColumnExpressionArgument
+from sqlalchemy import String, Numeric, Integer, Float, Boolean, DateTime, Date, ColumnExpressionArgument, Column
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.postgresql.dml import Insert as PgInsert
@@ -75,6 +75,62 @@ def _format_where(clauses: tuple) -> Union[tuple, ColumnExpressionArgument]:
     else:
         where_clause = clauses[0]
     return where_clause
+
+def _get_order_by(
+    tables: Union[Type, List[Type], None],
+    order_by: str,
+    descending=True,
+    **map_columns
+):
+    """
+    获取排序字段
+    :param tables:
+    :param order_by:
+    :param descending:
+    :return:
+    """
+    col: Optional[Column] = None
+    ordered_items = []
+    if not isinstance(tables, list):
+        tables = [tables]
+    if order_by:
+        if map_columns and order_by in map_columns:
+            column = map_columns[order_by]
+            if isinstance(column, tuple):
+                _col, action = column
+                if action == "nulls":
+                    if descending:
+                        ordered_items.append(sa.sql.expression.nullslast(_col.desc()))
+                    else:
+                        ordered_items.append(sa.sql.expression.nullsfirst(_col))
+            else:
+                col = column
+        else:
+            for table in tables:
+                if hasattr(table, order_by):
+                    col = getattr(table, order_by)
+                    break
+    if not tables and not map_columns:
+        raise ValueError("Table and map_columns cannot be empty at the same time")
+    if col is None and not ordered_items:
+        descending = True
+        if hasattr(tables[0], "sequence"):
+            col = getattr(tables[0], "sequence")
+        else:
+            col = getattr(tables[0], "created_at")
+
+    if col is not None:
+        if descending:
+            if isinstance(col, str):
+                ordered_items.append(f"{col} desc")
+            else:
+                ordered_items.append(col.desc())
+        else:
+            ordered_items.append(col)
+    if "id" not in ordered_items and hasattr(tables[0], "id"):
+        ordered_items.append(getattr(tables[0], "id"))
+    return ordered_items
+
 
 
 class _Insert:
@@ -315,6 +371,19 @@ class _Select:
             self._select = self._select.order_by(*order_clause)
         else:
             self._select = self._select.order_by(order_clause)
+        return self
+
+    def order_by_with(self, tables: Union[Type[sa.Table], List[Type[sa.Table]], None], order_by: str, descending=True, **map_columns):
+        """
+
+        :param tables:
+        :param descending:
+        :param order_by:
+        :param map_columns:
+        :return:
+        :rtype:_Select
+        """
+        self._select = self._select.order_by(*_get_order_by(tables, order_by=order_by, descending=descending, **map_columns))
         return self
 
     def group_by(self, *clauses):

@@ -18,6 +18,6 @@ __all__ = [
 ]
 
 if settings.IS_DEV:
-    from .demo import DemoHandler
+    from .admin.demo import DemoHandler
 
     __all__.append("DemoHandler")

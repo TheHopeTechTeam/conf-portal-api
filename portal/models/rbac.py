@@ -34,7 +34,7 @@ class PortalUser(ModelBase, RemarkMixin, DeletedMixin, AuditMixin):
     roles = relationship("PortalRole", secondary=lambda: PortalUserRole.__table__, back_populates="users", passive_deletes=True)
 
 
-class PortalUserProfile(ModelBase, DeletedMixin, AuditMixin, DescriptionMixin):
+class PortalUserProfile(ModelBase, AuditMixin, DescriptionMixin):
     """Portal User Profile Model"""
     user_id = Column(
         UUID,

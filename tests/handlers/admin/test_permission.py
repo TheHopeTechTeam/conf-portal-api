@@ -1,5 +1,5 @@
 """
-Tests for AdminPermissionHandler
+Test admin permission handler
 """
 from unittest.mock import AsyncMock
 from uuid import uuid4, UUID
@@ -9,7 +9,7 @@ import pytest
 from portal.libs.consts.cache_keys import create_permission_key
 from portal.models import PortalPermission, PortalVerb, PortalResource, PortalRole, PortalUser
 from portal.schemas.permission import PermissionBase
-from portal.schemas.user import UserBase
+from portal.schemas.user import SUserSensitive
 
 
 @pytest.mark.asyncio
@@ -17,7 +17,7 @@ async def test_init_user_permissions_cache_regular_admin(
     admin_permission_handler,
     mocker
 ):
-    user = UserBase(
+    user = SUserSensitive(
         id=UUID("385dfc73-1379-43b1-988f-603a791ec236"),
         phone_number="+886912345678",
         email="test@example.com",
@@ -40,7 +40,7 @@ async def test_init_user_permissions_cache_superuser(
     admin_permission_handler,
     mocker
 ):
-    user = UserBase(
+    user = SUserSensitive(
         id=uuid4(),
         phone_number="+886912345678",
         email="test@example.com",
@@ -85,7 +85,7 @@ async def test_init_user_permissions_cache_no_permissions(
     admin_permission_handler,
     mocker
 ):
-    user = UserBase(
+    user = SUserSensitive(
         id=uuid4(),
         phone_number="+886912345678",
         email="test@example.com",

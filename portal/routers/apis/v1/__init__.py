@@ -24,11 +24,6 @@ router = APIRouter(
 )
 router.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
-if settings.IS_DEV:
-    from .demo import router as demo_router
-
-    router.include_router(demo_router, prefix="/demo", tags=["Demo"])
-
 # router.include_router(account_router, prefix="/account", tags=["Account"])
 # router.include_router(conference_router, prefix="/conference", tags=["Conference"])
 # router.include_router(event_info_router, prefix="/event_info", tags=["Event Info"])

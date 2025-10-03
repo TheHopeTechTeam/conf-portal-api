@@ -14,7 +14,7 @@ from portal.providers.firebase import FirebaseProvider
 from portal.libs.contexts.user_context import UserContext, set_user_context
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.base import AccessTokenPayload
-from portal.schemas.user import UserDetail
+from portal.schemas.user import SUserDetail, SUserSensitive
 
 
 class AccessTokenAuth(HTTPBearer):
@@ -62,7 +62,7 @@ class AccessTokenAuth(HTTPBearer):
         if not payload:
             raise InvalidTokenException()
 
-        user: UserDetail = await admin_user_handler.get_user_detail_by_id(payload.sub)
+        user: SUserSensitive = await admin_user_handler.get_user_detail_by_id(payload.sub)
         if not user:
             raise UnauthorizedException()
         if not user.is_active or not user.is_admin or not user.verified:

@@ -13,14 +13,14 @@ class PaginationQueryBaseModel(BaseModel):
     Base serializer mixin for all paginated query models.
     """
     page: int = Field(0, description="Page number")
-    page_size: int = Field(10, description="Page size")
+    page_size: int = Field(10, description="Page size", serialization_alias="pageSize")
 
 
 class OrderByQueryBaseModel(PaginationQueryBaseModel):
     """
     Base serializer mixin for all order by query models.
     """
-    order_by: Optional[str] = Field(None, description="Order by field")
+    order_by: Optional[str] = Field(None, description="Order by field", serialization_alias="orderBy")
     descending: bool = Field(False, description="Descending order")
 
 
@@ -28,6 +28,7 @@ class GenericQueryBaseModel(OrderByQueryBaseModel):
     """
     Base serializer mixin for all generic query models.
     """
+    keyword: Optional[str] = Field(None, description="Keyword filter")
     deleted: bool = Field(False, description="Deleted items only")
 
 
