@@ -6,11 +6,11 @@ from typing import Optional, ClassVar
 from pydantic import BaseModel, Field
 
 from portal.libs.consts.enums import Gender
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, AuditMixinModel
 from portal.serializers.mixins.base import PaginationBaseResponseModel
 
 
-class DemoDetail(UUIDBaseModel):
+class DemoDetail(UUIDBaseModel, AuditMixinModel):
     """
     Demo detail
     """

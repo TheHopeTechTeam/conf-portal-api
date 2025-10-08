@@ -16,7 +16,7 @@ class SUserBase(UUIDBaseModel, BaseMixinModel):
     Base schema for User model, containing common fields.
     """
     phone_number: str = Field(..., description="User's phone number")
-    email: str = Field(..., description="User's email address")
+    email: Optional[str] = Field(None, description="User's email address")
     verified: bool = Field(False, description="Is the user verified")
     is_active: bool = Field(description="Is the user active")
     is_superuser: bool = Field(False, description="Is the user a superuser")

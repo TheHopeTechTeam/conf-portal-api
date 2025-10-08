@@ -13,14 +13,14 @@ class PaginationQueryBaseModel(BaseModel):
     Base serializer mixin for all paginated query models.
     """
     page: int = Field(0, description="Page number")
-    page_size: int = Field(10, description="Page size", serialization_alias="pageSize")
+    page_size: int = Field(10, description="Page size")
 
 
 class OrderByQueryBaseModel(PaginationQueryBaseModel):
     """
     Base serializer mixin for all order by query models.
     """
-    order_by: Optional[str] = Field(None, description="Order by field", serialization_alias="orderBy")
+    order_by: Optional[str] = Field(None, description="Order by field")
     descending: bool = Field(False, description="Descending order")
 
 

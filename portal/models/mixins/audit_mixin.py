@@ -85,6 +85,7 @@ class AuditUpdatedAtMixin(object):
             DateTime(timezone=True),
             server_default=sa.func.now(tz=pytz.UTC),
             server_onupdate=sa.func.now(tz=pytz.UTC),
+            onupdate=sa.func.now(tz=pytz.UTC),
             comment="Update Date",
             nullable=False
         )

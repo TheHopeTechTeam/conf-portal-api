@@ -1,6 +1,7 @@
 """
 Handler for demo-related operations
 """
+import asyncio
 import uuid
 from uuid import UUID
 
@@ -41,6 +42,10 @@ class DemoHandler:
                 Demo.remark,
                 Demo.age,
                 Demo.gender,
+                Demo.created_at,
+                Demo.updated_at,
+                Demo.created_by,
+                Demo.updated_by
             )
             .where(Demo.is_deleted == model.deleted)
             .where(
@@ -51,13 +56,14 @@ class DemoHandler:
             )
             .order_by_with(
                 tables=[Demo],
-                order_by=model.order_by,
-                descending=model.descending
+                order_by=model.order_by if model.order_by else Demo.updated_at.key,
+                descending=model.descending if model.order_by else True
             )
             .limit(model.page_size)
             .offset(model.page * model.page_size)
             .fetchpages(as_model=DemoDetail)
         )
+        await asyncio.sleep(2)
         return DemoPages(
             items=items,
             total=total,
@@ -109,7 +115,10 @@ class DemoHandler:
                 )
                 .on_conflict_do_update(
                     index_elements=[Demo.id],
-                    set_=model.model_dump(),
+                    set_={
+                        "updated_at": sa.func.now(),
+                        **model.model_dump()
+                    },
                 )
                 .execute()
             )
