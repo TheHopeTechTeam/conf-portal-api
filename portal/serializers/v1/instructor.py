@@ -5,10 +5,10 @@ from typing import Optional
 
 from pydantic import Field
 
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 
 
-class InstructorBase(UUIDBaseModel):
+class InstructorBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Instructor base model
     """

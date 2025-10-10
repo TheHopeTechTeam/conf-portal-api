@@ -4,51 +4,22 @@ Permission serializers
 from typing import Optional
 from uuid import UUID
 
-import ujson
-from pydantic import Field, BaseModel, model_validator
+from pydantic import Field, BaseModel
 
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 
 
-class PermissionResourceItem(UUIDBaseModel):
+class PermissionResourceItem(UUIDBaseModel, JSONStringMixinModel):
     """PermissionResourceItem"""
     name: str = Field(..., description="Name")
     key: str = Field(..., description="Key")
     code: str = Field(..., description="Code")
 
-    @model_validator(mode="before")
-    def validate_ujson_string(cls, values):
-        """
 
-        :param values:
-        :return:
-        """
-        if isinstance(values, str):
-            try:
-                values = ujson.loads(values)
-            except ujson.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON string: {e}")
-        return values
-
-
-class PermissionVerbItem(UUIDBaseModel):
+class PermissionVerbItem(UUIDBaseModel, JSONStringMixinModel):
     """PermissionVerbItem"""
     display_name: str = Field(..., serialization_alias="displayName", description="Display name")
     action: str = Field(..., description="Action")
-
-    @model_validator(mode="before")
-    def validate_json_string(cls, values):
-        """
-
-        :param values:
-        :return:
-        """
-        if isinstance(values, str):
-            try:
-                values = ujson.loads(values)
-            except ujson.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON string: {e}")
-        return values
 
 
 class PermissionItem(UUIDBaseModel):

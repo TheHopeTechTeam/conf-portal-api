@@ -48,3 +48,10 @@ class SUserThirdParty(SUserDetail):
     provider: str = Field(..., description="Provider name")
     provider_uid: str = Field(..., description="Provider UID")
     additional_data: Optional[dict] = Field(None, description="Additional Data from the provider")
+
+
+class SAuthProvider(UUIDBaseModel):
+    """
+    Schema for Auth Provider
+    """
+    name: str = Field(..., description="Provider name")

@@ -95,6 +95,22 @@ class ResourceExistsException(ApiBaseException):
         self.debug_detail = kwargs.pop('debug_detail', None)
 
 
+class EntityTooLargeException(ApiBaseException):
+    """
+    Entity Too Large Exception
+    status_code: 413
+    """
+
+    def __init__(
+        self,
+        detail: str = "Uploaded file size exceeds the limit",
+        headers: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
+        super().__init__(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=detail, headers=headers)
+        self.debug_detail = kwargs.pop('debug_detail', None)
+
+
 class NotImplementedException(ApiBaseException):
     """
     Not Implemented Exception

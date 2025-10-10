@@ -7,6 +7,10 @@ from .admin.permission import AdminPermissionHandler
 from .admin.resource import AdminResourceHandler
 from .admin.role import AdminRoleHandler
 from .admin.user import AdminUserHandler
+from .conference import ConferenceHandler
+from .fcm_device import FCMDeviceHandler
+from .file import FileHandler
+from .user import UserHandler
 
 __all__ = [
     # admin
@@ -14,7 +18,12 @@ __all__ = [
     "AdminPermissionHandler",
     "AdminResourceHandler",
     "AdminRoleHandler",
-    "AdminUserHandler"
+    "AdminUserHandler",
+    # general
+    "ConferenceHandler",
+    "FCMDeviceHandler",
+    "FileHandler",
+    "UserHandler",
 ]
 
 if settings.IS_DEV:

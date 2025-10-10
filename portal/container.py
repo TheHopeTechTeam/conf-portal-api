@@ -4,19 +4,23 @@ Container
 from dependency_injector import containers, providers
 
 from portal.config import settings
-from portal.libs.database import RedisPool, PostgresConnection, Session
-from portal.libs.database.session_proxy import SessionProxy
 from portal.handlers import (
     AdminAuthHandler,
     AdminPermissionHandler,
     AdminResourceHandler,
     AdminRoleHandler,
-    AdminUserHandler
+    AdminUserHandler,
+    ConferenceHandler,
+    FCMDeviceHandler,
+    FileHandler,
+    UserHandler,
 )
+from portal.libs.database import RedisPool, PostgresConnection, Session
+from portal.libs.database.session_proxy import SessionProxy
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
-from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
+from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 
 if settings.IS_DEV:
     from portal.handlers import DemoHandler
@@ -64,6 +68,28 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
     )
 
+    # [General]
+    file_handler = providers.Factory(
+        FileHandler,
+        session=request_session,
+        redis_client=redis_client,
+    )
+    conference_handler = providers.Factory(
+        ConferenceHandler,
+        session=request_session,
+        file_handler=file_handler,
+    )
+    fcm_device_handler = providers.Factory(
+        FCMDeviceHandler,
+        session=request_session,
+    )
+    user_handler = providers.Factory(
+        UserHandler,
+        session=request_session,
+        redis_client=redis_client,
+        fcm_device_handler=fcm_device_handler,
+    )
+
     # [Handlers]
     if settings.IS_DEV:
         demo_handler = providers.Factory(
@@ -104,4 +130,3 @@ class Container(containers.DeclarativeContainer):
         admin_role_handler=admin_role_handler,
         admin_user_handler=admin_user_handler,
     )
-

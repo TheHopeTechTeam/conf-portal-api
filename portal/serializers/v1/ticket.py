@@ -5,8 +5,10 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from portal.schemas.mixins import JSONStringMixinModel
 
-class TicketBase(BaseModel):
+
+class TicketBase(BaseModel, JSONStringMixinModel):
     """
     Ticket
     """

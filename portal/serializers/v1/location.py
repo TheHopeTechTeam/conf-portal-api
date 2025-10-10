@@ -6,10 +6,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 
 
-class LocationBase(UUIDBaseModel):
+class LocationBase(UUIDBaseModel, JSONStringMixinModel):
     name: str = Field(..., description="Location name")
     address: Optional[str] = Field(None, description="Location address")
     floor: Optional[str] = Field(None, description="Location floor")

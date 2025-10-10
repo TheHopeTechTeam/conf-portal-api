@@ -75,6 +75,14 @@ class Configuration(BaseSettings):
     CORS_ALLOWED_ORIGINS: list[str] = os.getenv(key="CORS_ALLOWED_ORIGINS", default="*").split()
     CORS_ALLOW_ORIGINS_REGEX: Optional[str] = os.getenv(key="CORS_ALLOW_ORIGINS_REGEX")
 
+    # [AWS]
+    AWS_STORAGE_BUCKET_NAME: str = APP_NAME
+    AWS_ACCESS_KEY_ID: str = os.getenv(key="AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY: str = os.getenv(key="AWS_SECRET_ACCESS_KEY")
+    AWS_S3_REGION_NAME: str = os.getenv(key="AWS_S3_REGION_NAME")
+    AWS_S3_CACHE_CONTROL: str = os.getenv(key="AWS_S3_CACHE_CONTROL", default="max-age=86400")
+    MAX_UPLOAD_SIZE: int = int(os.getenv(key="MAX_UPLOAD_SIZE", default=5 * 1024 * 1024))  # 3MB
+
     # [Redis]
     REDIS_URL: Optional[str] = os.getenv(key="REDIS_URL")
     REDIS_DB: int = int(os.getenv(key="REDIS_DB", default="0"))

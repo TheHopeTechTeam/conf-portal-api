@@ -152,7 +152,7 @@ class Converter:
     @classmethod
     def format_value(cls, value: Any):
         if isinstance(value, uuid.UUID):
-            return str(value)
+            return value
         elif isinstance(value, datetime):
             return value.strftime("%Y-%m-%d %H:%M:%S")
         elif isinstance(value, date):

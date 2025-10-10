@@ -5,7 +5,8 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_serializer
+import ujson
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
 
 class UUIDBaseModel(BaseModel):
@@ -23,6 +24,25 @@ class UUIDBaseModel(BaseModel):
         :return:
         """
         return str(value)
+
+
+class JSONStringMixinModel(BaseModel):
+    """
+    JSON String Mixin Model
+    """
+    @model_validator(mode="before")
+    def validate_ujson_string(cls, values):
+        """
+
+        :param values:
+        :return:
+        """
+        if isinstance(values, str):
+            try:
+                values = ujson.loads(values)
+            except ujson.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON string: {e}")
+        return values
 
 
 class SortableMixinModel(BaseModel):
