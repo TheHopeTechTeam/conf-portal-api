@@ -20,7 +20,7 @@ from portal.config import settings
 from portal.libs.consts.enums import FileStatus, FileUploadSource
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models.file import PortalFile, PortalFileAssociation
+from portal.models import PortalFile, PortalFileAssociation
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.file import BatchFileUploadResponseModel, FailedUploadFile, FileBase, FileUploadResponseModel
 

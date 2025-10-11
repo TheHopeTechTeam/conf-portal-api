@@ -8,7 +8,7 @@ import click
 from portal.container import Container
 from portal.libs.consts.enums import ResourceType
 from portal.libs.logger import logger
-from portal.models.rbac import (
+from portal.models import (
     PortalRole,
     PortalResource,
     PortalVerb,

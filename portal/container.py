@@ -11,8 +11,12 @@ from portal.handlers import (
     AdminRoleHandler,
     AdminUserHandler,
     ConferenceHandler,
+    EventInfoHandler,
+    FAQHandler,
     FCMDeviceHandler,
+    FeedbackHandler,
     FileHandler,
+    TestimonyHandler,
     UserHandler,
 )
 from portal.libs.database import RedisPool, PostgresConnection, Session
@@ -77,10 +81,29 @@ class Container(containers.DeclarativeContainer):
     conference_handler = providers.Factory(
         ConferenceHandler,
         session=request_session,
+        redis_client=redis_client,
         file_handler=file_handler,
+    )
+    event_info_handler = providers.Factory(
+        EventInfoHandler,
+        session=request_session,
+        redis_client=redis_client,
+    )
+    faq_handler = providers.Factory(
+        FAQHandler,
+        session=request_session,
+        redis_client=redis_client,
     )
     fcm_device_handler = providers.Factory(
         FCMDeviceHandler,
+        session=request_session,
+    )
+    feedback_handler = providers.Factory(
+        FeedbackHandler,
+        session=request_session,
+    )
+    testimony_handler = providers.Factory(
+        TestimonyHandler,
         session=request_session,
     )
     user_handler = providers.Factory(

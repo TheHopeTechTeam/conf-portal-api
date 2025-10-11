@@ -12,7 +12,7 @@ from sqlalchemy import and_
 
 from portal.handlers import AdminAuthHandler
 from portal.libs.database.session_mock import SessionMock
-from portal.models.rbac import PortalUser
+from portal.models import PortalUser
 
 
 @pytest.mark.asyncio

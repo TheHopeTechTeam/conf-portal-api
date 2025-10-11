@@ -1,20 +1,34 @@
 """
 FeedbackHandler
 """
-from portal.apps.feedback.models import Feedback
-from portal.serializers.v1.feedback import FeedbackCreate, FeedbackCreateResponse
+import uuid
+
+from portal.libs.database import Session
+from portal.models import PortalFeedback
+from portal.schemas.mixins import UUIDBaseModel
+from portal.serializers.v1.feedback import FeedbackCreate
 
 
 class FeedbackHandler:
     """FeedbackHandler"""
 
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        session: Session,
+    ):
+        self._session = session
 
-    async def creat_feedback(self, model: FeedbackCreate) -> FeedbackCreateResponse:
+    async def creat_feedback(self, model: FeedbackCreate) -> UUIDBaseModel:
         """
         Create feedback
         """
-        data = model.model_dump()
-        feedback_obj = await Feedback.objects.acreate(**data)
-        return FeedbackCreateResponse(id=feedback_obj.id)
+        feedback_id = uuid.uuid4()
+        await (
+            self._session.insert(PortalFeedback)
+            .values(
+                model.model_dump(exclude_none=True),
+                id=feedback_id,
+            )
+            .execute()
+        )
+        return UUIDBaseModel(id=feedback_id)

@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 
 from portal.libs.database.session_mock import SessionMock
-from portal.models.auth import PortalRefreshToken, PortalAuthDevice
+from portal.models import PortalRefreshToken, PortalAuthDevice
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.schemas.base import RefreshTokenData
 

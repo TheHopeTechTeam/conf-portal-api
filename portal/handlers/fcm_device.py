@@ -8,7 +8,7 @@ from sentry_sdk.tracing import Span
 from portal.libs.database import Session
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
-from portal.models.fcm_device import PortalFcmDevice, PortalFcmUserDevice
+from portal.models import PortalFcmDevice, PortalFcmUserDevice
 from portal.serializers.v1.fcm_device import FCMCreate
 
 

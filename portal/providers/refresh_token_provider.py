@@ -11,7 +11,7 @@ from portal.exceptions.responses import RefreshTokenInvalidException
 from portal.libs.contexts.request_context import get_request_context, RequestContext
 from portal.libs.database import Session
 from portal.libs.logger import logger
-from portal.models.auth import PortalRefreshToken, PortalAuthDevice
+from portal.models import PortalRefreshToken, PortalAuthDevice
 from portal.schemas.base import RefreshTokenData
 
 

@@ -5,18 +5,13 @@ import uuid
 from typing import Optional
 
 import sqlalchemy as sa
+from redis.asyncio import Redis
 
-# from portal.apps.conference.models import Conference
-# from portal.apps.location.models import Location
+from portal.config import settings
 from portal.handlers.file import FileHandler
-from portal.libs.consts.enums import Rendition
-from portal.libs.database import Session
+from portal.libs.database import Session, RedisPool
+from portal.models import PortalConference, PortalConferenceInstructors, PortalInstructor, PortalLocation
 from portal.serializers.v1.conference import ConferenceBase, ConferenceDetail, ConferenceList
-from portal.serializers.v1.instructor import InstructorBase
-from portal.serializers.v1.location import LocationBase
-from portal.models.conference import PortalConference, PortalConferenceInstructors
-from portal.models.location import PortalLocation
-from portal.models.instructor import PortalInstructor
 
 
 class ConferenceHandler:
@@ -25,9 +20,11 @@ class ConferenceHandler:
     def __init__(
         self,
         session: Session,
+        redi_client: RedisPool,
         file_handler: FileHandler,
     ):
         self._session = session
+        self._redis: Redis = redi_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
 
     async def get_conferences(self) -> ConferenceList:

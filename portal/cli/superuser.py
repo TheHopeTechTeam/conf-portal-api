@@ -10,7 +10,7 @@ from phonenumbers import PhoneNumberFormat
 
 from portal.container import Container
 from portal.libs.shared import validator
-from portal.models.rbac import PortalUser, PortalUserProfile
+from portal.models import PortalUser, PortalUserProfile
 from portal.providers.password_provider import PasswordProvider
 
 
