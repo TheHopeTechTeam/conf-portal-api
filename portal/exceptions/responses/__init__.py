@@ -11,7 +11,7 @@ __all__ = [
     "BadRequestException",  # 400
     "ParamError",  # 400
     "NotFoundException",  # 404
-    "ResourceExistsException",  # 409
+    "ConflictErrorException",  # 409
     "EntityTooLargeException",  # 413
     "NotImplementedException",  # 501
     # auth

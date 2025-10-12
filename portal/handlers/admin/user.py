@@ -11,7 +11,7 @@ from pydantic import EmailStr
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses.base import ApiBaseException, ResourceExistsException
+from portal.exceptions.responses.base import ApiBaseException, ConflictErrorException
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalUser, PortalUserProfile
@@ -234,7 +234,7 @@ class AdminUserHandler:
             )
 
         except UniqueViolationError as e:
-            raise ResourceExistsException(detail="User already exists", debug_detail=str(e))
+            raise ConflictErrorException(detail="User already exists", debug_detail=str(e))
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
         else:
@@ -286,7 +286,7 @@ class AdminUserHandler:
                 )
 
         except UniqueViolationError as e:
-            raise ResourceExistsException(detail="User already exists", debug_detail=str(e))
+            raise ConflictErrorException(detail="User already exists", debug_detail=str(e))
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
 

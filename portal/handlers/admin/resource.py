@@ -8,7 +8,7 @@ from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses import ApiBaseException, ResourceExistsException, UnauthorizedException, NotFoundException
+from portal.exceptions.responses import ApiBaseException, ConflictErrorException, UnauthorizedException, NotFoundException
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.models import PortalResource, PortalPermission, PortalRole, PortalUser, PortalRolePermission
@@ -82,7 +82,7 @@ class AdminResourceHandler:
                 .execute()
             )
         except UniqueViolationError as e:
-            raise ResourceExistsException(
+            raise ConflictErrorException(
                 detail=f"Resource {model.code} already exists",
                 debug_detail=str(e),
             )
@@ -116,7 +116,7 @@ class AdminResourceHandler:
                     detail=f"Resource {resource_id} not found",
                 )
         except UniqueViolationError as e:
-            raise ResourceExistsException(
+            raise ConflictErrorException(
                 detail=f"Resource {model.code} already exists",
                 debug_detail=str(e),
             )

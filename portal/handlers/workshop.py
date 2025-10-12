@@ -19,7 +19,7 @@ from portal.config import settings
 # from portal.apps.instructor.models import Instructor
 # from portal.apps.location.models import Location
 # from portal.apps.workshop.models import WorkshopTimeSlot, Workshop, WorkshopRegistration
-from portal.exceptions.responses import APIException, NotFoundException, ResourceExistsException
+from portal.exceptions.responses import APIException, NotFoundException, ConflictErrorException, BadRequestException
 from portal.handlers.file import FileHandler
 from portal.libs.consts.enums import Rendition
 from portal.libs.contexts.api_context import APIContext, get_api_context
@@ -199,11 +199,53 @@ class WorkshopHandler:
 
     async def check_has_registered_at_timeslot(self, workshop_id: uuid.UUID) -> bool:
         """
-        Check has registered at timeslot
-
-        :param workshop:
+        Check the user has registered at timeslot
+        :param workshop_id:
         :return:
         """
+        workshop: Optional[PortalWorkshop] = await (
+            self._session.select(
+                PortalWorkshop.start_datetime,
+                PortalWorkshop.end_datetime,
+                PortalWorkshop.timezone
+            )
+            .where(PortalWorkshop.id == workshop_id)
+            .where(PortalWorkshop.is_deleted == False)
+            .fetchrow()
+        )
+        if not workshop:
+            raise NotFoundException(detail=f"Workshop {workshop_id} not found")
+        has_registered: bool = await (
+            self._session.select(
+                sa.case(
+                    (sa.func.count(PortalWorkshopRegistration.id) > 0, sa.text("true")),
+                    else_=sa.text("false")
+                ).label("has_registered")
+            )
+            .join(PortalWorkshop, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
+            .where(PortalWorkshopRegistration.user_id == self._user_ctx.user_id)
+            .where(PortalWorkshopRegistration.unregistered_at.is_(None))
+            .where(PortalWorkshop.is_deleted == False)
+            .where(
+                sa.or_(
+                    sa.and_(
+                        PortalWorkshop.start_datetime >= workshop.start_datetime,
+                        PortalWorkshop.start_datetime < workshop.end_datetime,
+                    ),
+                    sa.and_(
+                        PortalWorkshop.end_datetime > workshop.start_datetime,
+                        PortalWorkshop.end_datetime <= workshop.end_datetime,
+                    ),
+                    sa.and_(
+                        PortalWorkshop.start_datetime <= workshop.start_datetime,
+                        PortalWorkshop.end_datetime >= workshop.end_datetime,
+                    ),
+                )
+            )
+            .fetchval()
+        )
+        return has_registered
+
 
     async def register_workshop(self, workshop_id: uuid.UUID) -> None:
         """
@@ -212,23 +254,27 @@ class WorkshopHandler:
         :return:
         """
         if await self.check_has_registered_at_timeslot(workshop_id=workshop_id):
-            raise ResourceExistsException(
-                detail="You have already registered for this workshop.",
-            )
-
+            raise ConflictErrorException(detail="You have already registered for this workshop.")
+        if await self.check_workshop_is_full(workshop_id=workshop_id):
+            raise ConflictErrorException(detail="The workshop is full.")
         try:
             await (
                 self._session.insert(PortalWorkshopRegistration)
                 .values(
                     workshop_id=workshop_id,
-                    user=self._user_ctx.user_id,
-                    unregistered_at=None,
+                    user_id=self._user_ctx.user_id
                 )
+                .on_conflict_do_update(
+                    index_elements=["workshop_id", "user_id"],
+                    set_={
+                        "registered_at": datetime.now(),
+                        "unregistered_at": None
+                    }
+                )
+                .execute()
             )
         except UniqueViolationError:
-            raise ResourceExistsException(
-                detail="You have already registered for this workshop.",
-            )
+            raise ConflictErrorException(detail="You have already registered for this workshop.")
 
     async def unregister_workshop(self, workshop_id: uuid.UUID) -> None:
         """
@@ -237,6 +283,28 @@ class WorkshopHandler:
         :param workshop_id:
         :return:
         """
+        registration_id: Optional[uuid.UUID] = await (
+            self._session.select(
+                PortalWorkshopRegistration.id
+            )
+            .where(PortalWorkshopRegistration.workshop_id == workshop_id)
+            .where(PortalWorkshopRegistration.user_id == self._user_ctx.user_id)
+            .where(PortalWorkshopRegistration.unregistered_at.is_(None))
+            .fetchval()
+        )
+        if not registration_id:
+            raise ConflictErrorException(detail="Unable to unregister workshop.")
+        try:
+            await (
+                self._session.update(PortalWorkshopRegistration)
+                .where(PortalWorkshopRegistration.id == registration_id)
+                .values(
+                    unregistered_at=datetime.now()
+                )
+                .execute()
+            )
+        except Exception as e:
+            raise BadRequestException(detail=f"Unregister workshop failed: {e}")
 
     async def get_registered_workshops(self) -> dict[str, bool]:
         """
@@ -265,7 +333,6 @@ class WorkshopHandler:
             .fetchval()
         )
         return is_full
-
 
     async def get_my_workshops(self) -> WorkshopRegisteredList:
         """

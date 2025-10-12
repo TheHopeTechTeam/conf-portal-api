@@ -10,7 +10,7 @@ from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses import ResourceExistsException, ApiBaseException
+from portal.exceptions.responses import ConflictErrorException, ApiBaseException
 from portal.libs.consts.cache_keys import create_user_role_key
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -141,7 +141,7 @@ class AdminRoleHandler:
                 .execute()
             )
         except UniqueViolationError as e:
-            raise ResourceExistsException(
+            raise ConflictErrorException(
                 detail="Role code already exists",
                 debug_detail=str(e),
             )
@@ -181,7 +181,7 @@ class AdminRoleHandler:
                     detail=f"Role {role_id} not found",
                 )
         except UniqueViolationError as e:
-            raise ResourceExistsException(
+            raise ConflictErrorException(
                 detail="Role code already exists",
                 debug_detail=str(e),
             )

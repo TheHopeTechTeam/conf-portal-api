@@ -8,7 +8,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from asyncpg import UniqueViolationError
 
-from portal.exceptions.responses import ResourceExistsException, ApiBaseException
+from portal.exceptions.responses import ConflictErrorException, ApiBaseException
 from portal.libs.database import Session
 from portal.models import Demo
 from portal.schemas.mixins import UUIDBaseModel
@@ -86,7 +86,7 @@ class DemoHandler:
                 gender=model.gender,
             ).execute()
         except UniqueViolationError as e:
-            raise ResourceExistsException(
+            raise ConflictErrorException(
                 detail="Demo with the same name already exists",
                 debug_detail=str(e),
             )
@@ -128,7 +128,7 @@ class DemoHandler:
                     detail="Demo not found",
                 )
         except UniqueViolationError as e:
-            raise ResourceExistsException(
+            raise ConflictErrorException(
                 detail="Demo with the same name already exists",
                 debug_detail=str(e),
             )

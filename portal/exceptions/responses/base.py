@@ -79,9 +79,9 @@ class NotFoundException(ApiBaseException):
         self.debug_detail = kwargs.pop('debug_detail', None)
 
 
-class ResourceExistsException(ApiBaseException):
+class ConflictErrorException(ApiBaseException):
     """
-    Resource Exists Exception
+    Conflict Error Exception
     status_code: 409
     """
 
