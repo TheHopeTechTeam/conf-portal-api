@@ -18,6 +18,7 @@ from portal.handlers import (
     FileHandler,
     TestimonyHandler,
     UserHandler,
+    WorkshopHandler
 )
 from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.libs.database.session_proxy import SessionProxy
@@ -37,8 +38,9 @@ class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         modules=[],
         packages=[
+            "portal.authorization",
             "portal.handlers",
-            "portal.routers"
+            "portal.routers",
         ],
     )
 
@@ -111,6 +113,12 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
         fcm_device_handler=fcm_device_handler,
+    )
+    workshop_handler = providers.Factory(
+        WorkshopHandler,
+        session=request_session,
+        redis_client=redis_client,
+        file_handler=file_handler,
     )
 
     # [Handlers]

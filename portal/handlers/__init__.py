@@ -15,6 +15,7 @@ from .feedback import FeedbackHandler
 from .file import FileHandler
 from .testimony import TestimonyHandler
 from .user import UserHandler
+from .workshop import WorkshopHandler
 
 __all__ = [
     # admin
@@ -32,6 +33,7 @@ __all__ = [
     "FileHandler",
     "TestimonyHandler",
     "UserHandler",
+    "WorkshopHandler"
 ]
 
 if settings.IS_DEV:

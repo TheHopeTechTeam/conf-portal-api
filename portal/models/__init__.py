@@ -26,7 +26,7 @@ from .rbac import (
     PortalRolePermission
 )
 from .testimony import PortalTestimony
-from .workshop import PortalWorkshop, PortalWorkshopRegistration
+from .workshop import PortalWorkshop, PortalWorkshopInstructor, PortalWorkshopRegistration
 from .auth import PortalAuthDevice, PortalRefreshToken
 
 __all__ = [
@@ -74,6 +74,7 @@ __all__ = [
     "PortalTestimony",
     # workshop
     "PortalWorkshop",
+    "PortalWorkshopInstructor",
     "PortalWorkshopRegistration",
     # auth
     "PortalAuthDevice",

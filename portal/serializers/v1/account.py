@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from portal.libs.consts.enums import LoginMethod
+from portal.libs.consts.enums import AuthProvider
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.ticket import TicketBase
 
@@ -14,8 +14,8 @@ class AccountLogin(BaseModel):
     """
     Account login
     """
-    login_method: LoginMethod = Field(
-        default=LoginMethod.FIREBASE,
+    login_method: AuthProvider = Field(
+        default=AuthProvider.FIREBASE,
         serialization_alias="loginMethod",
         description="Login method"
     )

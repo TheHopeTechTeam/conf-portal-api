@@ -1,5 +1,5 @@
 """
-Top level auth package
+Top level authorization package
 """
 from .access_token import AccessTokenAuth
 

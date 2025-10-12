@@ -90,6 +90,7 @@ class ConferenceHandler:
                     sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
                     sa.cast("address", sa.Text), PortalLocation.address,
                     sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
+                    sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
                 ).label("location"),
                 sa.func.array_agg(
                     sa.func.json_build_object(

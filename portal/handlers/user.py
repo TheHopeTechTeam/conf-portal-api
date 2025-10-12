@@ -12,9 +12,9 @@ from starlette import status
 
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, NotFoundException
-from portal.handlers.fcm_device import FCMDeviceHandler
 from portal.handlers.auth import AuthHandler
-from portal.libs.consts.enums import Provider, LoginMethod
+from portal.handlers.fcm_device import FCMDeviceHandler
+from portal.libs.consts.enums import AuthProvider
 from portal.libs.contexts.api_context import get_api_context, APIContext
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
@@ -64,7 +64,7 @@ class UserHandler:
         :return:
         """
         match model.login_method:
-            case LoginMethod.FIREBASE:
+            case AuthProvider.FIREBASE:
                 return await self.firebase_login(model=model)
             case _:
                 raise ApiBaseException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid login method")
@@ -77,7 +77,7 @@ class UserHandler:
         :return:
         """
         token_payload: FirebaseTokenPayload = await self.verify_login_token(model.firebase_token)
-        provider: Optional[SAuthProvider] = await self.get_provider_by_name(Provider.FIREBASE.value)
+        provider: Optional[SAuthProvider] = await self.get_provider_by_name(AuthProvider.FIREBASE.value)
         user: Optional[SUserThirdParty] = await self.get_user_detail_by_provider_uid(token_payload.user_id)
         if user:
             await (

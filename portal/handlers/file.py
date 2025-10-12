@@ -210,6 +210,7 @@ class FileHandler:
         :param resource_id: Associated resource ID
         :return:
         """
+        # TODO: Add caching for signed URLs to reduce database load
         files: Optional[list[FileBase]] = await (
             self._session.select(
                 PortalFile.id,

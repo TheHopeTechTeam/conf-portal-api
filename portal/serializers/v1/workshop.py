@@ -6,12 +6,12 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.v1.instructor import InstructorBase
 from portal.serializers.v1.location import LocationBase
 
 
-class WorkshopBase(UUIDBaseModel):
+class WorkshopBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Workshop
     """
@@ -20,6 +20,11 @@ class WorkshopBase(UUIDBaseModel):
     location: LocationBase = Field(..., description="Location")
     slido_url: Optional[str] = Field(default=None, serialization_alias="slidoUrl", description="Slido URL")
     is_full: bool = Field(..., serialization_alias="isFull", description="The number of participants has reached the upper limit")
+    # exclude fields for response
+    start_datetime: Optional[datetime] = Field(None, description="Start Date and Time", exclude=True)
+    end_datetime: Optional[datetime] = Field(None, description="End Date and Time", exclude=True)
+    participants_limit: Optional[int] = Field(default=None, description="Participants Limit", exclude=True)
+    timezone: Optional[str] = Field(default=None, description="Time Zone", exclude=True)
 
 
 class WorkshopDetail(WorkshopBase):

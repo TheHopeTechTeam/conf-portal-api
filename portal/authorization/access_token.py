@@ -3,18 +3,19 @@ Bearer token authentication
 """
 from typing import Optional
 
+from dependency_injector.wiring import inject, Provide
 from fastapi import Request
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 
 from portal.container import Container
 from portal.exceptions.responses import UnauthorizedException, InvalidTokenException
-from portal.handlers import AdminUserHandler
-from portal.providers.jwt_provider import JWTProvider
-from portal.providers.firebase import FirebaseProvider
+from portal.handlers import AdminUserHandler, UserHandler
 from portal.libs.contexts.user_context import UserContext, set_user_context
+from portal.providers.firebase import FirebaseProvider
+from portal.providers.jwt_provider import JWTProvider
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.base import AccessTokenPayload
-from portal.schemas.user import SUserDetail, SUserSensitive
+from portal.schemas.user import SUserDetail, SUserSensitive, SUserThirdParty
 
 
 class AccessTokenAuth(HTTPBearer):
@@ -45,16 +46,21 @@ class AccessTokenAuth(HTTPBearer):
             await self.verify_user(request=request, token=token)
 
     @staticmethod
-    async def verify_admin(request: Request, token: str):
+    @inject
+    async def verify_admin(
+        request: Request,
+        token: str,
+        jwt_provider: JWTProvider = Provide[Container.jwt_provider],
+        admin_user_handler: AdminUserHandler = Provide[Container.admin_user_handler],
+    ):
         """
 
         :param request:
         :param token:
+        :param jwt_provider:
+        :param admin_user_handler:
         :return:
         """
-        container: Container = request.app.container
-        jwt_provider: JWTProvider = container.jwt_provider()
-        admin_user_handler: AdminUserHandler = container.admin_user_handler()
         payload: AccessTokenPayload = jwt_provider.verify_token(
             token=token,
             is_admin=True
@@ -79,6 +85,7 @@ class AccessTokenAuth(HTTPBearer):
             display_name=user.display_name,
             gender=user.gender,
             is_ministry=user.is_ministry,
+            login_admin=True,
             token=token,
             token_payload=payload.model_dump(),
             username=user.email.split("@")[0]
@@ -86,11 +93,18 @@ class AccessTokenAuth(HTTPBearer):
         set_user_context(user_context)
 
     @staticmethod
-    async def verify_user(request: Request, token: str):
+    @inject
+    async def verify_user(
+        request: Request,
+        token: str,
+        user_handler: UserHandler = Provide[Container.user_handler],
+    ):
         """
-        TODO: refactor this method
+        TODO: refactor this method, decouple firebase provider from this method and implement own provider for user authentication
+        Verify the Firebase token only at user login
         :param request:
         :param token:
+        :param user_handler:
         :return:
         """
         try:
@@ -98,14 +112,30 @@ class AccessTokenAuth(HTTPBearer):
         except Exception:
             raise InvalidTokenException()
 
-
+        try:
+            user: SUserThirdParty = await user_handler.get_user_detail_by_provider_uid(payload.user_id)
+        except Exception:
+            raise UnauthorizedException()
+        if not user:
+            raise UnauthorizedException()
+        if not user.is_active or not user.verified:
+            raise UnauthorizedException()
 
         user_context = UserContext(
+            user_id=user.id,
+            phone_number=user.phone_number,
+            email=user.email,
+            verified=user.verified,
+            is_active=user.is_active,
+            is_superuser=user.is_superuser,
+            is_admin=user.is_admin,
+            last_login_at=user.last_login_at,
+            display_name=user.display_name,
+            gender=user.gender,
+            is_ministry=user.is_ministry,
+            login_admin=False,
             token=token,
-            token_payload=payload,
-            user_id=payload.user_id,
-            email=payload.email,
-            display_name=payload.name,
-            verified=True,
+            token_payload=payload.model_dump(),
+            username=user.email.split("@")[0]
         )
         set_user_context(user_context)

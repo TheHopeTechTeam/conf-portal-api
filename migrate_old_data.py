@@ -19,7 +19,7 @@ from portal.libs.logger import logger
 from portal.models import (
     PortalConference, PortalConferenceInstructors, PortalEventSchedule,
     PortalFaqCategory, PortalFaq, PortalFcmDevice, PortalFcmUserDevice,
-    PortalFeedback, PortalInstructor, PortalLocation, PortalUser, PortalUserProfile, PortalUserThirdPartyAuth, PortalTestimony, PortalWorkshop, PortalWorkshopRegistration,
+    PortalFeedback, PortalInstructor, PortalLocation, PortalUser, PortalUserProfile, PortalUserThirdPartyAuth, PortalTestimony, PortalWorkshop, PortalWorkshopInstructor, PortalWorkshopRegistration,
 )
 
 
@@ -710,6 +710,55 @@ class AsyncDataMigrator:
             logger.error(f"✗ Failed to migrate workshops: {e}")
             raise
 
+    async def migrate_workshop_instructors(self):
+        """Migrate workshop instructor data from workshop records"""
+        logger.info("=== Migrating Workshop Instructors ===")
+        data = self.load_json_file("portal_workshop.json")
+
+        def process_workshop_instructor_record(record, index):
+            # Extract instructor_id from workshop record
+            instructor_id = record.get("instructor_id")
+            if not instructor_id:
+                return None
+
+            return {
+                "workshop_id": self.convert_uuid(record["id"]),
+                "instructor_id": self.convert_uuid(instructor_id),
+                "is_primary": True,  # Since there's only one instructor per workshop in the old data
+                "sequence": self.calculate_sequence(0, index)  # Default sequence
+            }
+
+        try:
+            workshop_instructor_records = []
+            for record in data:
+                if self.convert_boolean(record.get("is_removed", False)):
+                    continue
+
+                processed_record = process_workshop_instructor_record(record, len(workshop_instructor_records))
+                if processed_record:
+                    workshop_instructor_records.append(processed_record)
+
+            for i in range(0, len(workshop_instructor_records), self.batch_size):
+                batch = workshop_instructor_records[i:i + self.batch_size]
+                await self.process_batch(
+                    batch, "portal_workshop_instructor",
+                    lambda record, index: record, PortalWorkshopInstructor,
+                    skip_removed=False,
+                    conflict={
+                        "method": "do_update",
+                        "constraint": f"pk_{PortalWorkshopInstructor.__tablename__}",
+                        "set_": None
+                    }
+                )
+
+            # Commit after all workshop instructors are processed
+            await self.session.commit()
+            logger.info(f"✓ Successfully migrated {len(workshop_instructor_records)} workshop instructors")
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"✗ Failed to migrate workshop instructors: {e}")
+            raise
+
     async def migrate_workshop_registrations(self):
         """Migrate workshop registration data"""
         logger.info("=== Migrating Workshop Registrations ===")
@@ -752,7 +801,7 @@ class AsyncDataMigrator:
 
         # Migrate in dependency order
         # await self.migrate_users()
-        await self.migrate_user_third_party_auth()
+        # await self.migrate_user_third_party_auth()
         # await self.migrate_locations()
         # await self.migrate_instructors()
         # await self.migrate_conferences()
@@ -765,6 +814,7 @@ class AsyncDataMigrator:
         # await self.migrate_feedback()
         # await self.migrate_testimonies()
         # await self.migrate_workshops()
+        # await self.migrate_workshop_instructors()
         # await self.migrate_workshop_registrations()
 
         # Print migration summary

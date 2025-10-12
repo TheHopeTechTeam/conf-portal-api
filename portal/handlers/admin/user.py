@@ -1,12 +1,12 @@
 """
 AdminUserHandler
 """
+import uuid
 from typing import Optional
 from uuid import UUID
-import uuid
 
-from asyncpg import UniqueViolationError
 import sqlalchemy as sa
+from asyncpg import UniqueViolationError
 from pydantic import EmailStr
 from redis.asyncio import Redis
 
@@ -17,7 +17,6 @@ from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalUser, PortalUserProfile
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
-from portal.serializers.mixins import GenericQueryBaseModel
 from portal.serializers.mixins.base import DeleteBaseModel
 from portal.serializers.v1.admin.user import UserCreate, UserTableItem, UserPages, UserUpdate, UserItem, UserQuery
 
@@ -193,7 +192,6 @@ class AdminUserHandler:
         )
         return user
 
-
     @distributed_trace()
     async def create_user(self, model: UserCreate) -> UUIDBaseModel:
         """
@@ -241,7 +239,6 @@ class AdminUserHandler:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
         else:
             return UUIDBaseModel(id=user_id)
-
 
     @distributed_trace()
     async def update_user(self, user_id: UUID, model: UserUpdate) -> None:
@@ -292,7 +289,6 @@ class AdminUserHandler:
             raise ResourceExistsException(detail="User already exists", debug_detail=str(e))
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
-
 
     @distributed_trace()
     async def delete_user(self, user_id: UUID, model: DeleteBaseModel) -> None:

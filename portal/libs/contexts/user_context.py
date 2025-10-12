@@ -24,6 +24,7 @@ class UserContext(BaseModel):
     display_name: Optional[str] = None
     gender: Optional[Gender] = None
     is_ministry: bool = False
+    login_admin: bool = False
     # token
     token: Optional[str] = None
     token_payload: Optional[dict] = None

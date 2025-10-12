@@ -39,20 +39,9 @@ class Rendition(Enum):
     MAX_1000x1000 = "max-1000x1000"
 
 
-class LoginMethod(Enum):
+class AuthProvider(Enum):
     """
-    Login method
-    """
-    # PASSWORD = "password"
-    # GOOGLE = "google"
-    # FACEBOOK = "facebook"
-    # APPLE = "apple"
-    FIREBASE = "firebase"
-
-
-class Provider(Enum):
-    """
-    Provider
+    Third-party authentication provider
     """
     FIREBASE = "firebase"
 
@@ -200,7 +189,6 @@ class NotificationHistoryStatus(IntEnum):
         :return:
         """
         return [(key.value, key.name.title()) for key in cls]
-
 
 
 class Identity(Enum):
