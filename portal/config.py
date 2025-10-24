@@ -141,8 +141,9 @@ class Configuration(BaseSettings):
         candidate_paths: list[str] = []
         if self.GOOGLE_APPLICATION_CREDENTIALS:
             candidate_paths.append(self.GOOGLE_APPLICATION_CREDENTIALS)
+        project_dir = Path(__file__).resolve().parent.parent
         candidate_paths.extend([
-            "env/google_certificate.json",
+            os.path.join(project_dir, "env/google_certificate.json"),
             "/etc/secrets/google_certificate.json",
         ])
 

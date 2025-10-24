@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from portal.libs.consts.enums import Gender
 from portal.schemas.mixins import UUIDBaseModel, BaseMixinModel
@@ -48,6 +48,23 @@ class SUserThirdParty(SUserDetail):
     provider: str = Field(..., description="Provider name")
     provider_uid: str = Field(..., description="Provider UID")
     additional_data: Optional[dict] = Field(None, description="Additional Data from the provider")
+
+    @field_validator("additional_data", mode="before")
+    @classmethod
+    def serialize_additional_data(cls, value: Optional[str]) -> Optional[dict]:
+        """
+        Validate and serialize additional_data field.
+
+        :param value:
+        :return:
+        """
+        if isinstance(value, str):
+            import ujson
+            try:
+                value = ujson.loads(value)
+            except ujson.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON string for additional_data: {e}")
+        return value
 
 
 class SAuthProvider(UUIDBaseModel):

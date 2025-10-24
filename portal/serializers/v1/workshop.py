@@ -45,7 +45,7 @@ class WorkshopRegistered(WorkshopBase):
     """
     start_datetime: datetime = Field(..., serialization_alias="startDatetime", description="Start Date and Time")
     end_datetime: datetime = Field(..., serialization_alias="endDatetime", description="End Date and Time")
-    is_registered: bool = Field(..., serialization_alias="isRegistered", description="Is registered")
+    is_registered: bool = Field(default=True, serialization_alias="isRegistered", description="Is registered")
 
 
 class WorkshopRegisteredList(BaseModel):

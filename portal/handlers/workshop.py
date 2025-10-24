@@ -309,9 +309,26 @@ class WorkshopHandler:
     async def get_registered_workshops(self) -> dict[str, bool]:
         """
         Get registered workshops
-
         :return:
         """
+        registered_workshops: dict[str, bool] = await (
+            self._session.select(
+                PortalWorkshop.id,
+                sa.case(
+                    (sa.func.count(PortalWorkshopRegistration.id) > 0, True),
+                    else_=False
+                ).label("is_registered")
+            )
+            .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
+            .where(PortalWorkshop.is_deleted == False)
+            .where(PortalWorkshopRegistration.user_id == self._user_ctx.user_id)
+            .where(PortalWorkshopRegistration.unregistered_at.is_(None))
+            .group_by(
+                PortalWorkshop.id
+            )
+            .fetchdict(key="id")
+        )
+        return registered_workshops
 
     async def check_workshop_is_full(self, workshop_id: uuid.UUID) -> bool:
         """
@@ -340,3 +357,56 @@ class WorkshopHandler:
 
         :return:
         """
+        registered_workshops: WorkshopRegistered = await (
+            self._session.select(
+                PortalWorkshop.id,
+                PortalWorkshop.title,
+                PortalWorkshop.start_datetime,
+                PortalWorkshop.end_datetime,
+                PortalWorkshop.description,
+                sa.func.json_build_object(
+                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
+                    sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
+                    sa.cast("address", sa.Text), PortalLocation.address,
+                    sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
+                    sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
+                ).label("location"),
+                PortalWorkshop.slido_url,
+                PortalWorkshop.participants_limit,
+                sa.case(
+                    (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, "TRUE"),
+                    else_="FALSE"
+                ).label("is_full"),
+                PortalWorkshop.timezone,
+                sa.case(
+                    (PortalWorkshopRegistration.unregistered_at.is_(None), True),
+                    else_=False
+                ).label("is_registered"),
+            )
+            .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
+            .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
+            .where(PortalWorkshop.is_deleted == False)
+            .where(PortalLocation.is_deleted == False)
+            .where(PortalWorkshopRegistration.unregistered_at.is_(None))
+            .where(PortalWorkshopRegistration.user_id == self._user_ctx.user_id)
+            .group_by(
+                PortalWorkshop.id,
+                PortalLocation.id,
+                PortalWorkshop.participants_limit,
+                PortalWorkshop.start_datetime
+            )
+            .order_by(PortalWorkshop.start_datetime)
+            .fetch(as_model=WorkshopRegistered)
+        )
+        my_workshops: list[WorkshopRegistered] = []
+        for workshop in registered_workshops: # type: WorkshopRegistered
+            start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
+            end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
+            workshop.start_datetime = start_datetime_with_tz
+            workshop.end_datetime = end_datetime_with_tz
+            location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
+            workshop.location.image_url = location_img[0] if location_img else None
+            my_workshops.append(workshop)
+        return WorkshopRegisteredList(workshops=my_workshops)
+
+

@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+import sqlalchemy as sa
 import pytz
 from fastapi.security.utils import get_authorization_scheme_param
 from redis.asyncio import Redis
@@ -16,6 +17,7 @@ from portal.handlers.auth import AuthHandler
 from portal.handlers.fcm_device import FCMDeviceHandler
 from portal.libs.consts.enums import AuthProvider
 from portal.libs.contexts.api_context import get_api_context, APIContext
+from portal.libs.contexts.request_context import get_request_context, RequestContext
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -41,6 +43,7 @@ class UserHandler:
         # contexts
         self._api_context: APIContext = get_api_context()
         self._user_ctx: UserContext = get_user_context()
+        self._req_ctx: RequestContext = get_request_context()
 
     @staticmethod
     async def verify_login_token(token: str) -> FirebaseTokenPayload:
@@ -78,26 +81,46 @@ class UserHandler:
         """
         token_payload: FirebaseTokenPayload = await self.verify_login_token(model.firebase_token)
         provider: Optional[SAuthProvider] = await self.get_provider_by_name(AuthProvider.FIREBASE.value)
-        user: Optional[SUserThirdParty] = await self.get_user_detail_by_provider_uid(token_payload.user_id)
+        user: Optional[SUserThirdParty] = await self.get_user_detail_by_provider_info(provider_uid=token_payload.user_id, email=token_payload.email)
         if user:
             await (
-                self._session.update(PortalUserThirdPartyAuth)
+                self._session.insert(PortalUserThirdPartyAuth)
                 .values(
-                    additional_data=token_payload.model_dump(
+                    user_id=user.id,
+                    provider_id=provider.id,
+                    provider_uid=token_payload.user_id,
+                    additional_data=token_payload.model_dump_json(
                         exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
-                    )
+                    ),
                 )
-                .where(PortalUserThirdPartyAuth.user_id == user.id)
-                .where(PortalUserThirdPartyAuth.provider_id == provider.id)
-                .where(PortalUserThirdPartyAuth.provider_uid == token_payload.user_id)
+                .on_conflict_do_update(
+                    index_elements=["user_id", "provider_id", "provider_uid"],
+                    set_={
+                        "additional_data": token_payload.model_dump_json(
+                            exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
+                        )
+                    },
+                )
                 .execute()
             )
+            # await (
+            #     self._session.update(PortalUserThirdPartyAuth)
+            #     .values(
+            #         additional_data=token_payload.model_dump(
+            #             exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
+            #         )
+            #     )
+            #     .where(PortalUserThirdPartyAuth.user_id == user.id)
+            #     .where(PortalUserThirdPartyAuth.provider_id == provider.id)
+            #     .where(PortalUserThirdPartyAuth.provider_uid == token_payload.user_id)
+            #     .execute()
+            # )
             await self.update_last_login_at(user_id=user.id)
-            await self.fcm_device_handler.bind_user_device(user_id=user.id, device_id=model.device_id)
+            await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=model.device_id)
             return LoginResponse(id=user.id, verified=True)
         try:
             user_id = await self.create_user(token_payload=token_payload, provider=provider)
-            await self.fcm_device_handler.bind_user_device(user_id=user_id, device_id=model.device_id)
+            await self.fcm_device_handler.bind_user_device(user_id=user_id, device_key=model.device_id)
         except Exception as e:
             logger.error(f"Error creating user: {e}")
             raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
@@ -168,10 +191,11 @@ class UserHandler:
         )
         return provider
 
-    async def get_user_detail_by_provider_uid(self, provider_uid: str) -> Optional[SUserThirdParty]:
+    async def get_user_detail_by_provider_info(self, provider_uid: str, email: str = None) -> Optional[SUserThirdParty]:
         """
         Get user detail by provider id
         :param provider_uid:
+        :param email:
         :return:
         """
         user: Optional[SUserThirdParty] = await (
@@ -195,7 +219,8 @@ class UserHandler:
             .outerjoin(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
             .outerjoin(PortalUserThirdPartyAuth, PortalUser.id == PortalUserThirdPartyAuth.user_id)
             .outerjoin(PortalThirdPartyProvider, PortalUserThirdPartyAuth.provider_id == PortalThirdPartyProvider.id)
-            .where(PortalUserThirdPartyAuth.provider_uid == provider_uid)
+            .where(email is None, lambda: PortalUserThirdPartyAuth.provider_uid == provider_uid)
+            .where(email is not None, lambda: sa.or_(PortalUserThirdPartyAuth.provider_uid == provider_uid, PortalUser.email == email))
             .where(PortalUser.is_deleted == False)
             .where(PortalUser.is_active == True)
             .fetchrow(as_model=SUserThirdParty)

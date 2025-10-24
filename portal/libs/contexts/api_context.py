@@ -42,4 +42,7 @@ def get_api_context() -> APIContext:
 
     :return:
     """
-    return auth_context.get()
+    try:
+        return auth_context.get()
+    except LookupError:
+        return APIContext()

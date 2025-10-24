@@ -22,6 +22,7 @@ from portal.config import settings
 from portal.container import Container
 from portal.libs.database import Session
 from portal.libs.contexts.request_session_context import get_request_session
+from portal.libs.logger import logger
 from portal.libs.utils.lifespan import lifespan
 from portal.middlewares import CoreRequestMiddleware
 from portal.routers import api_router
@@ -106,7 +107,7 @@ def get_application() -> FastAPI:
     try:
         init_firebase()
     except Exception as e:
-        print(f"Firebase init error: {e}")
+        logger.error(f"Error initializing firebase: {e}")
     register_middleware(application=application)
     register_router(application=application)
 

@@ -113,7 +113,7 @@ class AccessTokenAuth(HTTPBearer):
             raise InvalidTokenException()
 
         try:
-            user: SUserThirdParty = await user_handler.get_user_detail_by_provider_uid(payload.user_id)
+            user: SUserThirdParty = await user_handler.get_user_detail_by_provider_info(payload.user_id)
         except Exception:
             raise UnauthorizedException()
         if not user:
