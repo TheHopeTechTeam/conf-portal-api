@@ -109,6 +109,11 @@ alwaysApply: false
 -   Time window: {time range}
 -   Rate limit exceeded response: 429 Too Many Requests
 
+## API Documentation
+
+Make sure deeply read existing Request and Response models that are used in router which are defined in specific `serializers/v{n}/...` directory.
+
+---
 ## API Name
 
 -   {description of the API}
@@ -130,9 +135,12 @@ alwaysApply: false
 | Parameter | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | page | integer | No | 1 | Page number |
-| size | integer | No | 20 | Items per page |
-| sort | string | No | created_at | Sort field |
-| order | string | No | desc | Sort direction (asc/desc) |
+| page_size | integer | No | 20 | Items per page |
+| order_by | string | No | created_at | Sort field |
+| descending | boolean | No | false | Sort direction (true: desc, false: asc) |
+| keyword | string | No | null | Keyword for search |
+| deleted | boolean | No | false | Whether to include deleted items |
+| ... additional parameters ... | ... | ... | ... | ... |
 
 -   **Request Example**:
 ```json
@@ -202,3 +210,4 @@ curl -X {METHOD} "{URL}" \
 | v1.1.0 | 2024-01-15 | Added resource management features |
 
 ```
+---

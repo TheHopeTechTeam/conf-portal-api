@@ -2,9 +2,10 @@
 Admin permission API routes
 """
 import uuid
+from typing import Annotated
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 
 from portal.container import Container
 from portal.handlers import AdminPermissionHandler
@@ -12,12 +13,33 @@ from portal.libs.depends import check_admin_access_token
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.permission import (
+    PermissionPage,
+    PermissionQuery,
     PermissionItem,
     PermissionCreate,
-    PermissionUpdate,
+    PermissionUpdate, PermissionBulkAction,
 )
 
 router = APIRouter(dependencies=[check_admin_access_token])
+
+
+@router.get(
+    path="/pages",
+    status_code=status.HTTP_200_OK,
+    response_model=PermissionPage
+)
+@inject
+async def get_permission_pages(
+    query_model: Annotated[PermissionQuery, Query()],
+    admin_permission_handler: AdminPermissionHandler = Depends(Provide[Container.admin_permission_handler])
+):
+    """
+    Get permission pages
+    :param query_model:
+    :param admin_permission_handler:
+    :return:
+    """
+    return await admin_permission_handler.get_permission_pages(model=query_model)
 
 
 @router.post(
@@ -59,6 +81,24 @@ async def get_permission(
 
 
 @router.put(
+    path="/restore",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def restore_permission(
+    model: PermissionBulkAction,
+    admin_permission_handler: AdminPermissionHandler = Depends(Provide[Container.admin_permission_handler])
+):
+    """
+    Restore a permission
+    :param model:
+    :param admin_permission_handler:
+    :return:
+    """
+    await admin_permission_handler.restore_permission(model=model)
+
+
+@router.put(
     path="/{permission_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
@@ -96,21 +136,3 @@ async def delete_permission(
     :return:
     """
     await admin_permission_handler.delete_permission(permission_id=permission_id, model=model)
-
-
-@router.put(
-    path="/restore/{permission_id}",
-    status_code=status.HTTP_204_NO_CONTENT
-)
-@inject
-async def restore_permission(
-    permission_id: uuid.UUID,
-    admin_permission_handler: AdminPermissionHandler = Depends(Provide[Container.admin_permission_handler])
-):
-    """
-    Restore a permission
-    :param permission_id:
-    :param admin_permission_handler:
-    :return:
-    """
-    await admin_permission_handler.restore_permission(permission_id=permission_id)

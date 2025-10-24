@@ -13,7 +13,7 @@ from portal.libs.depends import check_admin_access_token
 from portal.route_classes import LogRoute
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
-from portal.serializers.v1.admin.user import UserQuery, UserPages, UserCreate, UserItem, UserUpdate, UserBulkDelete
+from portal.serializers.v1.admin.user import UserQuery, UserPages, UserCreate, UserItem, UserUpdate, UserBulkAction
 
 router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
 
@@ -80,6 +80,24 @@ async def get_user(
 
 
 @router.put(
+    path="/restore",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def restore_users(
+    model: UserBulkAction,
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+    Restore soft-deleted users
+    :param model:
+    :param admin_user_handler:
+    :return:
+    """
+    await admin_user_handler.restore_user(model=model)
+
+
+@router.put(
     path="/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
@@ -117,21 +135,3 @@ async def delete_user(
     :return:
     """
     await admin_user_handler.delete_user(user_id=user_id, model=model)
-
-
-@router.put(
-    path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
-)
-@inject
-async def restore_users(
-    model: UserBulkDelete,
-    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
-):
-    """
-    Restore soft-deleted users
-    :param model:
-    :param admin_user_handler:
-    :return:
-    """
-    await admin_user_handler.restore_user(user_ids=model.ids)

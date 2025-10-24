@@ -767,7 +767,7 @@ class Session(ISession):
                     )
                     index += 1
         else:
-            result: PGCompiler = statement.compile(dialect=postgresql.dialect())
+            result: PGCompiler = statement.compile(dialect=postgresql.dialect(), compile_kwargs={"render_postcompile": True})
             sql = str(result)
             raw_sql = sql
             index = 1

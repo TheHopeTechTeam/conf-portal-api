@@ -589,7 +589,7 @@ class HttpClient:
     """HttpClient"""
 
     def __init__(self, defaults: HttpDefaults = None):
-        self.defaults: HttpDefaults = defaults or HttpDefaults(verbose=settings.DEBUG)
+        self.defaults: HttpDefaults = defaults or HttpDefaults(verbose=settings.IS_DEV)
 
     def create(self, url: str = None) -> HttpSession:
         """

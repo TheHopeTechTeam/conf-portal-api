@@ -18,7 +18,7 @@ from portal.models import PortalUser, PortalUserProfile
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
 from portal.serializers.mixins.base import DeleteBaseModel
-from portal.serializers.v1.admin.user import UserCreate, UserTableItem, UserPages, UserUpdate, UserItem, UserQuery
+from portal.serializers.v1.admin.user import UserCreate, UserTableItem, UserPages, UserUpdate, UserItem, UserQuery, UserBulkAction
 
 
 class AdminUserHandler:
@@ -308,17 +308,20 @@ class AdminUserHandler:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
 
     @distributed_trace()
-    async def restore_user(self, user_ids: list[UUID]) -> None:
+    async def restore_user(self, model: UserBulkAction) -> None:
         """
         Restore users
-        :param user_ids:
+        :param model:
         :return:
         """
+        if not model.ids:
+            raise ApiBaseException(status_code=400, detail="No user ids provided")
+        ids = [_id.hex for _id in model.ids]
         try:
             await (
                 self._session.update(PortalUser)
                 .values(is_deleted=False, delete_reason=None)
-                .where(PortalUser.id.in_(user_ids))
+                .where(PortalUser.id.in_(ids))
                 .execute()
             )
         except Exception as e:

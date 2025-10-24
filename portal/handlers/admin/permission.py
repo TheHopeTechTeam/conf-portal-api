@@ -10,7 +10,7 @@ from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses import ApiBaseException, ResourceExistsException
+from portal.exceptions.responses import ApiBaseException, ConflictErrorException
 from portal.libs.consts.cache_keys import create_permission_key
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -18,11 +18,11 @@ from portal.models import PortalPermission, PortalVerb, PortalResource, PortalRo
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.permission import PermissionBase
 from portal.schemas.user import SUserSensitive
-from portal.serializers.mixins import DeleteBaseModel
+from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
 from portal.serializers.v1.admin.permission import (
     PermissionItem,
     PermissionCreate,
-    PermissionUpdate,
+    PermissionUpdate, PermissionQuery, PermissionPageItem, PermissionPage, PermissionBulkAction,
 )
 
 
@@ -136,10 +136,6 @@ class AdminPermissionHandler:
     async def get_permission_by_id(self, permission_id: UUID) -> Optional[PermissionItem]:
         """
         Get permission by id
-        func.array_agg(func.json_build_object(
-           cast('id', VARCHAR(40)), sa.func.replace(sa.cast(SysSite.id, sa.String), '-', ''),
-           cast('site_no', VARCHAR(40)), SysSite.site_no,
-           cast('is_cdn_opened', VARCHAR(40)), SysSite.is_cdn_opened)).label('site_info_array'),
         :param permission_id:
         :return:
         """
@@ -179,6 +175,53 @@ class AdminPermissionHandler:
             return item
 
     @distributed_trace()
+    async def get_permission_pages(
+        self,
+        model: PermissionQuery
+    ):
+        """
+
+        :param model:
+        :return:
+        """
+        items, count = await (
+            self._session.select(
+                PortalPermission.id,
+                PortalPermission.display_name,
+                PortalPermission.code,
+                PortalPermission.is_active,
+                PortalPermission.description,
+                PortalPermission.remark,
+                PortalResource.name.label("resource_name"),
+                PortalVerb.display_name.label("verb_name"),
+            )
+            .outerjoin(PortalResource, PortalPermission.resource_id == PortalResource.id)
+            .outerjoin(PortalVerb, PortalPermission.verb_id == PortalVerb.id)
+            .where(PortalPermission.is_deleted == model.deleted)
+            .where(
+                model.keyword, lambda: sa.or_(
+                    PortalPermission.display_name.ilike(f"%{model.keyword}%"),
+                    PortalPermission.code.ilike(f"%{model.keyword}%")
+                )
+            )
+            .where(model.is_active is not None, lambda: PortalPermission.is_active == model.is_active)
+            .order_by_with(
+                tables=[PortalPermission],
+                order_by=model.order_by,
+                descending=model.descending
+            )
+            .limit(model.page_size)
+            .offset(model.page * model.page_size)
+            .fetchpages(as_model=PermissionPageItem)
+        )  # type: (list[PermissionPageItem], int)
+        return PermissionPage(
+            page=model.page,
+            page_size=model.page_size,
+            total=count,
+            items=items
+        )
+
+    @distributed_trace()
     async def create_permission(self, model: PermissionCreate) -> UUIDBaseModel:
         """
         Create a permission
@@ -196,7 +239,7 @@ class AdminPermissionHandler:
                 .execute()
             )
         except UniqueViolationError as e:
-            raise ResourceExistsException(
+            raise ConflictErrorException(
                 detail=f"Permission {model.code} already exists",
                 debug_detail=str(e),
             )
@@ -231,7 +274,7 @@ class AdminPermissionHandler:
                     detail=f"Permission {permission_id} not found",
                 )
         except UniqueViolationError as e:
-            raise ResourceExistsException(
+            raise ConflictErrorException(
                 detail=f"Permission {model.code} already exists",
                 debug_detail=str(e),
             )
@@ -284,18 +327,17 @@ class AdminPermissionHandler:
             )
 
     @distributed_trace()
-    async def restore_permission(self, permission_id: UUID) -> None:
+    async def restore_permission(self, model: PermissionBulkAction) -> None:
         """
         Restore a permission
-        :param permission_id:
+        :param model:
         :return:
         """
         try:
             await (
                 self._session.update(PortalPermission)
                 .values(is_deleted=False, delete_reason=None)
-                .where(PortalPermission.id == permission_id)
-                .where(PortalPermission.is_deleted == True)
+                .where(PortalPermission.id.in_(model.ids))
                 .execute()
             )
         except Exception as e:

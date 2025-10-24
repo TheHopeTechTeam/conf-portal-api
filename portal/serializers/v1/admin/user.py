@@ -55,6 +55,6 @@ class UserUpdate(UserCreate):
     pass
 
 
-class UserBulkDelete(BaseModel):
-    """UserBulkDelete"""
-    ids: list[UUID] = Field(..., description="User IDs to delete")
+class UserBulkAction(BaseModel):
+    """UserBulkAction"""
+    ids: list[UUID] = Field(..., description="User IDs for bulk action")
