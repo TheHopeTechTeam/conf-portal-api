@@ -2,21 +2,23 @@
 Admin resource API routes
 """
 import uuid
+from typing import Annotated
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 
 from portal.container import Container
 from portal.handlers import AdminResourceHandler
 from portal.libs.depends import check_admin_access_token
 from portal.schemas.mixins import UUIDBaseModel
-from portal.serializers.mixins import DeleteBaseModel
+from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
+from portal.serializers.mixins.base import DeleteQueryBaseModel
 from portal.serializers.v1.admin.resource import (
     ResourceItem,
     ResourceCreate,
     ResourceUpdate,
     ResourceChangeSequence,
-    ResourceList,
+    ResourceList, ResourceDetail,
 )
 
 router = APIRouter(dependencies=[check_admin_access_token])
@@ -118,6 +120,25 @@ async def change_resource_sequence(
 
 
 @router.get(
+    "/lists",
+    status_code=status.HTTP_200_OK,
+    response_model=ResourceList
+)
+@inject
+async def get_resources(
+    query_model: Annotated[DeleteQueryBaseModel, Query()],
+    admin_resource_handler: AdminResourceHandler = Depends(Provide[Container.admin_resource_handler])
+):
+    """
+    Get resources
+    :param query_model:
+    :param admin_resource_handler:
+    :return:
+    """
+    return await admin_resource_handler.get_resources(query_model)
+
+
+@router.get(
     path="/menus",
     status_code=status.HTTP_200_OK,
     response_model=ResourceList
@@ -137,7 +158,7 @@ async def get_menus(
 @router.get(
     path="/{resource_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ResourceItem
+    response_model=ResourceDetail
 )
 @inject
 async def get_resource(
@@ -150,4 +171,4 @@ async def get_resource(
     :param admin_resource_handler:
     :return:
     """
-    return admin_resource_handler.get_resource(resource_id=resource_id)
+    return await admin_resource_handler.get_resource(resource_id=resource_id)

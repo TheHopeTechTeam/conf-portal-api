@@ -1,11 +1,17 @@
 """
 Base serializer mixin for all serializers.
 """
-import abc
-from typing import Any, Optional
+from typing import Optional
 
 import pydantic
 from pydantic import BaseModel, Field
+
+
+class DeleteQueryBaseModel(BaseModel):
+    """
+    Base serializer mixin for all delete query models.
+    """
+    deleted: bool = Field(False, description="Deleted items only")
 
 
 class PaginationQueryBaseModel(BaseModel):
@@ -24,12 +30,11 @@ class OrderByQueryBaseModel(PaginationQueryBaseModel):
     descending: bool = Field(False, description="Descending order")
 
 
-class GenericQueryBaseModel(OrderByQueryBaseModel):
+class GenericQueryBaseModel(OrderByQueryBaseModel, DeleteQueryBaseModel):
     """
     Base serializer mixin for all generic query models.
     """
     keyword: Optional[str] = Field(None, description="Keyword filter")
-    deleted: bool = Field(False, description="Deleted items only")
 
 
 class PaginationBaseResponseModel(BaseModel):
@@ -43,6 +48,7 @@ class PaginationBaseResponseModel(BaseModel):
     def __init_subclass__(cls, **kwargs):
         if not hasattr(cls, "items"):
             raise ValueError("items field is required")
+
 
 class DeleteBaseModel(BaseModel):
     """

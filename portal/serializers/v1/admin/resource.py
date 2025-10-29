@@ -4,26 +4,45 @@ Resource serializers
 from typing import Optional
 from uuid import UUID
 
-import pydantic
-from pydantic import Field, BaseModel, field_validator, field_serializer
+from pydantic import Field, BaseModel, field_validator
 
 from portal.libs.consts.enums import ResourceType
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import PaginationBaseResponseModel
 
 
-class ResourceItem(UUIDBaseModel):
-    """ResourceItem"""
-    pid: Optional[UUID] = Field(..., description="Parent resource id")
+class ResourceBase(UUIDBaseModel):
+    """ResourceBase"""
     name: str = Field(..., description="Name")
     key: str = Field(..., description="Key")
     code: str = Field(..., description="Code")
     icon: Optional[str] = Field(None, description="Icon")
+
+
+class ResourceItem(ResourceBase):
+    """ResourceItem"""
+    pid: Optional[UUID] = Field(None, description="Parent resource id")
     path: Optional[str] = Field(None, description="Path")
     type: ResourceType = Field(..., description="Resource type")
     description: Optional[str] = Field(None, description="Description")
     remark: Optional[str] = Field(None, description="Remark")
     sequence: float = Field(..., description="Sequence")
+    is_deleted: bool = Field(False, description="Is deleted")
+
+
+class ResourceParent(ResourceBase, JSONStringMixinModel):
+    """ResourceParent"""
+    id: Optional[UUID] = Field(None, description="Resource id")
+    name: Optional[str] = Field(None, description="Name")
+    key: Optional[str] = Field(None, description="Key")
+    code: Optional[str] = Field(None, description="Code")
+    icon: Optional[str] = Field(None, description="Icon")
+
+
+class ResourceDetail(ResourceItem):
+    """ResourceDetail"""
+    pid: Optional[UUID] = Field(None, description="Parent resource id", exclude=True)
+    parent: Optional[ResourceParent] = Field(None, description="Parent resource")
 
 
 class ResourcePages(PaginationBaseResponseModel):
@@ -45,13 +64,13 @@ class ResourceTreeItem(ResourceItem):
         """validate children depth not exceed limit"""
         if v is not None:
             for child in v:
-                cls.validate_node_depth(child, 2)  # start from second level
+                cls.validate_node_depth(child, 1)  # start from second level
         return v
 
     @classmethod
     def validate_node_depth(cls, node: "ResourceTreeItem", current_depth: int):
         """validate node depth"""
-        if current_depth > 3:
+        if current_depth > 2:
             raise ValueError("Tree structure exceeds three levels limit")
 
         if node.children:
@@ -60,7 +79,7 @@ class ResourceTreeItem(ResourceItem):
 
 
 class ResourceTree(BaseModel):
-    """Resource Tree - Max 3 levels"""
+    """Resource Tree - Max 2 levels"""
     items: Optional[list[ResourceTreeItem]] = Field(None, description="Root resource items")
 
     @field_validator('items')

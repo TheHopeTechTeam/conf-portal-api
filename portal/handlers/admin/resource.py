@@ -1,9 +1,11 @@
 """
 Handler for admin resource
 """
+import asyncio
 import uuid
 
 import sqlalchemy as sa
+from sqlalchemy.orm import aliased
 from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
@@ -14,6 +16,7 @@ from portal.libs.database import Session, RedisPool
 from portal.models import PortalResource, PortalPermission, PortalRole, PortalUser, PortalRolePermission
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
+from portal.serializers.mixins.base import DeleteQueryBaseModel
 from portal.serializers.v1.admin.resource import (
     ResourceCreate,
     ResourceUpdate,
@@ -21,7 +24,7 @@ from portal.serializers.v1.admin.resource import (
     ResourceItem,
     ResourceTree,
     ResourceTreeItem,
-    ResourceList,
+    ResourceList, ResourceDetail,
 )
 
 
@@ -37,28 +40,38 @@ class AdminResourceHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._user_ctx: UserContext = get_user_context()
 
-    async def get_resource(self, resource_id: uuid.UUID) -> ResourceItem:
+    async def get_resource(self, resource_id: uuid.UUID) -> ResourceDetail:
         """
 
         :param resource_id:
         :return:
         """
-        resource: ResourceItem = await (
+        pr_parent = aliased(PortalResource)
+        resource: ResourceDetail = await (
             self._session.select(
                 PortalResource.id,
-                PortalResource.pid,
                 PortalResource.name,
                 PortalResource.key,
                 PortalResource.code,
                 PortalResource.icon,
                 PortalResource.path,
                 PortalResource.type,
-                PortalResource.description,
                 PortalResource.remark,
-                PortalResource.sequence
+                PortalResource.description,
+                PortalResource.sequence,
+                PortalResource.is_deleted,
+                sa.func.json_build_object(
+                    sa.cast("id", sa.VARCHAR(4)), pr_parent.id,
+                    sa.cast("name", sa.VARCHAR(4)), pr_parent.name,
+                    sa.cast("key", sa.VARCHAR(4)), pr_parent.key,
+                    sa.cast("code", sa.VARCHAR(4)), pr_parent.code,
+                    sa.cast("icon", sa.VARCHAR(4)), pr_parent.icon,
+                ).label("parent")
             )
+            .select_from(PortalResource)
+            .outerjoin(pr_parent, PortalResource.pid == pr_parent.id)
             .where(PortalResource.id == resource_id)
-            .fetchrow(as_model=ResourceItem)
+            .fetchrow(as_model=ResourceDetail)
         )
         if not resource:
             raise NotFoundException(detail=f"Resource {resource_id} not found")
@@ -166,8 +179,8 @@ class AdminResourceHandler:
             if not model.permanent:
                 await (
                     self._session.update(PortalResource)
-                    .values(is_deleted=True, deleted_reason=model.reason)
-                    .where(sa.and_(PortalResource.id == resource_id, PortalResource.pid == resource_id))
+                    .values(is_deleted=True, delete_reason=model.reason)
+                    .where(sa.or_(PortalResource.id == resource_id, PortalResource.pid == resource_id))
                     .execute()
                 )
             else:
@@ -190,8 +203,8 @@ class AdminResourceHandler:
         try:
             await (
                 self._session.update(PortalResource)
-                .values(is_deleted=False, deleted_reason=None)
-                .where(sa.and_(PortalResource.id == resource_id, PortalResource.pid == resource_id))
+                .values(is_deleted=False, delete_reason=None)
+                .where(sa.or_(PortalResource.id == resource_id, PortalResource.pid == resource_id))
                 .execute()
             )
         except Exception as e:
@@ -256,9 +269,15 @@ class AdminResourceHandler:
                 PortalResource.icon,
                 PortalResource.path,
                 PortalResource.type,
-                PortalResource.sequence
+                PortalResource.description,
+                PortalResource.sequence,
+                PortalResource.is_deleted
             )
-            .where(PortalResource.is_deleted == is_deleted)
+            .where(is_deleted == True, lambda: sa.or_(
+                PortalResource.is_deleted == is_deleted,
+                sa.and_(PortalResource.pid.is_(None), PortalResource.is_deleted == False)
+            ))
+            .where(is_deleted == False, lambda: PortalResource.is_deleted == is_deleted)
             .order_by(PortalResource.sequence)
             .fetch(as_model=ResourceItem)
         )
@@ -299,6 +318,17 @@ class AdminResourceHandler:
         )
         return resources
 
+    async def get_resources(self, model: DeleteQueryBaseModel):
+        """
+        get resources
+        :param model:
+        :return:
+        """
+        if not self._user_ctx.user_id or not self._user_ctx.is_admin:
+            raise UnauthorizedException()
+        resources = await self.get_resource_menus(is_deleted=model.deleted)
+        return ResourceList(items=resources)
+
     async def get_user_permission_menus(self) -> ResourceList:
         """
 
@@ -312,4 +342,5 @@ class AdminResourceHandler:
         else:
             resource_items = await self.get_resource_by_user_id(user_id=self._user_ctx.user_id)
 
+        await asyncio.sleep(1)
         return ResourceList(items=resource_items)

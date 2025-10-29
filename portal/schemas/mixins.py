@@ -16,13 +16,15 @@ class UUIDBaseModel(BaseModel):
     id: Optional[UUID] = Field(default_factory=uuid4)
 
     @field_serializer("id")
-    def serialize_uuid(self, value: UUID, _info) -> str:
+    def serialize_uuid(self, value: UUID, _info) -> Optional[str]:
         """
 
         :param value:
         :param _info:
         :return:
         """
+        if value is None:
+            return None
         return str(value)
 
 
