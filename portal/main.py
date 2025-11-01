@@ -7,6 +7,7 @@ import firebase_admin
 import sentry_sdk
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.exception_handlers import http_exception_handler
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from firebase_admin import credentials
 from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
@@ -97,7 +98,14 @@ def get_application() -> FastAPI:
     get application
     """
     setup_tracing()
-    application = FastAPI(lifespan=lifespan)
+    application = FastAPI(
+        lifespan=lifespan,
+        title=settings.APP_NAME.replace("-", " ").title().replace("Api", "API"),
+        version=settings.APP_VERSION,
+        summary="Conferences Portal API",
+        description="API documentation for Conferences Portal",
+    )
+
     # set container
     application.container = Container()
 

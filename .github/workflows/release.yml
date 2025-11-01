@@ -90,3 +90,19 @@ jobs:
                 "imagePath":"${{ steps.meta.outputs.tags }}"
               }
             }'
+
+          curl --location --request PUT 'https://api.render.com/v1/env-groups/${{ secrets.RENDER_ENVIRONMENT_STG_ID }}/env-vars/VERSION' \
+          --header 'accept: application/json' \
+          --header 'content-type: application/json' \
+          --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+          --data '{
+              "value": "${{ github.ref_name }}"
+          }'
+
+          curl --location --request PUT 'https://api.render.com/v1/env-groups/${{ secrets.RENDER_ENVIRONMENT_PROD_ID }}/env-vars/VERSION' \
+          --header 'accept: application/json' \
+          --header 'content-type: application/json' \
+          --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+          --data '{
+              "value": "${{ github.ref_name }}"
+          }'

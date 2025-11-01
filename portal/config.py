@@ -61,6 +61,7 @@ class Configuration(BaseSettings):
     # [App Base]
     APP_NAME: str = "conf-portal-api"
     ENV: str = os.getenv(key="ENV", default="dev").lower()
+    APP_VERSION: str = os.getenv(key="VERSION", default="v0.1.0")
     IS_PROD: bool = ENV == "prod"
     IS_DEV: bool = ENV not in ["prod", "stg"]
     APP_FQDN: str = os.getenv(key="APP_FQDN", default="localhost")
