@@ -10,7 +10,6 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from firebase_admin import credentials
 from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
-from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
@@ -21,7 +20,6 @@ from starlette.responses import RedirectResponse
 from portal.config import settings
 from portal.container import Container
 from portal.exceptions.responses import ApiBaseException
-from portal.libs.database import Session
 from portal.libs.contexts.request_session_context import get_request_session
 from portal.libs.logger import logger
 from portal.libs.utils.lifespan import lifespan
@@ -42,7 +40,6 @@ def setup_tracing():
         dsn=settings.SENTRY_URL,
         integrations=[
             AsyncPGIntegration(),
-            DjangoIntegration(),
             FastApiIntegration(),
             HttpxIntegration(),
             RedisIntegration(),
