@@ -7,6 +7,7 @@ from .admin.permission import AdminPermissionHandler
 from .admin.resource import AdminResourceHandler
 from .admin.role import AdminRoleHandler
 from .admin.user import AdminUserHandler
+from .admin.verb import AdminVerbHandler
 from .conference import ConferenceHandler
 from .event_info import EventInfoHandler
 from .faq import FAQHandler
@@ -24,6 +25,7 @@ __all__ = [
     "AdminResourceHandler",
     "AdminRoleHandler",
     "AdminUserHandler",
+    "AdminVerbHandler",
     # general
     "ConferenceHandler",
     "EventInfoHandler",

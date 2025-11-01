@@ -16,7 +16,7 @@ from portal.serializers.v1.admin.role import (
     RolePages,
     RoleCreate,
     RoleUpdate,
-    RolePermissionAssign,
+    RolePermissionAssign, RoleTableItem,
 )
 
 
@@ -40,6 +40,25 @@ async def get_role_pages(
     :return:
     """
     return await admin_role_handler.get_role_pages(model=query_model)
+
+
+@router.get(
+    path="/{role_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=RoleTableItem
+)
+@inject
+async def get_role(
+    role_id: uuid.UUID,
+    admin_role_handler: AdminRoleHandler = Depends(Provide[Container.admin_role_handler])
+):
+    """
+
+    :param role_id:
+    :param admin_role_handler:
+    :return:
+    """
+    return await admin_role_handler.get_role_by_id(role_id=role_id)
 
 
 @router.post(

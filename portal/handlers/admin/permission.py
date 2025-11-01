@@ -11,7 +11,7 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, ConflictErrorException
-from portal.libs.consts.cache_keys import create_permission_key
+from portal.libs.consts.cache_keys import create_permission_key, CacheKeys, CacheExpiry
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalPermission, PortalVerb, PortalResource, PortalRole, PortalUser, PortalRolePermission
@@ -20,9 +20,9 @@ from portal.schemas.permission import PermissionBase
 from portal.schemas.user import SUserSensitive
 from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
 from portal.serializers.v1.admin.permission import (
-    PermissionItem,
+    PermissionDetail,
     PermissionCreate,
-    PermissionUpdate, PermissionQuery, PermissionPageItem, PermissionPage, PermissionBulkAction,
+    PermissionUpdate, PermissionQuery, PermissionPageItem, PermissionPage, PermissionBulkAction, PermissionList, PermissionItem,
 )
 
 
@@ -133,14 +133,14 @@ class AdminPermissionHandler:
         )
 
     @distributed_trace()
-    async def get_permission_by_id(self, permission_id: UUID) -> Optional[PermissionItem]:
+    async def get_permission_by_id(self, permission_id: UUID) -> Optional[PermissionDetail]:
         """
         Get permission by id
         :param permission_id:
         :return:
         """
         try:
-            item: Optional[PermissionItem] = await (
+            item: Optional[PermissionDetail] = await (
                 self._session.select(
                     PortalPermission.id,
                     PortalPermission.display_name,
@@ -163,7 +163,7 @@ class AdminPermissionHandler:
                 .outerjoin(PortalResource, PortalPermission.resource_id == PortalResource.id)
                 .outerjoin(PortalVerb, PortalPermission.verb_id == PortalVerb.id)
                 .where(PortalPermission.id == permission_id)
-                .fetchrow(as_model=PermissionItem)
+                .fetchrow(as_model=PermissionDetail)
             )
         except Exception as e:
             raise ApiBaseException(
@@ -346,3 +346,33 @@ class AdminPermissionHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+
+    @distributed_trace()
+    async def get_permission_list(self):
+        """
+
+        :return:
+        """
+        cache_key = CacheKeys(resource="permission").add_attribute("list").build()
+        cached = await self._redis.get(cache_key)
+        if cached:
+            return PermissionList.model_validate_json(cached)
+
+        permissions: list[PermissionItem] = await (
+            self._session.select(
+                PortalPermission.id,
+                PortalPermission.display_name,
+                PortalPermission.code,
+                PortalPermission.is_active,
+                PortalPermission.description,
+                PortalPermission.remark,
+                PortalPermission.resource_id,
+                PortalPermission.verb_id
+            )
+            .where(PortalPermission.is_deleted == False)
+            .order_by(PortalPermission.resource_id)
+            .fetch(as_model=PermissionItem)
+        )
+        result = PermissionList(items=permissions)
+        await self._redis.set(cache_key, result.model_dump_json(), ex=CacheExpiry.MONTH)
+        return result

@@ -120,7 +120,7 @@ async def change_resource_sequence(
 
 
 @router.get(
-    "/lists",
+    "/list",
     status_code=status.HTTP_200_OK,
     response_model=ResourceList
 )

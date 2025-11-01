@@ -9,20 +9,11 @@ from zoneinfo import ZoneInfo
 
 import sqlalchemy as sa
 from asyncpg import UniqueViolationError
-
-from django.core.cache import BaseCache, cache
-from django.db import IntegrityError
 from redis.asyncio import Redis
 
 from portal.config import settings
-# from portal.apps.account.models import Account
-# from portal.apps.instructor.models import Instructor
-# from portal.apps.location.models import Location
-# from portal.apps.workshop.models import WorkshopTimeSlot, Workshop, WorkshopRegistration
-from portal.exceptions.responses import APIException, NotFoundException, ConflictErrorException, BadRequestException
+from portal.exceptions.responses import NotFoundException, ConflictErrorException, BadRequestException
 from portal.handlers.file import FileHandler
-from portal.libs.consts.enums import Rendition
-from portal.libs.contexts.api_context import APIContext, get_api_context
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.models import (
@@ -32,8 +23,6 @@ from portal.models import (
     PortalInstructor,
     PortalLocation,
 )
-from portal.serializers.v1.instructor import InstructorBase
-from portal.serializers.v1.location import LocationBase
 from portal.serializers.v1.workshop import (
     WorkshopBase,
     WorkshopDetail,
@@ -246,7 +235,6 @@ class WorkshopHandler:
         )
         return has_registered
 
-
     async def register_workshop(self, workshop_id: uuid.UUID) -> None:
         """
         Register workshop
@@ -399,7 +387,7 @@ class WorkshopHandler:
             .fetch(as_model=WorkshopRegistered)
         )
         my_workshops: list[WorkshopRegistered] = []
-        for workshop in registered_workshops: # type: WorkshopRegistered
+        for workshop in registered_workshops:  # type: WorkshopRegistered
             start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
             end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
             workshop.start_datetime = start_datetime_with_tz
@@ -408,5 +396,3 @@ class WorkshopHandler:
             workshop.location.image_url = location_img[0] if location_img else None
             my_workshops.append(workshop)
         return WorkshopRegisteredList(workshops=my_workshops)
-
-

@@ -15,9 +15,9 @@ from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.permission import (
     PermissionPage,
     PermissionQuery,
-    PermissionItem,
+    PermissionDetail,
     PermissionCreate,
-    PermissionUpdate, PermissionBulkAction,
+    PermissionUpdate, PermissionBulkAction, PermissionList,
 )
 
 router = APIRouter(dependencies=[check_admin_access_token])
@@ -40,6 +40,22 @@ async def get_permission_pages(
     :return:
     """
     return await admin_permission_handler.get_permission_pages(model=query_model)
+
+@router.get(
+    path="/list",
+    status_code=status.HTTP_200_OK,
+    response_model=PermissionList
+)
+@inject
+async def get_permission_list(
+    admin_permission_handler: AdminPermissionHandler = Depends(Provide[Container.admin_permission_handler])
+):
+    """
+
+    :param admin_permission_handler:
+    :return:
+    """
+    return await admin_permission_handler.get_permission_list()
 
 
 @router.post(
@@ -64,7 +80,7 @@ async def create_permission(
 @router.get(
     path="/{permission_id}",
     status_code=status.HTTP_200_OK,
-    response_model=PermissionItem
+    response_model=PermissionDetail
 )
 @inject
 async def get_permission(

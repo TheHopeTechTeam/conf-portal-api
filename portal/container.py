@@ -10,6 +10,7 @@ from portal.handlers import (
     AdminResourceHandler,
     AdminRoleHandler,
     AdminUserHandler,
+    AdminVerbHandler,
     ConferenceHandler,
     EventInfoHandler,
     FAQHandler,
@@ -160,4 +161,9 @@ class Container(containers.DeclarativeContainer):
         refresh_token_provider=refresh_token_provider,
         admin_role_handler=admin_role_handler,
         admin_user_handler=admin_user_handler,
+    )
+    admin_verb_handler = providers.Factory(
+        AdminVerbHandler,
+        session=request_session,
+        redis_client=redis_client,
     )

@@ -75,3 +75,39 @@ def create_user_role_key(user_id: str):
     :return:
     """
     return get_cache_key(f"role:{user_id}")
+
+
+class CacheExpiry:
+    """
+    Cache expiry times in seconds
+    """
+    HOUR = 3600
+    DAY = 86400
+    WEEK = 604800
+    MONTH = 2592000
+    YEAR = 31536000
+
+
+class CacheKeys:
+
+    def __init__(self, resource: str):
+        self._app_name = settings.APP_NAME
+        self.resource = resource
+        self.attributes = []
+
+    def build(self) -> str:
+        """
+        Build cache key
+        :return:
+        """
+        return f"{self._app_name}:{self.resource}:{''.join(self.attributes)}"
+
+    def add_attribute(self, attribute: str, separator: str = ":") -> 'CacheKeys':
+        """
+        add_attribute
+        :param attribute:
+        :param separator:
+        :return:
+        """
+        self.attributes.extend([attribute, separator])
+        return self

@@ -34,6 +34,12 @@ class PermissionBase(UUIDBaseModel):
 
 class PermissionItem(PermissionBase):
     """PermissionItem"""
+    resource_id: Optional[UUID] = Field(None, serialization_alias="resourceId", description="Resource ID")
+    verb_id: Optional[UUID] = Field(None, serialization_alias="verbId", description="Verb ID")
+
+
+class PermissionDetail(PermissionBase):
+    """PermissionDetail"""
     resource: PermissionResourceItem = Field(..., description="Resource")
     verb: PermissionVerbItem = Field(..., description="Verb")
 

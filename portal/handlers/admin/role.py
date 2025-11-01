@@ -6,6 +6,7 @@ from typing import Optional
 from uuid import UUID
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
@@ -14,6 +15,7 @@ from portal.exceptions.responses import ConflictErrorException, ApiBaseException
 from portal.libs.consts.cache_keys import create_user_role_key
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalRole, PortalUser, PortalPermission, PortalResource, PortalRolePermission
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
@@ -71,6 +73,24 @@ class AdminRoleHandler:
         :param model:
         :return:
         """
+        permissions_jsonb = sa.cast(
+            sa.func.json_build_object(
+                sa.cast("id", sa.VARCHAR(4)), PortalPermission.id,
+                sa.cast("resource_name", sa.VARCHAR(16)), PortalResource.name,
+                sa.cast("display_name", sa.VARCHAR(16)), PortalPermission.display_name,
+                sa.cast("code", sa.VARCHAR(4)), PortalPermission.code,
+            ),
+            JSONB,
+        )
+        agg_permissions = sa.func.array_agg(
+            sa.distinct(permissions_jsonb)
+        ).filter(PortalPermission.id.isnot(None))
+
+        permissions_coalesced = sa.func.coalesce(
+            agg_permissions,
+            sa.cast(sa.text("'{}'"), ARRAY(JSONB))
+        ).label("permissions")
+
         items, count = await (
             self._session.select(
                 PortalRole.id,
@@ -84,16 +104,11 @@ class AdminRoleHandler:
                 PortalRole.delete_reason,
                 PortalRole.description,
                 PortalRole.remark,
-                sa.func.array_agg(
-                    sa.func.json_build_object(
-                        sa.cast("id", sa.VARCHAR(4)), PortalPermission.id,
-                        sa.cast("resource_name", sa.VARCHAR(16)), PortalResource.name,
-                        sa.cast("display_name", sa.VARCHAR(16)), PortalPermission.display_name,
-                        sa.cast("code", sa.VARCHAR(4)), PortalPermission.code,
-                    )
-                ).label("permissions")
+                permissions_coalesced
             )
-            .join(PortalRole.permissions)
+            .select_from(PortalRole)
+            .outerjoin(PortalRolePermission, PortalRolePermission.role_id == PortalRole.id)
+            .outerjoin(PortalPermission, PortalPermission.id == PortalRolePermission.permission_id)
             .outerjoin(PortalResource, PortalPermission.resource_id == PortalResource.id)
             .where(PortalRole.is_deleted == model.deleted)
             .where(
@@ -124,6 +139,57 @@ class AdminRoleHandler:
         )
 
     @distributed_trace()
+    async def get_role_by_id(self, role_id: UUID) -> Optional[RoleTableItem]:
+        """
+
+        :param role_id:
+        :return:
+        """
+        permissions_jsonb = sa.cast(
+            sa.func.json_build_object(
+                sa.cast("id", sa.VARCHAR(4)), PortalPermission.id,
+                sa.cast("resource_name", sa.VARCHAR(16)), PortalResource.name,
+                sa.cast("display_name", sa.VARCHAR(16)), PortalPermission.display_name,
+                sa.cast("code", sa.VARCHAR(4)), PortalPermission.code,
+            ),
+            JSONB,
+        )
+        agg_permissions = sa.func.array_agg(
+            sa.distinct(permissions_jsonb)
+        ).filter(PortalPermission.id.isnot(None))
+
+        permissions_coalesced = sa.func.coalesce(
+            agg_permissions,
+            sa.cast(sa.text("'{}'"), ARRAY(JSONB))
+        ).label("permissions")
+        role: Optional[RoleTableItem] = await (
+            self._session.select(
+                PortalRole.id,
+                PortalRole.code,
+                PortalRole.name,
+                PortalRole.is_active,
+                PortalRole.created_at,
+                PortalRole.created_by,
+                PortalRole.updated_at,
+                PortalRole.updated_by,
+                PortalRole.delete_reason,
+                PortalRole.description,
+                PortalRole.remark,
+                permissions_coalesced
+            )
+            .select_from(PortalRole)
+            .outerjoin(PortalRolePermission, PortalRolePermission.role_id == PortalRole.id)
+            .outerjoin(PortalPermission, PortalPermission.id == PortalRolePermission.permission_id)
+            .outerjoin(PortalResource, PortalPermission.resource_id == PortalResource.id)
+            .where(PortalRole.id == role_id)
+            .group_by(PortalRole.id)
+            .fetchrow(as_model=RoleTableItem)
+        )
+        if not role:
+            return None
+        return role
+
+    @distributed_trace()
     async def create_role(self, model: RoleCreate) -> UUIDBaseModel:
         """
 
@@ -135,9 +201,20 @@ class AdminRoleHandler:
             await (
                 self._session.insert(PortalRole)
                 .values(
-                    model.model_dump(exclude_none=True),
+                    model.model_dump(exclude_none=True, exclude={"permissions"}),
                     id=role_id,
                 )
+                .execute()
+            )
+            await (
+                self._session.insert(PortalRolePermission)
+                .values(
+                    [
+                        {"role_id": role_id.hex, "permission_id": permission_id.hex}
+                        for permission_id in model.permissions
+                    ]
+                )
+                .on_conflict_do_nothing(index_elements=["role_id", "permission_id"])
                 .execute()
             )
         except UniqueViolationError as e:
@@ -166,15 +243,49 @@ class AdminRoleHandler:
             result = await (
                 self._session.insert(PortalRole)
                 .values(
-                    model.model_dump(exclude_none=True),
+                    model.model_dump(exclude_none=True, exclude={"permissions"}),
                     id=role_id,
                 )
                 .on_conflict_do_update(
                     index_elements=[PortalRole.id],
-                    set_=model.model_dump(),
+                    set_=model.model_dump(exclude={"permissions"}),
                 )
                 .execute()
             )
+
+            permission_ids: list[UUID] = await (
+                self._session.select(PortalRolePermission.permission_id)
+                .where(PortalRolePermission.role_id == role_id)
+                .fetchvals()
+            )
+            delete_permission_ids = []
+            insert_permission_ids = []
+            for permission_id in model.permissions:
+                if permission_id not in permission_ids:
+                    insert_permission_ids.append(permission_id)
+                if permission_id in permission_ids:
+                    delete_permission_ids.append(permission_id)
+
+            if insert_permission_ids:
+                await (
+                    self._session.insert(PortalRolePermission)
+                    .values(
+                        [
+                            {"role_id": role_id.hex, "permission_id": permission_id.hex}
+                            for permission_id in insert_permission_ids
+                        ]
+                    )
+                    .on_conflict_do_nothing(index_elements=["role_id", "permission_id"])
+                    .execute()
+                )
+
+            if delete_permission_ids:
+                await (
+                    self._session.delete(PortalRolePermission)
+                    .where(PortalRolePermission.role_id == role_id)
+                    .where(PortalRolePermission.permission_id.in_(delete_permission_ids))
+                )
+
             if result == 0:
                 raise ApiBaseException(
                     status_code=404,
@@ -210,10 +321,16 @@ class AdminRoleHandler:
                 )
             else:
                 await (
+                    self._session.delete(PortalRolePermission)
+                    .where(PortalRolePermission.role_id == role_id)
+                    .execute()
+                )
+                await (
                     self._session.delete(PortalRole)
                     .where(PortalRole.id == role_id)
                     .execute()
                 )
+
         except Exception as e:
             raise ApiBaseException(
                 status_code=500,

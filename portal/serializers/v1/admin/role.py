@@ -70,6 +70,7 @@ class RoleCreate(BaseModel):
     is_active: bool = Field(True, serialization_alias="isActive", description="Is role active")
     description: Optional[str] = Field(None, description="Description")
     remark: Optional[str] = Field(None, description="Remark")
+    permissions: list[UUID] = Field(..., description="Permissions")
 
 
 class RoleUpdate(RoleCreate):
