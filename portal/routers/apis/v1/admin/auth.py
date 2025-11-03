@@ -10,6 +10,7 @@ from fastapi.params import Cookie
 from portal.container import Container
 from portal.handlers import AdminAuthHandler
 from portal.libs.depends import check_admin_access_token
+from portal.route_classes import LogRoute
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminLoginResponse,
@@ -20,7 +21,7 @@ from portal.serializers.v1.admin.auth import (
     RefreshTokenRequest,
 )
 
-router = APIRouter()
+router = APIRouter(route_class=LogRoute)
 
 
 @router.post(

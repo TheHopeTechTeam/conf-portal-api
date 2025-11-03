@@ -10,17 +10,18 @@ from fastapi import APIRouter, Depends, Query, status
 from portal.container import Container
 from portal.handlers import AdminRoleHandler
 from portal.libs.depends import check_admin_access_token
+from portal.route_classes import LogRoute
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
 from portal.serializers.v1.admin.role import (
     RolePages,
     RoleCreate,
     RoleUpdate,
-    RolePermissionAssign, RoleTableItem,
+    RolePermissionAssign,
+    RoleTableItem,
 )
 
-
-router = APIRouter(dependencies=[check_admin_access_token])
+router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
 
 
 @router.get(
@@ -156,5 +157,3 @@ async def assign_role_permissions(
     :return:
     """
     await admin_role_handler.assign_role_permissions(role_id=role_id, model=model)
-
-

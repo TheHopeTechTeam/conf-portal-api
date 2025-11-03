@@ -6,6 +6,7 @@ from dependency_injector import containers, providers
 from portal.config import settings
 from portal.handlers import (
     AdminAuthHandler,
+    AdminFileHandler,
     AdminPermissionHandler,
     AdminResourceHandler,
     AdminRoleHandler,
@@ -16,7 +17,6 @@ from portal.handlers import (
     FAQHandler,
     FCMDeviceHandler,
     FeedbackHandler,
-    FileHandler,
     TestimonyHandler,
     UserHandler,
     WorkshopHandler
@@ -76,8 +76,8 @@ class Container(containers.DeclarativeContainer):
     )
 
     # [General]
-    file_handler = providers.Factory(
-        FileHandler,
+    admin_file_handler = providers.Factory(
+        AdminFileHandler,
         session=request_session,
         redis_client=redis_client,
     )
@@ -85,7 +85,7 @@ class Container(containers.DeclarativeContainer):
         ConferenceHandler,
         session=request_session,
         redis_client=redis_client,
-        file_handler=file_handler,
+        file_handler=admin_file_handler,
     )
     event_info_handler = providers.Factory(
         EventInfoHandler,
@@ -119,7 +119,7 @@ class Container(containers.DeclarativeContainer):
         WorkshopHandler,
         session=request_session,
         redis_client=redis_client,
-        file_handler=file_handler,
+        file_handler=admin_file_handler,
     )
 
     # [Handlers]

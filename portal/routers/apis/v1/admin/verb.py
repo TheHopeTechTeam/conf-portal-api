@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, status
 from portal.container import Container
 from portal.handlers import AdminVerbHandler
 from portal.libs.depends import check_admin_access_token
+from portal.route_classes import LogRoute
 from portal.serializers.v1.admin.verb import VerbList
 
-router = APIRouter(dependencies=[check_admin_access_token])
+router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
 
 
 @router.get(

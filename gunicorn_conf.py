@@ -14,8 +14,8 @@ core_workers = multiprocessing.cpu_count()
 workers = int(os.getenv('GUNICORN_WORKERS', core_workers))
 worker_class = 'uvicorn.workers.UvicornWorker'
 worker_connections = 1000
-timeout = 60
-keepalive = 30
+timeout = 120
+keepalive = 15
 
 # Logging
 accesslog = '-'
@@ -35,7 +35,7 @@ group = None
 tmp_upload_dir = None
 
 # Worker timeout and graceful shutdown
-graceful_timeout = 30
+graceful_timeout = 150
 preload_app = True
 if os.path.isdir("/dev/shm"):
     worker_tmp_dir = "/dev/shm"  # nosec

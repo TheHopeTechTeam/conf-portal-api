@@ -1,6 +1,7 @@
 """
-FileHandler
+AdminFileHandler
 """
+import asyncio
 import hashlib
 import io
 import mimetypes
@@ -13,19 +14,31 @@ import boto3
 from PIL import Image
 from asyncpg import UniqueViolationError
 from botocore.exceptions import ClientError, NoCredentialsError
-from fastapi import UploadFile
+from fastapi import UploadFile, status
 from redis.asyncio import Redis
 
 from portal.config import settings
+from portal.exceptions.responses import BadRequestException, ApiBaseException, ConflictErrorException
+from portal.libs.consts.cache_keys import CacheKeys, CacheExpiry
 from portal.libs.consts.enums import FileStatus, FileUploadSource
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalFile, PortalFileAssociation
 from portal.schemas.mixins import UUIDBaseModel
-from portal.serializers.v1.file import BatchFileUploadResponseModel, FailedUploadFile, FileBase, FileUploadResponseModel
+from portal.serializers.mixins.base import BulkAction
+from portal.serializers.v1.admin.file import (
+    BatchFileUploadResponseModel,
+    FailedUploadFile,
+    FileDetail,
+    FileUploadResponseModel,
+    FileQuery,
+    FileGridItem,
+    FilePages, FileBase, BulkActionResponseModel,
+)
 
 
-class FileHandler:
+class AdminFileHandler:
     """
     FileHandler for AWS S3 operations and file management
     refer to: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html
@@ -46,6 +59,56 @@ class FileHandler:
         )
         self._bucket_name = settings.AWS_STORAGE_BUCKET_NAME
         self._folder_prefix = "original_files"
+
+    @distributed_trace()
+    async def get_file_pages(self, model: FileQuery) -> FilePages:
+        """
+        List files
+        :return:
+        """
+        file_items, count = await (
+            self._session.select(
+                PortalFile.id,
+                PortalFile.original_name,
+                PortalFile.key,
+                PortalFile.storage,
+                PortalFile.bucket,
+                PortalFile.region,
+                PortalFile.content_type,
+                PortalFile.extension,
+                PortalFile.size_bytes
+            )
+            .where(PortalFile.status != FileStatus.DELETED)
+            .where(
+                model.keyword, lambda: PortalFile.original_name.ilike(f"%{model.keyword}%")
+            )
+            .order_by_with(
+                tables=[PortalFile],
+                order_by=model.order_by,
+                descending=model.descending
+            )
+            .limit(model.page_size)
+            .offset(model.page * model.page_size)
+            .fetchpages(
+                no_order_by=False,
+                as_model=FileGridItem
+            )
+        )  # type: (list[FileGridItem], int)
+
+        tasks = []
+        for file in file_items:
+            tasks.append(self.get_signed_url(file=file))
+
+        signed_urls = await asyncio.gather(*tasks)
+        for file, signed_url in zip(file_items, signed_urls):  # type: (FileGridItem, Optional[str])
+            file.url = signed_url
+
+        return FilePages(
+            total=count,
+            items=file_items,
+            page=model.page,
+            page_size=model.page_size,
+        )
 
     @distributed_trace()
     async def upload_file(
@@ -161,11 +224,22 @@ class FileHandler:
                 .execute()
             )
         except (ClientError, NoCredentialsError) as e:
-            raise Exception(f"AWS S3 upload failed: {str(e)}")
+            raise ApiBaseException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AWS S3 service unavailable",
+                debug_detail=str(e)
+            )
         except UniqueViolationError as e:
-            raise Exception(f"Database error: {str(e)}")
+            raise ConflictErrorException(
+                detail="File already exists",
+                debug_detail=str(e)
+            )
         except Exception as e:
-            raise Exception(f"File upload failed: {str(e)}")
+            raise ApiBaseException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="File upload failed",
+                debug_detail=str(e)
+            )
         else:
             return FileUploadResponseModel(id=file_id)
 
@@ -211,7 +285,7 @@ class FileHandler:
         :return:
         """
         # TODO: Add caching for signed URLs to reduce database load
-        files: Optional[list[FileBase]] = await (
+        files: Optional[list[FileDetail]] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -224,7 +298,7 @@ class FileHandler:
             .where(PortalFile.is_public == True)
             .where(PortalFileAssociation.resource_id.isnot(None))
             .where(PortalFileAssociation.resource_id == resource_id)
-            .fetch(as_model=FileBase)
+            .fetch(as_model=FileDetail)
         )
         if not files:
             return None
@@ -233,7 +307,6 @@ class FileHandler:
             signed_url = await self.get_signed_url(file=file)
             signed_urls.append(signed_url)
         return signed_urls
-
 
     @distributed_trace()
     async def get_signed_url(self, file_id: uuid.UUID = None, file: FileBase = None, expiration: int = 3600) -> Optional[str]:
@@ -250,6 +323,11 @@ class FileHandler:
             if not file:
                 return None
 
+            cache_key = CacheKeys("file").add_attribute("signed_url").add_attribute(file.id.hex).build()
+            cached_url = await self._redis.get(cache_key)
+            if cached_url:
+                return cached_url
+
             url = self._s3_client.generate_presigned_url(
                 "get_object",
                 Params={
@@ -258,6 +336,7 @@ class FileHandler:
                 },
                 ExpiresIn=expiration
             )
+            await self._redis.set(cache_key, url, ex=CacheExpiry.HOUR)
             return url
 
         except Exception as e:
@@ -268,7 +347,7 @@ class FileHandler:
         self,
         file_content: bytes,
         checksum_sha256: Optional[str] = None
-    ) -> Optional[FileBase]:
+    ) -> Optional[FileDetail]:
         """
         Check if a file with the same content already exists
 
@@ -281,7 +360,7 @@ class FileHandler:
             checksum_sha256 = hashlib.sha256(file_content).hexdigest()
 
         # Check for existing file with same SHA-256 checksum
-        existing_file: Optional[FileBase] = await (
+        existing_file: Optional[FileDetail] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -304,7 +383,7 @@ class FileHandler:
             )
             .where(PortalFile.checksum_sha256 == checksum_sha256)
             .where(PortalFile.status != FileStatus.DELETED)
-            .fetchrow(as_model=FileBase)
+            .fetchrow(as_model=FileDetail)
         )
 
         return existing_file
@@ -315,7 +394,7 @@ class FileHandler:
         file_content: bytes,
         content_type: str,
         file_size: int
-    ) -> Optional[FileBase]:
+    ) -> Optional[FileDetail]:
         """
         Check for duplicate files using multiple criteria for better accuracy
 
@@ -334,7 +413,7 @@ class FileHandler:
 
         # If SHA-256 doesn't match, check by MD5 + size + content_type
         # This helps catch files that might have been corrupted during upload
-        existing_file: Optional[FileBase] = await (
+        existing_file: Optional[FileDetail] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -359,19 +438,19 @@ class FileHandler:
             .where(PortalFile.size_bytes == file_size)
             .where(PortalFile.content_type == content_type)
             .where(PortalFile.status != FileStatus.DELETED)
-            .fetchrow(as_model=FileBase)
+            .fetchrow(as_model=FileDetail)
         )
 
         return existing_file
 
     @distributed_trace()
-    async def get_file_info(self, file_id: uuid.UUID) -> Optional[FileBase]:
+    async def get_file_info(self, file_id: uuid.UUID) -> Optional[FileDetail]:
         """
         Get file information from database
         :param file_id: PortalFile ID
         :return: PortalFile instance or None if not found
         """
-        file: Optional[FileBase] = await (
+        file: Optional[FileDetail] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -394,23 +473,68 @@ class FileHandler:
             )
             .where(PortalFile.id == file_id)
             .where(PortalFile.status != FileStatus.DELETED)
-            .fetchrow(as_model=FileBase)
+            .fetchrow(as_model=FileDetail)
         )
         if not file:
             return None
         return file
 
     @distributed_trace()
-    async def list_files(self):
+    async def delete_files(self, model: BulkAction) -> BulkActionResponseModel:
         """
-        List files
+        Delete files from S3 and mark as deleted in database
+        :param model:
         :return:
         """
+        files: list[FileBase] = await (
+            self._session.select(
+                PortalFile.id,
+                PortalFile.original_name,
+                PortalFile.key,
+                PortalFile.storage,
+                PortalFile.bucket,
+                PortalFile.region
+            )
+            .where(PortalFile.id.in_(model.ids))
+            .fetch(as_model=FileBase)
+        )
 
-    @distributed_trace()
-    async def delete_file(self, file_id: uuid.UUID):
-        """
-        Delete file from S3 and mark as deleted in database
-        :param file_id:
-        :return:
-        """
+        if not files:
+            raise BadRequestException("No files to delete")
+
+        file_key_mapping = {file.key: file for file in files}
+        success_keys = []
+        failed_items = []
+        buckets = set([file.bucket for file in files])
+        for bucket in buckets:
+            delete_objects = []
+            for file in files:
+                if file.bucket == bucket:
+                    delete_objects.append({"Key": file.key})
+            if delete_objects:
+                try:
+                    response = self._s3_client.delete_objects(
+                        Bucket=bucket,
+                        Delete={"Objects": delete_objects}
+                    )
+                    print(response)
+                    deleted_items = response.get("Deleted", [])
+                    for deleted in deleted_items:
+                        success_keys.append(deleted['Key'])
+                    error_list = response.get("Errors", [])
+                    for error in error_list:
+                        failed_items.append(file_key_mapping.get(error['Key'], None))
+                except Exception as e:
+                    failed_items.extend([file_key_mapping.get(obj["Key"], None) for obj in delete_objects])
+                    logger.warning(f"Failed to delete objects in bucket {bucket}: {str(e)}")
+        if success_keys:
+            await (
+                self._session.update(PortalFile)
+                .values(status=FileStatus.DELETED)
+                .where(PortalFile.key.in_(success_keys))
+                .execute()
+            )
+        return BulkActionResponseModel(
+            success_count=len(success_keys),
+            failed_items=failed_items
+        )

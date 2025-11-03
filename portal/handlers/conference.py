@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.handlers.file import FileHandler
+from portal.handlers import AdminFileHandler
 from portal.libs.database import Session, RedisPool
 from portal.models import PortalConference, PortalConferenceInstructors, PortalInstructor, PortalLocation
 from portal.serializers.v1.conference import ConferenceBase, ConferenceDetail, ConferenceList
@@ -21,7 +21,7 @@ class ConferenceHandler:
         self,
         session: Session,
         redi_client: RedisPool,
-        file_handler: FileHandler,
+        file_handler: AdminFileHandler,
     ):
         self._session = session
         self._redis: Redis = redi_client.create(db=settings.REDIS_DB)

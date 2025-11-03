@@ -1,18 +1,21 @@
 """
 Admin file API routes
 """
-import uuid
+from typing import Annotated
+
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, UploadFile, Depends, status
+from fastapi import APIRouter, UploadFile, Depends, status, Query
 
 from portal.container import Container
-from portal.handlers.file import FileHandler
+from portal.handlers import AdminFileHandler
 from portal.libs.consts.enums import FileUploadSource
-from portal.libs.depends.authenticators import check_access_token
+from portal.libs.depends.authenticators import check_admin_access_token
 from portal.libs.depends.file_validation import FileValidation
-from portal.serializers.v1.file import FileUploadResponseModel
+from portal.route_classes import LogRoute
+from portal.serializers.mixins.base import BulkAction
+from portal.serializers.v1.admin.file import FileUploadResponseModel, FilePages, FileQuery, BulkActionResponseModel
 
-router = APIRouter()
+router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
 
 ALLOWED_TYPES = [
     "image/apng",  # Animated Portable Network Graphics (APNG)
@@ -25,6 +28,25 @@ ALLOWED_TYPES = [
 ]
 
 
+@router.get(
+    path="/pages",
+    status_code=status.HTTP_200_OK,
+    response_model=FilePages
+)
+@inject
+async def get_file_pages(
+    query_model: Annotated[FileQuery, Query()],
+    admin_file_handler: AdminFileHandler = Depends(Provide[Container.admin_file_handler])
+):
+    """
+
+    :param query_model:
+    :param admin_file_handler:
+    :return:
+    """
+    return await admin_file_handler.get_file_pages(model=query_model)
+
+
 @router.post(
     path="/upload",
     status_code=status.HTTP_201_CREATED,
@@ -34,7 +56,7 @@ ALLOWED_TYPES = [
 @inject
 async def upload_file(
     file: UploadFile = Depends(FileValidation(allowed_types=ALLOWED_TYPES)),
-    file_handler: FileHandler = Depends(Provide[Container.file_handler])
+    file_handler: AdminFileHandler = Depends(Provide[Container.admin_file_handler])
 ):
     """
 
@@ -44,36 +66,40 @@ async def upload_file(
     """
     return await file_handler.upload_file(upload_file=file, upload_source=FileUploadSource.ADMIN)
 
-# @router.post(
-#     path="/batch_upload",
-#     status_code=status.HTTP_201_CREATED,
-# )
-# @inject
-# async def upload_multiple_files(
-#     files: list[UploadFile],
-#     file_handler: FileHandler = Depends(Provide[Container.file_handler])
-# ):
-#     """
-#
-#     :param files:
-#     :param file_handler:
-#     :return:
-#     """
-#     return await file_handler.upload_multiple_files(upload_files=files, upload_source=FileUploadSource.ADMIN)
+
+@router.post(
+    path="/batch_upload",
+    status_code=status.HTTP_201_CREATED,
+)
+@inject
+async def upload_multiple_files(
+    files: list[UploadFile],
+    file_handler: AdminFileHandler = Depends(Provide[Container.admin_file_handler])
+):
+    """
+
+    :param files:
+    :param file_handler:
+    :return:
+    """
+    return await file_handler.upload_multiple_files(upload_files=files, upload_source=FileUploadSource.ADMIN)
 
 
 @router.delete(
-    path="/{file_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[check_access_token],
-    description="For deleting an file"
+    path="/bulk",
+    status_code=status.HTTP_200_OK,
+    description="For deleting files",
+    response_model=BulkActionResponseModel,
 )
 @inject
-async def delete_file(
-    file_id: uuid.UUID,
-    file_handler: FileHandler = Depends(Provide[Container.file_handler])
+async def delete_files(
+    model: BulkAction,
+    admin_file_handler: AdminFileHandler = Depends(Provide[Container.admin_file_handler])
 ):
     """
-    Delete a file
+
+    :param model:
+    :param admin_file_handler:
+    :return:
     """
-    await file_handler.delete_file(file_id=file_id)
+    return await admin_file_handler.delete_files(model=model)

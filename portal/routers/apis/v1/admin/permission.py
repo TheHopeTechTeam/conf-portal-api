@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, status, Query
 from portal.container import Container
 from portal.handlers import AdminPermissionHandler
 from portal.libs.depends import check_admin_access_token
+from portal.route_classes import LogRoute
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.permission import (
@@ -20,7 +21,7 @@ from portal.serializers.v1.admin.permission import (
     PermissionUpdate, PermissionBulkAction, PermissionList,
 )
 
-router = APIRouter(dependencies=[check_admin_access_token])
+router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
 
 
 @router.get(

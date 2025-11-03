@@ -13,7 +13,7 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, BadRequestException
-from portal.handlers.file import FileHandler
+from portal.handlers import AdminFileHandler
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.models import (
@@ -40,7 +40,7 @@ class WorkshopHandler:
         self,
         session: Session,
         redis_client: RedisPool,
-        file_handler: FileHandler,
+        file_handler: AdminFileHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)

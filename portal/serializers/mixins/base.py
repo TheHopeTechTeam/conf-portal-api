@@ -1,6 +1,7 @@
 """
 Base serializer mixin for all serializers.
 """
+import uuid
 from typing import Optional
 
 import pydantic
@@ -63,3 +64,8 @@ class DeleteBaseModel(BaseModel):
         if not self.permanent and self.reason is None:
             raise ValueError("Reason is required for non-permanent delete")
         return self
+
+
+class BulkAction(BaseModel):
+    """Bulk action model"""
+    ids: list[uuid.UUID] = Field(..., description="Resource IDs for bulk action")

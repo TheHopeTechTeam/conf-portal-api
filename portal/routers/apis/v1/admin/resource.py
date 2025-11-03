@@ -10,18 +10,18 @@ from fastapi import APIRouter, Depends, status, Query
 from portal.container import Container
 from portal.handlers import AdminResourceHandler
 from portal.libs.depends import check_admin_access_token
+from portal.route_classes import LogRoute
 from portal.schemas.mixins import UUIDBaseModel
-from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
+from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import DeleteQueryBaseModel
 from portal.serializers.v1.admin.resource import (
-    ResourceItem,
     ResourceCreate,
     ResourceUpdate,
     ResourceChangeSequence,
     ResourceList, ResourceDetail,
 )
 
-router = APIRouter(dependencies=[check_admin_access_token])
+router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
 
 
 @router.post(

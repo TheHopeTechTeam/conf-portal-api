@@ -3,6 +3,7 @@ Top level handlers package
 """
 from portal.config import settings
 from .admin.auth import AdminAuthHandler
+from .admin.file import AdminFileHandler
 from .admin.permission import AdminPermissionHandler
 from .admin.resource import AdminResourceHandler
 from .admin.role import AdminRoleHandler
@@ -13,7 +14,6 @@ from .event_info import EventInfoHandler
 from .faq import FAQHandler
 from .fcm_device import FCMDeviceHandler
 from .feedback import FeedbackHandler
-from .file import FileHandler
 from .testimony import TestimonyHandler
 from .user import UserHandler
 from .workshop import WorkshopHandler
@@ -21,6 +21,7 @@ from .workshop import WorkshopHandler
 __all__ = [
     # admin
     "AdminAuthHandler",
+    "AdminFileHandler",
     "AdminPermissionHandler",
     "AdminResourceHandler",
     "AdminRoleHandler",
@@ -32,7 +33,6 @@ __all__ = [
     "FAQHandler",
     "FCMDeviceHandler",
     "FeedbackHandler",
-    "FileHandler",
     "TestimonyHandler",
     "UserHandler",
     "WorkshopHandler"
