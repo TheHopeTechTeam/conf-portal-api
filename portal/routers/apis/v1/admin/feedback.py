@@ -15,7 +15,7 @@ from portal.serializers.v1.admin.feedback import (
     FeedbackQuery,
     FeedbackPages,
     FeedbackDetail,
-    FeedbackStatusUpdate,
+    FeedbackUpdate,
 )
 
 router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
@@ -48,13 +48,13 @@ async def get_feedback(
 
 
 @router.put(
-    path="/{feedback_id}/status",
+    path="/{feedback_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
 @inject
-async def update_feedback_status(
+async def update_feedback(
     feedback_id: uuid.UUID,
-    body: FeedbackStatusUpdate,
+    body: FeedbackUpdate,
     admin_feedback_handler: AdminFeedbackHandler = Depends(Provide[Container.admin_feedback_handler])
 ):
-    await admin_feedback_handler.update_feedback_status(feedback_id=str(feedback_id), model=body)
+    await admin_feedback_handler.update_feedback(feedback_id=feedback_id, model=body)

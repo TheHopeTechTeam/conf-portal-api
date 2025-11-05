@@ -1,7 +1,7 @@
 """
 Feedback serializers (Admin)
 """
-
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -26,24 +26,26 @@ class FeedbackBase(UUIDBaseModel):
     email: Optional[str] = Field(default=None, description="Email")
     status: int = Field(default=FeedbackStatus.PENDING.value, description="Status")
     remark: Optional[str] = Field(default=None, description="Remark")
-    created_at: Optional[str] = Field(default=None, serialization_alias="createdAt", description="Created at")
-    updated_at: Optional[str] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
+    created_at: Optional[datetime] = Field(default=None, serialization_alias="createdAt", description="Created at")
+    updated_at: Optional[datetime] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
 
 
 class FeedbackItem(FeedbackBase):
     """Feedback item"""
-    message: Optional[str] = Field(..., description="Message")
-    description: Optional[str] = Field(default=None, description="Description")
 
 
 class FeedbackDetail(FeedbackItem):
     """Feedback detail"""
+    message: Optional[str] = Field(None, description="Message")
+    description: Optional[str] = Field(default=None, description="Description")
 
 
 class FeedbackPages(PaginationBaseResponseModel):
     items: Optional[list[FeedbackItem]] = Field(..., description="Items")
 
 
-class FeedbackStatusUpdate(BaseModel):
+class FeedbackUpdate(BaseModel):
     """Update feedback status"""
+    remark: Optional[str] = Field(default=None, description="Remark")
+    description: Optional[str] = Field(default=None, description="Description")
     status: FeedbackStatus = Field(..., description="Status (int value)")

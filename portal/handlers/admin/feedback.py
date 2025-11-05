@@ -1,6 +1,7 @@
 """
 AdminFeedbackHandler
 """
+import uuid
 from typing import Optional
 
 import sqlalchemy as sa
@@ -16,7 +17,7 @@ from portal.serializers.v1.admin.feedback import (
     FeedbackItem,
     FeedbackDetail,
     FeedbackPages,
-    FeedbackStatusUpdate,
+    FeedbackUpdate,
 )
 
 
@@ -101,7 +102,7 @@ class AdminFeedbackHandler:
         return item
 
     @distributed_trace()
-    async def update_feedback_status(self, feedback_id: str, model: FeedbackStatusUpdate) -> None:
+    async def update_feedback(self, feedback_id: uuid.UUID, model: FeedbackUpdate) -> None:
         """
 
         :param feedback_id:
@@ -111,7 +112,7 @@ class AdminFeedbackHandler:
         try:
             await (
                 self._session.update(PortalFeedback)
-                .values(status=model.status)
+                .values(model.model_dump())
                 .where(PortalFeedback.id == feedback_id)
                 .execute()
             )
