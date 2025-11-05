@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses import NotFoundException, ApiBaseException
+from portal.exceptions.responses import NotFoundException
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalTestimony
