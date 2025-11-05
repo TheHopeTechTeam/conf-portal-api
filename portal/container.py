@@ -3,36 +3,14 @@ Container
 """
 from dependency_injector import containers, providers
 
+from portal import handlers
 from portal.config import settings
-from portal.handlers import (
-    AdminAuthHandler,
-    AdminFaqHandler,
-    AdminFileHandler,
-    AdminInstructorHandler,
-    AdminLocationHandler,
-    AdminPermissionHandler,
-    AdminResourceHandler,
-    AdminRoleHandler,
-    AdminUserHandler,
-    AdminVerbHandler,
-    ConferenceHandler,
-    EventInfoHandler,
-    FAQHandler,
-    FCMDeviceHandler,
-    FeedbackHandler,
-    TestimonyHandler,
-    UserHandler,
-    WorkshopHandler
-)
 from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.libs.database.session_proxy import SessionProxy
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
-
-if settings.IS_DEV:
-    from portal.handlers import DemoHandler
 
 
 # pylint: disable=too-few-public-methods,c-extension-no-member
@@ -78,48 +56,50 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
     )
 
-    # [General]
+    # File handlers
     admin_file_handler = providers.Factory(
-        AdminFileHandler,
+        handlers.AdminFileHandler,
         session=request_session,
         redis_client=redis_client,
     )
+
+    # [General]
     conference_handler = providers.Factory(
-        ConferenceHandler,
+        handlers.ConferenceHandler,
         session=request_session,
         redis_client=redis_client,
         file_handler=admin_file_handler,
     )
     event_info_handler = providers.Factory(
-        EventInfoHandler,
+        handlers.EventInfoHandler,
         session=request_session,
         redis_client=redis_client,
     )
     faq_handler = providers.Factory(
-        FAQHandler,
+        handlers.FAQHandler,
         session=request_session,
         redis_client=redis_client,
     )
     fcm_device_handler = providers.Factory(
-        FCMDeviceHandler,
+        handlers.FCMDeviceHandler,
         session=request_session,
     )
     feedback_handler = providers.Factory(
-        FeedbackHandler,
+        handlers.FeedbackHandler,
         session=request_session,
     )
     testimony_handler = providers.Factory(
-        TestimonyHandler,
+        handlers.TestimonyHandler,
         session=request_session,
     )
     user_handler = providers.Factory(
-        UserHandler,
+        handlers.UserHandler,
         session=request_session,
         redis_client=redis_client,
         fcm_device_handler=fcm_device_handler,
     )
     workshop_handler = providers.Factory(
-        WorkshopHandler,
+        handlers.WorkshopHandler,
         session=request_session,
         redis_client=redis_client,
         file_handler=admin_file_handler,
@@ -128,50 +108,55 @@ class Container(containers.DeclarativeContainer):
     # [Handlers]
     if settings.IS_DEV:
         demo_handler = providers.Factory(
-            DemoHandler,
+            handlers.DemoHandler,
             session=request_session
         )
 
     # [Admin]
+    admin_conference_handler = providers.Factory(
+        handlers.AdminConferenceHandler,
+        session=request_session,
+        redis_client=redis_client,
+    )
     admin_faq_handler = providers.Factory(
-        AdminFaqHandler,
+        handlers.AdminFaqHandler,
         session=request_session,
         redis_client=redis_client,
     )
     admin_instructor_handler = providers.Factory(
-        AdminInstructorHandler,
+        handlers.AdminInstructorHandler,
         session=request_session,
         redis_client=redis_client,
         file_handler=admin_file_handler,
     )
     admin_location_handler = providers.Factory(
-        AdminLocationHandler,
+        handlers.AdminLocationHandler,
         session=request_session,
         redis_client=redis_client,
         file_handler=admin_file_handler,
     )
     admin_permission_handler = providers.Factory(
-        AdminPermissionHandler,
+        handlers.AdminPermissionHandler,
         session=request_session,
         redis_client=redis_client,
     )
     admin_resource_handler = providers.Factory(
-        AdminResourceHandler,
+        handlers.AdminResourceHandler,
         session=request_session,
         redis_client=redis_client,
     )
     admin_role_handler = providers.Factory(
-        AdminRoleHandler,
+        handlers.AdminRoleHandler,
         session=request_session,
         redis_client=redis_client,
     )
     admin_user_handler = providers.Factory(
-        AdminUserHandler,
+        handlers.AdminUserHandler,
         session=request_session,
         redis_client=redis_client,
     )
     admin_auth_handler = providers.Factory(
-        AdminAuthHandler,
+        handlers.AdminAuthHandler,
         session=request_session,
         redis_client=redis_client,
         jwt_provider=jwt_provider,
@@ -183,7 +168,7 @@ class Container(containers.DeclarativeContainer):
         admin_user_handler=admin_user_handler,
     )
     admin_verb_handler = providers.Factory(
-        AdminVerbHandler,
+        handlers.AdminVerbHandler,
         session=request_session,
         redis_client=redis_client,
     )

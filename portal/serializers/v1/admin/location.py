@@ -23,18 +23,18 @@ class LocationBase(UUIDBaseModel):
     Location base model
     """
     name: str = Field(..., description="Name")
-    address: Optional[str] = Field(None, description="Address")
-    floor: Optional[str] = Field(None, description="Floor")
-    room_number: Optional[str] = Field(None, serialization_alias="roomNumber", description="Room number")
-    remark: Optional[str] = Field(None, description="Remark")
-    created_at: Optional[str] = Field(None, serialization_alias="createdAt", description="Created at")
-    updated_at: Optional[str] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
 class LocationItem(LocationBase):
     """
     Location item
     """
+    address: Optional[str] = Field(None, description="Address")
+    floor: Optional[str] = Field(None, description="Floor")
+    room_number: Optional[str] = Field(None, serialization_alias="roomNumber", description="Room number")
+    remark: Optional[str] = Field(None, description="Remark")
+    created_at: Optional[str] = Field(None, serialization_alias="createdAt", description="Created at")
+    updated_at: Optional[str] = Field(None, serialization_alias="updatedAt", description="Updated at")
     latitude: Optional[float] = Field(None, description="Latitude")
     longitude: Optional[float] = Field(None, description="Longitude")
     description: Optional[str] = Field(None, description="Description")
@@ -65,6 +65,3 @@ class LocationCreate(BaseModel):
 
 class LocationUpdate(LocationCreate):
     """Location update"""
-
-
-

@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 from portal.config import settings
 from .auth import router as auth_router
+from .conference import router as conference_router
 from .faq import router as faq_router
 from .file import router as file_router
 from .instructor import router as instructor_router
@@ -18,6 +19,7 @@ from .verb import router as verb_router
 router = APIRouter()
 
 router.include_router(auth_router, prefix="/auth", tags=["Admin - Authentication"])
+router.include_router(conference_router, prefix="/conference", tags=["Admin - Conference"])
 router.include_router(faq_router, prefix="/faq", tags=["Admin - FAQ"])
 router.include_router(file_router, prefix="/file", tags=["Admin - File"])
 router.include_router(instructor_router, prefix="/instructor", tags=["Admin - Instructor"])
