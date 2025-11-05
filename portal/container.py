@@ -6,6 +6,7 @@ from dependency_injector import containers, providers
 from portal.config import settings
 from portal.handlers import (
     AdminAuthHandler,
+    AdminFaqHandler,
     AdminFileHandler,
     AdminInstructorHandler,
     AdminLocationHandler,
@@ -132,6 +133,11 @@ class Container(containers.DeclarativeContainer):
         )
 
     # [Admin]
+    admin_faq_handler = providers.Factory(
+        AdminFaqHandler,
+        session=request_session,
+        redis_client=redis_client,
+    )
     admin_instructor_handler = providers.Factory(
         AdminInstructorHandler,
         session=request_session,

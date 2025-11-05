@@ -3,6 +3,7 @@ Top level handlers package
 """
 from portal.config import settings
 from .admin.auth import AdminAuthHandler
+from .admin.faq import AdminFaqHandler
 from .admin.file import AdminFileHandler
 from .admin.instructor import AdminInstructorHandler
 from .admin.location import AdminLocationHandler
@@ -23,6 +24,7 @@ from .workshop import WorkshopHandler
 __all__ = [
     # admin
     "AdminAuthHandler",
+    "AdminFaqHandler",
     "AdminFileHandler",
     "AdminInstructorHandler",
     "AdminLocationHandler",
