@@ -1,5 +1,5 @@
 """
-AdminLocationHandler
+AdminInstructorHandler
 """
 import uuid
 from typing import Optional
@@ -13,22 +13,22 @@ from portal.exceptions.responses import NotFoundException, ConflictErrorExceptio
 from portal.handlers import AdminFileHandler
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models import PortalLocation
+from portal.models import PortalInstructor
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
-from portal.serializers.v1.admin.location import (
-    LocationQuery,
-    LocationBase,
-    LocationPages,
-    LocationDetail,
-    LocationCreate,
-    LocationUpdate,
+from portal.serializers.v1.admin.instructor import (
+    InstructorQuery,
+    InstructorBase,
+    InstructorPages,
+    InstructorDetail,
+    InstructorCreate,
+    InstructorUpdate,
 )
 
 
-class AdminLocationHandler:
-    """AdminLocationHandler"""
+class AdminInstructorHandler:
+    """AdminInstructorHandler"""
 
     def __init__(
         self,
@@ -40,7 +40,7 @@ class AdminLocationHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
 
-    async def get_location_pages(self, model: LocationQuery) -> LocationPages:
+    async def get_instructor_pages(self, model: InstructorQuery) -> InstructorPages:
         """
 
         :param model:
@@ -48,25 +48,24 @@ class AdminLocationHandler:
         """
         items, count = await (
             self._session.select(
-                PortalLocation.id,
-                PortalLocation.name,
-                PortalLocation.address,
-                PortalLocation.floor,
-                PortalLocation.room_number,
-                PortalLocation.remark,
-                PortalLocation.created_at,
-                PortalLocation.updated_at,
+                PortalInstructor.id,
+                PortalInstructor.name,
+                PortalInstructor.title,
+                PortalInstructor.bio,
+                PortalInstructor.remark,
+                PortalInstructor.created_at,
+                PortalInstructor.updated_at,
             )
-            .where(PortalLocation.is_deleted == model.deleted)
+            .where(PortalInstructor.is_deleted == model.deleted)
             .where(
                 model.keyword is not None, lambda: sa.or_(
-                    PortalLocation.name.ilike(f"%{model.keyword}%"),
-                    PortalLocation.address.ilike(f"%{model.keyword}%"),
+                    PortalInstructor.name.ilike(f"%{model.keyword}%"),
+                    PortalInstructor.title.ilike(f"%{model.keyword}%"),
+                    PortalInstructor.bio.ilike(f"%{model.keyword}%"),
                 )
             )
-            .where(model.room_number is not None, lambda: PortalLocation.room_number.ilike(f"%{model.room_number}%"))
             .order_by_with(
-                tables=[PortalLocation],
+                tables=[PortalInstructor],
                 order_by=model.order_by,
                 descending=model.descending
             )
@@ -74,66 +73,63 @@ class AdminLocationHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=LocationBase
+                as_model=InstructorBase
             )
         )
-        return LocationPages(
+        return InstructorPages(
             page=model.page,
             page_size=model.page_size,
             total=count,
             items=items
         )
 
-    async def get_location_by_id(self, location_id: uuid.UUID) -> LocationDetail:
+    async def get_instructor_by_id(self, instructor_id: uuid.UUID) -> InstructorDetail:
         """
 
-        :param location_id:
+        :param instructor_id:
         :return:
         """
-        item: Optional[LocationDetail] = await (
+        item: Optional[InstructorDetail] = await (
             self._session.select(
-                PortalLocation.id,
-                PortalLocation.name,
-                PortalLocation.address,
-                PortalLocation.floor,
-                PortalLocation.room_number,
-                PortalLocation.latitude,
-                PortalLocation.longitude,
-                PortalLocation.remark,
-                PortalLocation.description,
-                PortalLocation.created_at,
-                PortalLocation.updated_at,
+                PortalInstructor.id,
+                PortalInstructor.name,
+                PortalInstructor.title,
+                PortalInstructor.bio,
+                PortalInstructor.remark,
+                PortalInstructor.description,
+                PortalInstructor.created_at,
+                PortalInstructor.updated_at,
             )
-            .where(PortalLocation.id == location_id)
-            .where(PortalLocation.is_deleted == False)
-            .fetchrow(as_model=LocationDetail)
+            .where(PortalInstructor.id == instructor_id)
+            .where(PortalInstructor.is_deleted == False)
+            .fetchrow(as_model=InstructorDetail)
         )
         if not item:
-            raise NotFoundException(detail=f"Location {location_id} not found")
+            raise NotFoundException(detail=f"Instructor {instructor_id} not found")
 
         item.image_urls = await self._file_handler.get_signed_url_by_resource_id(resource_id=item.id)
         return item
 
-    async def create_location(self, model: LocationCreate) -> UUIDBaseModel:
+    async def create_instructor(self, model: InstructorCreate) -> UUIDBaseModel:
         """
 
         :param model:
         :return:
         """
-        location_id = uuid.uuid4()
+        instructor_id = uuid.uuid4()
         try:
             await (
-                self._session.insert(PortalLocation)
+                self._session.insert(PortalInstructor)
                 .values(
                     model.model_dump(exclude_none=True, exclude={"file_ids"}),
-                    id=location_id
+                    id=instructor_id
                 )
                 .execute()
             )
-            # TODO: create relation between location and files
+            # TODO: create relation between instructor and files
         except UniqueViolationError as e:
             raise ConflictErrorException(
-                detail=f"Location {model.name} already exists",
+                detail=f"Instructor {model.name} already exists",
                 debug_detail=str(e),
             )
         except Exception as e:
@@ -142,25 +138,25 @@ class AdminLocationHandler:
                 detail="Internal Server Error",
             )
         else:
-            return UUIDBaseModel(id=location_id)
+            return UUIDBaseModel(id=instructor_id)
 
     @distributed_trace()
-    async def update_location(self, location_id: uuid.UUID, model: LocationUpdate):
+    async def update_instructor(self, instructor_id: uuid.UUID, model: InstructorUpdate):
         """
 
-        :param location_id:
+        :param instructor_id:
         :param model:
         :return:
         """
         try:
             await (
-                self._session.insert(PortalLocation)
+                self._session.insert(PortalInstructor)
                 .values(
                     model.model_dump(exclude_none=True, exclude={"file_ids"}),
-                    id=location_id
+                    id=instructor_id
                 )
                 .on_conflict_do_update(
-                    index_elements=[PortalLocation.id],
+                    index_elements=[PortalInstructor.id],
                     set_=model.model_dump(exclude={"file_ids"}),
                 )
                 .execute()
@@ -168,7 +164,7 @@ class AdminLocationHandler:
 
         except UniqueViolationError as e:
             raise ConflictErrorException(
-                detail=f"Location {model.name} already exists",
+                detail=f"Instructor {model.name} already exists",
                 debug_detail=str(e),
             )
         except Exception as e:
@@ -178,25 +174,25 @@ class AdminLocationHandler:
             )
 
     @distributed_trace()
-    async def delete_location(self, location_id: uuid.UUID, model: DeleteBaseModel) -> None:
+    async def delete_instructor(self, instructor_id: uuid.UUID, model: DeleteBaseModel) -> None:
         """
 
-        :param location_id:
+        :param instructor_id:
         :param model:
         :return:
         """
         try:
             if not model.permanent:
                 await (
-                    self._session.update(PortalLocation)
+                    self._session.update(PortalInstructor)
                     .values(is_deleted=True, delete_reason=model.reason)
-                    .where(PortalLocation.id == location_id)
+                    .where(PortalInstructor.id == instructor_id)
                     .execute()
                 )
             else:
                 await (
-                    self._session.delete(PortalLocation)
-                    .where(PortalLocation.id == location_id)
+                    self._session.delete(PortalInstructor)
+                    .where(PortalInstructor.id == instructor_id)
                     .execute()
                 )
         except Exception as e:
@@ -207,7 +203,7 @@ class AdminLocationHandler:
             )
 
     @distributed_trace()
-    async def restore_locations(self, model: BulkAction) -> None:
+    async def restore_instructors(self, model: BulkAction) -> None:
         """
 
         :param model:
@@ -215,8 +211,8 @@ class AdminLocationHandler:
         """
         try:
             await (
-                self._session.update(PortalLocation)
-                .where(PortalLocation.id.in_(model.ids))
+                self._session.update(PortalInstructor)
+                .where(PortalInstructor.id.in_(model.ids))
                 .values(is_deleted=False)
                 .execute()
             )

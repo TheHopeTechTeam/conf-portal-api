@@ -4,6 +4,7 @@ Top level handlers package
 from portal.config import settings
 from .admin.auth import AdminAuthHandler
 from .admin.file import AdminFileHandler
+from .admin.instructor import AdminInstructorHandler
 from .admin.location import AdminLocationHandler
 from .admin.permission import AdminPermissionHandler
 from .admin.resource import AdminResourceHandler
@@ -23,6 +24,7 @@ __all__ = [
     # admin
     "AdminAuthHandler",
     "AdminFileHandler",
+    "AdminInstructorHandler",
     "AdminLocationHandler",
     "AdminPermissionHandler",
     "AdminResourceHandler",

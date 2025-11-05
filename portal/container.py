@@ -7,6 +7,7 @@ from portal.config import settings
 from portal.handlers import (
     AdminAuthHandler,
     AdminFileHandler,
+    AdminInstructorHandler,
     AdminLocationHandler,
     AdminPermissionHandler,
     AdminResourceHandler,
@@ -131,6 +132,12 @@ class Container(containers.DeclarativeContainer):
         )
 
     # [Admin]
+    admin_instructor_handler = providers.Factory(
+        AdminInstructorHandler,
+        session=request_session,
+        redis_client=redis_client,
+        file_handler=admin_file_handler,
+    )
     admin_location_handler = providers.Factory(
         AdminLocationHandler,
         session=request_session,
