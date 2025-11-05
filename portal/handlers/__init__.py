@@ -5,6 +5,7 @@ from portal.config import settings
 from .admin.auth import AdminAuthHandler
 from .admin.conference import AdminConferenceHandler
 from .admin.faq import AdminFaqHandler
+from .admin.feedback import AdminFeedbackHandler
 from .admin.file import AdminFileHandler
 from .admin.instructor import AdminInstructorHandler
 from .admin.location import AdminLocationHandler
@@ -27,6 +28,7 @@ __all__ = [
     "AdminAuthHandler",
     "AdminConferenceHandler",
     "AdminFaqHandler",
+    "AdminFeedbackHandler",
     "AdminFileHandler",
     "AdminInstructorHandler",
     "AdminLocationHandler",

@@ -7,6 +7,7 @@ from portal.config import settings
 from .auth import router as auth_router
 from .conference import router as conference_router
 from .faq import router as faq_router
+from .feedback import router as feedback_router
 from .file import router as file_router
 from .instructor import router as instructor_router
 from .location import router as location_router
@@ -21,6 +22,7 @@ router = APIRouter()
 router.include_router(auth_router, prefix="/auth", tags=["Admin - Authentication"])
 router.include_router(conference_router, prefix="/conference", tags=["Admin - Conference"])
 router.include_router(faq_router, prefix="/faq", tags=["Admin - FAQ"])
+router.include_router(feedback_router, prefix="/feedback", tags=["Admin - Feedback"])
 router.include_router(file_router, prefix="/file", tags=["Admin - File"])
 router.include_router(instructor_router, prefix="/instructor", tags=["Admin - Instructor"])
 router.include_router(location_router, prefix="/location", tags=["Admin - Location"])
