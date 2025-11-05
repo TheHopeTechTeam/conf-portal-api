@@ -123,6 +123,11 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
     )
+    admin_feedback_handler = providers.Factory(
+        handlers.AdminFeedbackHandler,
+        session=request_session,
+        redis_client=redis_client,
+    )
     admin_instructor_handler = providers.Factory(
         handlers.AdminInstructorHandler,
         session=request_session,
@@ -147,6 +152,11 @@ class Container(containers.DeclarativeContainer):
     )
     admin_role_handler = providers.Factory(
         handlers.AdminRoleHandler,
+        session=request_session,
+        redis_client=redis_client,
+    )
+    admin_testimony_handler = providers.Factory(
+        handlers.AdminTestimonyHandler,
         session=request_session,
         redis_client=redis_client,
     )

@@ -12,6 +12,7 @@ from .admin.location import AdminLocationHandler
 from .admin.permission import AdminPermissionHandler
 from .admin.resource import AdminResourceHandler
 from .admin.role import AdminRoleHandler
+from .admin.testimony import AdminTestimonyHandler
 from .admin.user import AdminUserHandler
 from .admin.verb import AdminVerbHandler
 from .conference import ConferenceHandler
@@ -35,6 +36,7 @@ __all__ = [
     "AdminPermissionHandler",
     "AdminResourceHandler",
     "AdminRoleHandler",
+    "AdminTestimonyHandler",
     "AdminUserHandler",
     "AdminVerbHandler",
     # general

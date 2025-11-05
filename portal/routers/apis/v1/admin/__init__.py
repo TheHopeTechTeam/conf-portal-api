@@ -14,6 +14,7 @@ from .location import router as location_router
 from .permission import router as permission_router
 from .resource import router as resource_router
 from .role import router as role_router
+from .testimony import router as testimony_router
 from .user import router as user_router
 from .verb import router as verb_router
 
@@ -29,6 +30,7 @@ router.include_router(location_router, prefix="/location", tags=["Admin - Locati
 router.include_router(permission_router, prefix="/permission", tags=["Admin - Permission"])
 router.include_router(resource_router, prefix="/resource", tags=["Admin - Resource"])
 router.include_router(role_router, prefix="/role", tags=["Admin - Role"])
+router.include_router(testimony_router, prefix="/testimony", tags=["Admin - Testimony"])
 router.include_router(user_router, prefix="/user", tags=["Admin - User"])
 router.include_router(verb_router, prefix="/verb", tags=["Admin - Verb"])
 
