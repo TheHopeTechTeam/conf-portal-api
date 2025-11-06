@@ -4,6 +4,8 @@ FirebaseAuthentication
 from firebase_admin import auth, App
 from firebase_admin.auth import UserRecord
 
+from portal.schemas.auth import FirebaseTokenPayload
+
 
 class FirebaseAuthentication:
     """FirebaseAuthentication"""
@@ -17,7 +19,7 @@ class FirebaseAuthentication:
         id_token: str,
         check_revoked: bool = False,
         clock_skew_seconds: int = 0
-    ) -> dict:
+    ) -> FirebaseTokenPayload:
         """
         Verify id token
         :param id_token:
@@ -25,12 +27,13 @@ class FirebaseAuthentication:
         :param clock_skew_seconds:
         :return:
         """
-        return auth.verify_id_token(
+        payload = auth.verify_id_token(
             id_token=id_token,
             app=self.app,
             check_revoked=check_revoked,
             clock_skew_seconds=clock_skew_seconds
         )
+        return FirebaseTokenPayload(**payload)
 
     def get_user(self, uid: str) -> UserRecord:
         """

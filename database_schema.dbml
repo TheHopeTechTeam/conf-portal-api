@@ -1,0 +1,628 @@
+// Database Schema for Conf Portal API
+// Generated from SQLAlchemy models
+
+// Base mixins and common fields
+// All tables inherit from ModelBase which provides:
+// - id: UUID primary key
+// - created_at: timestamp with timezone
+// - created_by: string(64)
+// - created_by_id: UUID
+// - updated_at: timestamp with timezone
+// - updated_by: string(64)
+// - updated_by_id: UUID
+// - is_deleted: boolean (soft delete)
+// - delete_reason: string(64)
+// - description: text
+// - remark: string(256)
+
+// RBAC Tables
+Table portal_user {
+  id uuid [pk]
+  phone_number varchar(16) [not null, unique, note: 'Phone number, unique identifier']
+  email varchar(255) [unique, note: 'Email, unique identifier']
+  password_hash varchar(512) [note: 'Password hash']
+  salt varchar(128) [note: 'Salt for password hash']
+  is_active boolean [default: true, note: 'Is active']
+  verified boolean [default: false, note: 'Is verified']
+  last_login_at timestamp [note: 'Last login']
+  password_changed_at timestamp [note: 'Password last changed time']
+  password_expires_at timestamp [note: 'Password expiration time']
+  is_superuser boolean [default: false, note: 'Is superuser']
+  is_admin boolean [default: false, note: 'Is admin']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_user_profile {
+  id uuid [pk]
+  user_id uuid [not null, unique, ref: > portal_user.id, note: 'User ID']
+  display_name varchar(64) [note: 'Display name']
+  gender integer [default: 0, note: 'Refer to Gender enum']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+}
+
+Table portal_third_party_provider {
+  id uuid [pk]
+  name varchar(16) [not null, unique, note: 'Provider name, Enum: Provider']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_user_third_party_auth {
+  id uuid [pk]
+  user_id uuid [not null, ref: > portal_user.id, note: 'User ID']
+  provider_id uuid [not null, ref: > portal_third_party_provider.id, note: 'Provider ID']
+  provider_uid varchar(255) [not null, note: 'Provider UID']
+  access_token varchar(255) [note: 'Access token']
+  refresh_token varchar(255) [note: 'Refresh token']
+  token_expires_at timestamp [note: 'Token expiration time']
+  additional_data jsonb [note: 'Additional data']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+
+  indexes {
+    (user_id, provider_id, provider_uid) [unique]
+  }
+}
+
+Table portal_role {
+  id uuid [pk]
+  code varchar(32) [not null, unique, note: 'Role code']
+  name varchar(64) [note: 'Role name']
+  is_active boolean [default: true, note: 'Is role active']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+}
+
+Table portal_resource {
+  id uuid [pk]
+  code varchar(32) [not null, unique, note: 'Resource code (e.g., user, course, article)']
+  name varchar(64) [note: 'Resource name']
+  is_active boolean [default: true, note: 'Is resource active']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+}
+
+Table portal_verb {
+  id uuid [pk]
+  action varchar(32) [not null, unique, note: 'Verb action (e.g., create, read, update, delete)']
+  display_name varchar(64) [note: 'Display name']
+  is_active boolean [default: true, note: 'Is verb active']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+}
+
+Table portal_permission {
+  id uuid [pk]
+  resource_id uuid [not null, ref: > portal_resource.id, note: 'Resource ID']
+  verb_id uuid [not null, ref: > portal_verb.id, note: 'Verb ID']
+  code varchar(128) [not null, unique, note: 'Permission Code (e.g., user:read)']
+  display_name varchar(128) [note: 'Display name']
+  is_active boolean [default: true, note: 'Is permission active']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+
+  indexes {
+    (resource_id, verb_id) [unique]
+  }
+}
+
+// File Management Tables
+Table portal_file {
+  id uuid [pk]
+  original_name varchar(255) [not null, note: 'Original filename as uploaded']
+  key varchar(512) [not null, note: 'Storage object key(path)']
+  storage varchar(16) [not null, default: 's3', note: 'Storage backend, e.g., s3, gcs, local']
+  bucket varchar(128) [not null, note: 'S3 bucket name']
+  region varchar(32) [not null, note: 'S3 region']
+  content_type varchar(128) [note: 'MIME type']
+  extension varchar(16) [note: 'File extension']
+  size_bytes bigint [note: 'File size in bytes']
+  checksum_md5 varchar(32) [note: 'MD5 checksum of the file']
+  checksum_sha256 varchar(64) [note: 'SHA-256 checksum of the file']
+  width integer [note: 'Image width in pixels']
+  height integer [note: 'Image height in pixels']
+  duration_seconds float [note: 'Media duration in seconds']
+  status integer [not null, default: 0, note: 'File status, refer to FileStatus enum']
+  version integer [not null, default: 1, note: 'File version number']
+  is_public boolean [not null, default: false, note: 'Whether the file is public']
+  source integer [note: 'Upload source, refer to UploadSource enum']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  remark varchar(256) [note: 'Remark']
+
+  indexes {
+    (bucket, key) [unique]
+  }
+}
+
+Table portal_file_rendition {
+  id uuid [pk]
+  original_file_id uuid [not null, ref: > portal_file.id, note: 'Original file ID']
+  rendition_type varchar(32) [not null, note: 'Rendition type, e.g., max-100x100, original']
+  key varchar(512) [not null, note: 'Storage object key(path) for this rendition']
+  storage varchar(16) [not null, default: 's3', note: 'Storage backend for this rendition']
+  bucket varchar(128) [not null, note: 'S3 bucket for this rendition']
+  region varchar(32) [not null, note: 'S3 region for this rendition']
+  width integer [note: 'Rendition width in pixels']
+  height integer [note: 'Rendition height in pixels']
+  size_bytes bigint [note: 'Rendition file size in bytes']
+  checksum_md5 varchar(32) [note: 'MD5 checksum of the rendition']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+
+  indexes {
+    (original_file_id, rendition_type) [unique]
+  }
+}
+
+Table portal_file_association {
+  id uuid [pk]
+  file_id uuid [not null, ref: > portal_file.id, note: 'File ID']
+  resource_id uuid [not null, note: 'Resource ID']
+  resource_name varchar(32) [not null, note: 'Resource name(default table name)']
+  sequence float [note: 'Display sort, small to large, positive sort, default value current timestamp']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+// System Log Table
+Table portal_log {
+  id uuid [pk]
+  record_id uuid [note: 'Record ID in the audited table']
+  operation_type integer [not null, note: 'Operation type. refer to libs.consts.enums.OperationType']
+  operation_code varchar(64) [note: 'Operation code(default use table name)']
+  old_data jsonb [note: 'Complete old record data']
+  new_data jsonb [note: 'Complete new record data']
+  changed_fields jsonb [note: 'Only the fields that changed with old/new values']
+  ip_address varchar(45) [note: 'Client IP address']
+  user_agent varchar(512) [note: 'User agent string']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  remark varchar(256) [note: 'Remark']
+}
+
+// Conference Management Tables
+Table portal_conference {
+  id uuid [pk]
+  title varchar(255) [not null, note: 'Conference title']
+  start_date date [not null, note: 'Conference start date']
+  end_date date [not null, note: 'Conference end date']
+  is_active boolean [default: true, note: 'Is conference active']
+  location_id uuid [ref: > portal_location.id, note: 'Location ID']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_location {
+  id uuid [pk]
+  name varchar(255) [not null, note: 'Location name']
+  address text [note: 'Location address']
+  floor varchar(10) [note: 'Floor number']
+  room_number varchar(10) [note: 'Room number']
+  latitude decimal(9,6) [note: 'Latitude coordinate']
+  longitude decimal(9,6) [note: 'Longitude coordinate']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_instructor {
+  id uuid [pk]
+  name varchar(255) [not null, note: 'Instructor name']
+  title varchar(255) [note: 'Instructor title']
+  bio text [note: 'Instructor biography']
+  sequence float [note: 'Display sort, small to large, positive sort, default value current timestamp']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+// Workshop Management Tables
+Table portal_workshop {
+  id uuid [pk]
+  title varchar(255) [not null, note: 'Workshop title']
+  start_datetime timestamp [not null, note: 'Start datetime']
+  end_datetime timestamp [not null, note: 'End datetime']
+  conference_id uuid [not null, ref: > portal_conference.id, note: 'Conference ID']
+  location_id uuid [ref: > portal_location.id, note: 'Location ID']
+  participants_limit bigint [note: 'Participants limit']
+  slido_url varchar(500) [note: 'Slido URL']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_workshop_instructor {
+  workshop_id uuid [pk, ref: > portal_workshop.id, note: 'Workshop ID']
+  instructor_id uuid [pk, ref: > portal_instructor.id, note: 'Instructor ID']
+  is_primary boolean [default: false, note: 'Is primary instructor']
+  sequence float [note: 'Display sort, small to large, positive sort, default value current timestamp']
+}
+
+Table portal_workshop_registration {
+  id uuid [pk]
+  workshop_id uuid [not null, ref: > portal_workshop.id, note: 'Workshop ID']
+  user_id uuid [not null, ref: > portal_user.id, note: 'User ID']
+  registered_at timestamp [default: `now()`, note: 'Registration time']
+  unregistered_at timestamp [note: 'Unregistration time']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+
+  indexes {
+    (workshop_id, user_id) [unique]
+  }
+}
+
+// Event Info Tables
+Table portal_event_schedule {
+  id uuid [pk]
+  conference_id uuid [not null, ref: > portal_conference.id, note: 'Conference ID']
+  title varchar(255) [not null, note: 'Event title']
+  start_datetime timestamp [not null, note: 'Start DateTime']
+  end_datetime timestamp [not null, note: 'End DateTime']
+  text_color varchar(7) [note: 'Text color in hex format']
+  background_color varchar(7) [note: 'Background color in hex format']
+  sequence float [note: 'Display sort, small to large, positive sort, default value current timestamp']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+// FAQ Tables
+Table portal_faq_category {
+  id uuid [pk]
+  name varchar(255) [not null, note: 'Category name']
+  sequence float [note: 'Display sort, small to large, positive sort, default value current timestamp']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_faq {
+  id uuid [pk]
+  category_id uuid [not null, ref: > portal_faq_category.id, note: 'Category ID']
+  question text [not null, note: 'FAQ question']
+  answer text [not null, note: 'FAQ answer']
+  related_link varchar(500) [note: 'Related link URL']
+  sequence float [note: 'Display sort, small to large, positive sort, default value current timestamp']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+// Feedback Table
+Table portal_feedback {
+  id uuid [pk]
+  name varchar(255) [not null, note: 'Feedback name']
+  email varchar(255) [note: 'Feedback email']
+  message text [not null, note: 'Feedback message']
+  status integer [default: 0, note: 'Feedback status']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+// FCM Device Tables
+Table portal_fcm_device {
+  id uuid [pk]
+  device_key varchar(255) [not null, unique, note: 'Device Key']
+  token varchar(255) [not null, note: 'FCM token']
+  expired_at timestamp [note: 'Expiration time']
+  additional_data jsonb [note: 'Additional device data']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_fcm_user_device {
+  id uuid [pk]
+  user_id uuid [not null, ref: > portal_user.id, note: 'User ID']
+  device_id uuid [not null, ref: > portal_fcm_device.id, note: 'FCM Device ID']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+// Notification Tables
+Table portal_notification {
+  id uuid [pk]
+  title varchar(255) [not null, note: 'Notification title']
+  message text [not null, note: 'Notification message']
+  url varchar(500) [note: 'Notification URL']
+  type integer [not null, note: 'Notification type']
+  status integer [default: 0, note: 'Notification status']
+  failure_count integer [default: 0, note: 'Failure count']
+  success_count integer [default: 0, note: 'Success count']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_notification_history {
+  id uuid [pk]
+  notification_id uuid [not null, ref: > portal_notification.id, note: 'Notification ID']
+  device_id uuid [not null, ref: > portal_fcm_device.id, note: 'Device ID']
+  message_id varchar(255) [note: 'FCM message ID']
+  exception text [note: 'Exception message']
+  status integer [not null, note: 'History status']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+
+  indexes {
+    (notification_id, device_id) [unique]
+  }
+}
+
+
+
+// Testimony Table
+Table portal_testimony {
+  id uuid [pk]
+  name varchar(255) [not null, note: 'Testimony name']
+  phone_number varchar(16) [note: 'Phone number']
+  share boolean [default: false, note: 'Share permission']
+  message text [not null, note: 'Testimony message']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+// Language Tables
+Table portal_language {
+  id uuid [pk]
+  code varchar(10) [not null, unique, note: 'Language code']
+  name varchar(50) [not null, note: 'Language name']
+  is_active boolean [default: true, note: 'Is language active']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+}
+
+Table portal_translation {
+  id uuid [pk]
+  language_id uuid [not null, ref: > portal_language.id, note: 'Language ID']
+  content_type varchar(50) [not null, note: 'Content type']
+  object_id uuid [not null, note: 'Object ID']
+  field_name varchar(50) [not null, note: 'Field name']
+  translated_text text [not null, note: 'Translated text']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  description text [note: 'Description']
+  remark varchar(256) [note: 'Remark']
+
+  indexes {
+    (content_type, object_id, language_id, field_name) [unique]
+  }
+}
+
+// Relationship Tables
+Table portal_user_role {
+  user_id uuid [pk, ref: > portal_user.id, note: 'User ID']
+  role_id uuid [pk, ref: > portal_role.id, note: 'Role ID']
+}
+
+Table portal_role_permission {
+  role_id uuid [pk, ref: > portal_role.id, note: 'Role ID']
+  permission_id uuid [pk, ref: > portal_permission.id, note: 'Permission ID']
+  expire_date timestamp [note: 'Expiration time, can be used for temporary authorization']
+}
+
+Table portal_conference_instructors {
+  conference_id uuid [pk, ref: > portal_conference.id, note: 'Conference ID']
+  instructor_id uuid [pk, ref: > portal_instructor.id, note: 'Instructor ID']
+  is_primary boolean [default: false, note: 'Is primary instructor']
+  sequence float [note: 'Display sort, small to large, positive sort, default value current timestamp']
+}
+
+// Demo Table (Development Only)
+Table demo {
+  id uuid [pk]
+  name varchar(16) [not null, unique, note: 'Name, unique identifier']
+  age integer [note: 'Age']
+  password varchar(32) [note: 'Password']
+  gender integer [default: 0, note: 'Refer to Gender enum']
+  created_at timestamp [not null, note: 'Create Date']
+  created_by varchar(64) [not null, note: 'Create User Name']
+  created_by_id uuid [note: 'Create User ID']
+  updated_at timestamp [not null, note: 'Update Date']
+  updated_by varchar(64) [not null, note: 'Update User Name']
+  updated_by_id uuid [note: 'Update User ID']
+  is_deleted boolean [default: false, not null, note: 'Is Deleted(Logical Delete)']
+  delete_reason varchar(64) [note: 'Delete Reason']
+  remark varchar(256) [note: 'Remark']
+}

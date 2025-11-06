@@ -2,7 +2,12 @@
 Top level router for v1 API
 """
 from fastapi import APIRouter
+
+from portal.config import settings
+from portal.libs.depends import DEFAULT_RATE_LIMITERS
+from portal.route_classes import LogRoute
 from .account import router as account_router
+from .admin import router as admin_router
 from .conference import router as conference_router
 from .event_info import router as event_info_router
 from .faq import router as faq_router
@@ -11,7 +16,14 @@ from .feedback import router as feedback_router
 from .testimony import router as testimony_router
 from .workshop import router as workshop_router
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[
+        *DEFAULT_RATE_LIMITERS
+    ],
+    route_class=LogRoute
+)
+router.include_router(admin_router, prefix="/admin", tags=["Admin"])
+
 router.include_router(account_router, prefix="/account", tags=["Account"])
 router.include_router(conference_router, prefix="/conference", tags=["Conference"])
 router.include_router(event_info_router, prefix="/event_info", tags=["Event Info"])

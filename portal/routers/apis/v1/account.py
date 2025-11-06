@@ -7,8 +7,8 @@ from dependency_injector.wiring import inject, Provide
 from fastapi import APIRouter, Request, Response, Depends
 from starlette import status
 
-from portal.containers import Container
-from portal.handlers import AccountHandler
+from portal.container import Container
+from portal.handlers import UserHandler
 from portal.libs.depends import (
     check_access_token,
 )
@@ -28,16 +28,16 @@ router = APIRouter(
 @inject
 async def login(
     model: AccountLogin,
-    account_handler: AccountHandler = Depends(Provide[Container.account_handler]),
+    user_handler: UserHandler = Depends(Provide[Container.user_handler]),
 ) -> LoginResponse:
     """
     Login
     """
-    return await account_handler.login(model=model)
+    return await user_handler.login(model=model)
 
 
 @router.get(
-    path="/{account_id}",
+    path="/{user_id}",
     response_model=AccountDetail,
     status_code=status.HTTP_200_OK,
     dependencies=[check_access_token],
@@ -47,17 +47,17 @@ async def login(
 async def get_account(
     request: Request,
     response: Response,
-    account_id: uuid.UUID,
-    account_handler: AccountHandler = Depends(Provide[Container.account_handler]),
+    user_id: uuid.UUID,
+    user_handler: UserHandler = Depends(Provide[Container.user_handler]),
 ) -> AccountDetail:
     """
     Get an account
     """
-    return await account_handler.get_account(account_id=account_id)
+    return await user_handler.get_user(user_id=user_id)
 
 
 @router.put(
-    path="/{account_id}",
+    path="/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[check_access_token],
     description="For updating an account personal information"
@@ -66,18 +66,18 @@ async def get_account(
 async def update_account(
     request: Request,
     response: Response,
-    account_id: uuid.UUID,
+    user_id: uuid.UUID,
     model: AccountUpdate,
-    account_handler: AccountHandler = Depends(Provide[Container.account_handler]),
+    user_handler: UserHandler = Depends(Provide[Container.user_handler]),
 ) -> None:
     """
     Update an account
     """
-    await account_handler.update_account(account_id=account_id, model=model)
+    await user_handler.update_user(user_id=user_id, model=model)
 
 
 @router.delete(
-    path="/{account_id}",
+    path="/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[check_access_token],
     description="For deleting an account"
@@ -86,10 +86,10 @@ async def update_account(
 async def delete_account(
     request: Request,
     response: Response,
-    account_id: uuid.UUID,
-    account_handler: AccountHandler = Depends(Provide[Container.account_handler]),
+    user_id: uuid.UUID,
+    user_handler: UserHandler = Depends(Provide[Container.user_handler]),
 ) -> None:
     """
     Delete an account
     """
-    await account_handler.delete_account(account_id=account_id)
+    await user_handler.delete_user(user_id=user_id)

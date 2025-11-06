@@ -1,0 +1,225 @@
+"""
+AdminInstructorHandler
+"""
+import uuid
+from typing import Optional
+
+from asyncpg import UniqueViolationError
+from redis.asyncio import Redis
+
+import sqlalchemy as sa
+from portal.config import settings
+from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
+from portal.handlers import AdminFileHandler
+from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.models import PortalInstructor
+from portal.schemas.mixins import UUIDBaseModel
+from portal.serializers.mixins import DeleteBaseModel
+from portal.serializers.mixins.base import BulkAction
+from portal.serializers.v1.admin.instructor import (
+    InstructorQuery,
+    InstructorBase,
+    InstructorPages,
+    InstructorDetail,
+    InstructorCreate,
+    InstructorUpdate,
+)
+
+
+class AdminInstructorHandler:
+    """AdminInstructorHandler"""
+
+    def __init__(
+        self,
+        session: Session,
+        redis_client: RedisPool,
+        file_handler: AdminFileHandler,
+    ):
+        self._session = session
+        self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._file_handler = file_handler
+
+    async def get_instructor_pages(self, model: InstructorQuery) -> InstructorPages:
+        """
+
+        :param model:
+        :return:
+        """
+        items, count = await (
+            self._session.select(
+                PortalInstructor.id,
+                PortalInstructor.name,
+                PortalInstructor.title,
+                PortalInstructor.bio,
+                PortalInstructor.remark,
+                PortalInstructor.created_at,
+                PortalInstructor.updated_at,
+            )
+            .where(PortalInstructor.is_deleted == model.deleted)
+            .where(
+                model.keyword is not None, lambda: sa.or_(
+                    PortalInstructor.name.ilike(f"%{model.keyword}%"),
+                    PortalInstructor.title.ilike(f"%{model.keyword}%"),
+                    PortalInstructor.bio.ilike(f"%{model.keyword}%"),
+                )
+            )
+            .order_by_with(
+                tables=[PortalInstructor],
+                order_by=model.order_by,
+                descending=model.descending
+            )
+            .limit(model.page_size)
+            .offset(model.page * model.page_size)
+            .fetchpages(
+                no_order_by=False,
+                as_model=InstructorBase
+            )
+        )
+        return InstructorPages(
+            page=model.page,
+            page_size=model.page_size,
+            total=count,
+            items=items
+        )
+
+    async def get_instructor_by_id(self, instructor_id: uuid.UUID) -> InstructorDetail:
+        """
+
+        :param instructor_id:
+        :return:
+        """
+        item: Optional[InstructorDetail] = await (
+            self._session.select(
+                PortalInstructor.id,
+                PortalInstructor.name,
+                PortalInstructor.title,
+                PortalInstructor.bio,
+                PortalInstructor.remark,
+                PortalInstructor.description,
+                PortalInstructor.created_at,
+                PortalInstructor.updated_at,
+            )
+            .where(PortalInstructor.id == instructor_id)
+            .where(PortalInstructor.is_deleted == False)
+            .fetchrow(as_model=InstructorDetail)
+        )
+        if not item:
+            raise NotFoundException(detail=f"Instructor {instructor_id} not found")
+
+        item.image_urls = await self._file_handler.get_signed_url_by_resource_id(resource_id=item.id)
+        return item
+
+    async def create_instructor(self, model: InstructorCreate) -> UUIDBaseModel:
+        """
+
+        :param model:
+        :return:
+        """
+        instructor_id = uuid.uuid4()
+        try:
+            await (
+                self._session.insert(PortalInstructor)
+                .values(
+                    model.model_dump(exclude_none=True, exclude={"file_ids"}),
+                    id=instructor_id
+                )
+                .execute()
+            )
+            # TODO: create relation between instructor and files
+        except UniqueViolationError as e:
+            raise ConflictErrorException(
+                detail=f"Instructor {model.name} already exists",
+                debug_detail=str(e),
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+            )
+        else:
+            return UUIDBaseModel(id=instructor_id)
+
+    @distributed_trace()
+    async def update_instructor(self, instructor_id: uuid.UUID, model: InstructorUpdate):
+        """
+
+        :param instructor_id:
+        :param model:
+        :return:
+        """
+        try:
+            await (
+                self._session.insert(PortalInstructor)
+                .values(
+                    model.model_dump(exclude_none=True, exclude={"file_ids"}),
+                    id=instructor_id
+                )
+                .on_conflict_do_update(
+                    index_elements=[PortalInstructor.id],
+                    set_=model.model_dump(exclude={"file_ids"}),
+                )
+                .execute()
+            )
+
+        except UniqueViolationError as e:
+            raise ConflictErrorException(
+                detail=f"Instructor {model.name} already exists",
+                debug_detail=str(e),
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+            )
+
+    @distributed_trace()
+    async def delete_instructor(self, instructor_id: uuid.UUID, model: DeleteBaseModel) -> None:
+        """
+
+        :param instructor_id:
+        :param model:
+        :return:
+        """
+        try:
+            if not model.permanent:
+                await (
+                    self._session.update(PortalInstructor)
+                    .values(is_deleted=True, delete_reason=model.reason)
+                    .where(PortalInstructor.id == instructor_id)
+                    .execute()
+                )
+            else:
+                await (
+                    self._session.delete(PortalInstructor)
+                    .where(PortalInstructor.id == instructor_id)
+                    .execute()
+                )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
+
+    @distributed_trace()
+    async def restore_instructors(self, model: BulkAction) -> None:
+        """
+
+        :param model:
+        :return:
+        """
+        try:
+            await (
+                self._session.update(PortalInstructor)
+                .where(PortalInstructor.id.in_(model.ids))
+                .values(is_deleted=False)
+                .execute()
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
+

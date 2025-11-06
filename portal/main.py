@@ -1,25 +1,30 @@
 """
 main application
 """
+from collections import defaultdict
+
 import firebase_admin
 import sentry_sdk
-from django.conf import settings
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.exception_handlers import http_exception_handler
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from firebase_admin import credentials
 from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
-from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import RedirectResponse
 
-from portal.asgi_handler import get_asgi_application
-from portal.containers import Container
+from portal.config import settings
+from portal.container import Container
+from portal.exceptions.responses import ApiBaseException
+from portal.libs.contexts.request_session_context import get_request_session
+from portal.libs.logger import logger
 from portal.libs.utils.lifespan import lifespan
-from portal.middlewares import CustomHTTPMiddleware
+from portal.middlewares import CoreRequestMiddleware
 from portal.routers import api_router
 
 __all__ = ["app"]
@@ -36,7 +41,6 @@ def setup_tracing():
         dsn=settings.SENTRY_URL,
         integrations=[
             AsyncPGIntegration(),
-            DjangoIntegration(),
             FastApiIntegration(),
             HttpxIntegration(),
             RedisIntegration(),
@@ -64,7 +68,7 @@ def register_middleware(application: FastAPI) -> None:
     :param application:
     :return:
     """
-    application.add_middleware(CustomHTTPMiddleware)
+    application.add_middleware(CoreRequestMiddleware)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ALLOWED_ORIGINS,
@@ -89,47 +93,44 @@ def init_firebase():
     )
 
 
-def get_application(mount_application) -> FastAPI:
+def get_application() -> FastAPI:
     """
     get application
     """
     setup_tracing()
     application = FastAPI(
         lifespan=lifespan,
-        swagger_ui_parameters={
-            "tryItOutEnabled": True,
-            "requestSnippetsEnabled": True,
-            "requestSnippets": {
-                "generators": {
-                    "curl_bash": {
-                        "title": "cURL (bash)",
-                        "syntax": "bash"
-                    }
-                },
-            }
-        }
+        title=settings.APP_NAME.replace("-", " ").title().replace("Api", "API"),
+        version=settings.APP_VERSION,
+        summary="Conferences Portal API",
+        description="API documentation for Conferences Portal",
     )
-    # set route class
-    # application.router.route_class = LogRouting
+
     # set container
-    container = Container()
-    application.container = container
+    application.container = Container()
 
     # init firebase
     try:
         init_firebase()
     except Exception as e:
-        print(f"Firebase init error: {e}")
+        logger.error(f"Error initializing firebase: {e}")
     register_middleware(application=application)
     register_router(application=application)
-
-    # mount Django application
-    application.mount("/", mount_application)
 
     return application
 
 
-app = get_application(get_asgi_application())
+app = get_application()
+
+
+@app.get("/")
+async def root():
+    """
+    Root path redirects to /docs in development environment
+    """
+    if settings.IS_DEV:
+        return RedirectResponse(url="/docs")
+    return {"message": "Welcome to Conferences Portal API"}
 
 
 # @app.exception_handler(InvalidAuthorizationToken)
@@ -157,7 +158,32 @@ async def root_http_exception_handler(request, exc: HTTPException):
     :param exc:
     :return:
     """
+    session = get_request_session()
+    if session is not None:
+        await session.rollback()
     return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(ApiBaseException)
+async def root_api_exception_handler(request, exc: ApiBaseException):
+    """
+
+    :param request:
+    :param exc:
+    :return:
+    """
+    session = get_request_session()
+    if session is not None:
+        await session.rollback()
+    content = defaultdict()
+    content["detail"] = exc.detail
+    if settings.IS_DEV:
+        content["debug_detail"] = exc.debug_detail
+        content["url"] = str(request.url)
+    return JSONResponse(
+        content=content,
+        status_code=exc.status_code
+    )
 
 
 @app.exception_handler(Exception)
@@ -168,13 +194,12 @@ async def exception_handler(request: Request, exc):
     :param exc:
     :return:
     """
-    content = {
-        "detail": {
-            "message": "Internal Server Error",
-            "url": str(request.url)
-        }
+    content = defaultdict()
+    content["detail"] = {
+        "message": "Internal Server Error",
+        "url": str(request.url)
     }
-    if settings.DEBUG:
+    if settings.IS_DEV:
         content["debug_detail"] = f"{exc.__class__.__name__}: {exc}"
     return JSONResponse(
         content=content,

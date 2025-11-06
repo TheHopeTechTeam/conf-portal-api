@@ -5,7 +5,7 @@ from dependency_injector.wiring import inject, Provide
 from fastapi import APIRouter, Depends, Request, Response
 from starlette import status
 
-from portal.containers import Container
+from portal.container import Container
 from portal.handlers import FCMDeviceHandler
 from portal.route_classes import LogRoute
 from portal.serializers.v1.fcm_device import FCMCreate

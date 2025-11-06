@@ -2,75 +2,96 @@
 FAQ handler
 """
 import uuid
+from typing import Optional
 
-from portal.apps.faq.models import FaqCategory, Faq
+from redis.asyncio import Redis
 
+from portal.config import settings
+from portal.libs.database import Session, RedisPool
+from portal.models import PortalFaqCategory, PortalFaq
 from portal.serializers.v1.faq import FaqCategoryBase, FaqCategoryList, FaqList, FaqBase
 
 
 class FAQHandler:
     """FAQ handler"""
 
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        session: Session,
+        redis_client: RedisPool,
+    ):
+        self._session = session
+        self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    @staticmethod
-    async def get_faq_categories() -> FaqCategoryList:
+    async def get_faq_categories(self) -> FaqCategoryList:
         """
         Get FAQ categories
         """
-        categories = []
-        category_objs = FaqCategory.objects.all().order_by("sort_order")
-        async for category_obj in category_objs:
-            category = FaqCategoryBase(
-                id=category_obj.id,
-                name=category_obj.name,
-                description=category_obj.description
+        faq_categories: Optional[list[FaqCategoryBase]] = await (
+            self._session.select(
+                PortalFaqCategory.id,
+                PortalFaqCategory.name,
+                PortalFaqCategory.description
             )
-            categories.append(category)
-        return FaqCategoryList(categories=categories)
+            .order_by(PortalFaqCategory.sequence)
+            .fetch(as_model=FaqCategoryBase)
+        )
+        if not faq_categories:
+            return FaqCategoryList(categories=[])
+        return FaqCategoryList(categories=faq_categories)
 
-    @staticmethod
-    async def get_category_by_id(category_id: uuid.UUID) -> FaqCategoryBase:
+    async def get_category_by_id(self, category_id: uuid.UUID) -> Optional[FaqCategoryBase]:
         """
         Get category by ID
         """
-        category_obj: FaqCategory = await FaqCategory.objects.aget(id=category_id)
-        return FaqCategoryBase(
-            id=category_obj.id,
-            name=category_obj.name,
-            description=category_obj.description
+        category: Optional[FaqCategoryBase] = await (
+            self._session.select(
+                PortalFaqCategory.id,
+                PortalFaqCategory.name,
+                PortalFaqCategory.description
+            )
+            .where(PortalFaqCategory.id == category_id)
+            .fetchrow(as_model=FaqCategoryBase)
         )
+        if not category:
+            return None
+        return category
 
-
-    @staticmethod
-    async def get_faq_by_id(faq_id: uuid.UUID) -> FaqBase:
+    async def get_faq_by_id(self, faq_id: uuid.UUID) -> Optional[FaqBase]:
         """
         Get FAQ by ID
         """
-        faq_obj: Faq = await Faq.objects.aget(id=faq_id)
-        return FaqBase(
-            id=faq_obj.id,
-            category_id=faq_obj.category_id,
-            question=faq_obj.question,
-            answer=faq_obj.answer,
-            related_link=faq_obj.related_link
+        faq: Optional[FaqBase] = await (
+            self._session.select(
+                PortalFaq.id,
+                PortalFaq.category_id,
+                PortalFaq.question,
+                PortalFaq.answer,
+                PortalFaq.related_link
+            )
+            .where(PortalFaq.id == faq_id)
+            .fetchrow(as_model=FaqBase)
         )
+        if not faq:
+            return None
+        return faq
 
-    @staticmethod
-    async def get_faqs_by_category(category_id: uuid.UUID) -> FaqList:
+    async def get_faqs_by_category(self, category_id: uuid.UUID) -> FaqList:
         """
         Get FAQs by category
         """
-        faqs = []
-        faq_objs = Faq.objects.filter(category_id=category_id).order_by("sort_order")
-        async for faq_obj in faq_objs:
-            faq = FaqBase(
-                id=faq_obj.id,
-                category_id=category_id,
-                question=faq_obj.question,
-                answer=faq_obj.answer,
-                related_link=faq_obj.related_link
+        faqs: Optional[list[FaqBase]] = await (
+            self._session.select(
+                PortalFaq.id,
+                PortalFaq.category_id,
+                PortalFaq.question,
+                PortalFaq.answer,
+                PortalFaq.related_link
             )
-            faqs.append(faq)
+            .where(PortalFaq.category_id == category_id)
+            .order_by(PortalFaq.sequence)
+            .fetch(as_model=FaqBase)
+        )
+        if not faqs:
+            return FaqList(faqs=[])
         return FaqList(faqs=faqs)

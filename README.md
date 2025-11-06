@@ -98,7 +98,34 @@ poetry run python manage.py migrate
 poetry run python manage.py createsuperuser
 ```
 
-### 5. Run the Application
+### 5. Firebase Emulators Setup (Optional)
+
+The purpose of this is to use the Firebase emulators to test the authentication functionality locally.
+
+Required:
+
+- [Firebase CLI](https://firebase.google.com/docs/cli?authuser=0#mac-linux-auto-script) installed
+- Firebase project with credentials
+- Firebase project with authentication enabled
+- [Quickstart-js](https://github.com/firebase/quickstart-js) project cloned
+
+```bash
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Login to Firebase
+firebase login
+
+# Initialize Firebase emulators in your project
+firebase init emulators
+
+# Start Firebase emulators
+firebase emulators:start --only auth
+```
+
+The auth emulator will run on `http://localhost:9099` by default.
+
+### 6. Run the Application
 
 ```bash
 # Development server
@@ -114,18 +141,18 @@ poetry run python manage.py runserver
 
 ```bash
 # Build the Docker image
-docker build -t conf-webapi .
+docker build -t conf-portal-api .
 
 # Run the container
-docker run -p 8000:8000 conf-webapi
+docker run -p 8000:8000 conf-portal-api
 ```
 
 ## 📚 API Documentation
 
 Once the application is running, you can access:
 
--   **Interactive API Docs**: http://localhost:8000/docs
--   **ReDoc Documentation**: http://localhost:8000/redoc
+-   **Interactive API Docs**: <http://localhost:8000/docs>
+-   **ReDoc Documentation**: <http://localhost:8000/redoc>
 
 ### API Endpoints
 
@@ -162,7 +189,7 @@ poetry run pytest tests/handlers/test_account.py
 ## 📁 Project Structure
 
 ```
-conf-webapi/
+conf-portal-api/
 ├── portal/                    # Main application
 │   ├── apps/                 # Django applications
 │   │   ├── account/         # User account management

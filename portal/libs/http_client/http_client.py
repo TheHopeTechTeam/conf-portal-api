@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union, overload, AsyncIterator
 
 import httpx
-from django.conf import settings
+from portal.config import settings
 from httpx._types import FileTypes  # noqa
 
 request_logger = logging.getLogger("http_client")
@@ -589,7 +589,7 @@ class HttpClient:
     """HttpClient"""
 
     def __init__(self, defaults: HttpDefaults = None):
-        self.defaults: HttpDefaults = defaults or HttpDefaults(verbose=settings.DEBUG)
+        self.defaults: HttpDefaults = defaults or HttpDefaults(verbose=settings.IS_DEV)
 
     def create(self, url: str = None) -> HttpSession:
         """

@@ -3,10 +3,12 @@ Ticket serializers
 """
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from portal.schemas.mixins import JSONStringMixinModel
 
 
-class TicketBase(BaseModel):
+class TicketBase(JSONStringMixinModel):
     """
     Ticket
     """

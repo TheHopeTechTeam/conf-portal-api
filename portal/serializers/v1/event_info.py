@@ -16,6 +16,7 @@ class EventScheduleBase(UUIDBaseModel):
     title: str = Field(..., description="Title")
     description: Optional[str] = Field(None, description="Description")
     start_time: datetime = Field(..., serialization_alias="startTime", description="Start Time")
+    time_zone: Optional[str] = Field(None, serialization_alias="timeZone", description="Time Zone", exclude=True)
     background_color: Optional[str] = Field(None, serialization_alias="backgroundColor", description="Color")
 
 

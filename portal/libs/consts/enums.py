@@ -1,7 +1,7 @@
 """
 Enums for the application
 """
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, StrEnum
 
 
 class MenuOrder(IntEnum):
@@ -38,21 +38,10 @@ class Rendition(Enum):
     MAX_900x900 = "max-900x900"
     MAX_1000x1000 = "max-1000x1000"
 
-class LoginMethod(Enum):
-    """
-    Login method
-    """
-    # PASSWORD = "password"
-    # GOOGLE = "google"
-    # FACEBOOK = "facebook"
-    # APPLE = "apple"
-    FIREBASE = "firebase"
 
-
-
-class Provider(Enum):
+class AuthProvider(Enum):
     """
-    Provider
+    Third-party authentication provider
     """
     FIREBASE = "firebase"
 
@@ -81,6 +70,34 @@ class Gender(IntEnum):
         :return:
         """
         return [(key.value, key.name.title()) for key in cls]
+
+
+class ResourceType(IntEnum):
+    """
+    Resource type
+    """
+    SYSTEM = 0
+    GENERAL = 1
+
+
+class FileStatus(IntEnum):
+    """
+    File status
+    """
+    UPLOADING = 0
+    UPLOADED = 1
+    PROCESSING = 2
+    PROCESSED = 3
+    FAILED = 4
+    DELETED = 5
+
+
+class FileUploadSource(IntEnum):
+    """
+    File upload source
+    """
+    ADMIN = 0
+    APP = 1
 
 
 class FeedbackStatus(IntEnum):
@@ -128,6 +145,7 @@ class NotificationType(IntEnum):
     """
     INDIVIDUAL = 0
     MULTIPLE = 1
+
     # SYSTEM = 2
 
     @classmethod
@@ -171,3 +189,25 @@ class NotificationHistoryStatus(IntEnum):
         :return:
         """
         return [(key.value, key.name.title()) for key in cls]
+
+
+class Identity(Enum):
+    """Identity"""
+    SENIOR_PASTOR = "senior_pastor"
+    PASTOR = "pastor"
+    EVANGELIST = "evangelist"
+    THEOLOGY_STUDENT = "theology_student"
+    MINISTRY_LEADER = "ministry_leader"
+    CONGREGANT = "congregant"
+
+
+class OperationType(Enum):
+    """Operation Type"""
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+    RESTORE = "restore"
+    RECYCLE = "recycle"
+    LOGIN = "login"
+    LOGOUT = "logout"
+    OTHER = "other"
