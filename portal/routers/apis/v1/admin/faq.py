@@ -13,7 +13,7 @@ from portal.libs.depends import check_admin_access_token
 from portal.route_classes import LogRoute
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
-from portal.serializers.mixins.base import BulkAction
+from portal.serializers.mixins.base import BulkAction, DeleteQueryBaseModel
 from portal.serializers.v1.admin.faq import (
     FaqCategoryList,
     FaqCategoryDetail,
@@ -228,14 +228,16 @@ async def restore_faqs(
 )
 @inject
 async def get_category_list(
+    query_model: Annotated[DeleteQueryBaseModel, Query()],
     admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
 ):
     """
     Get FAQ category list
+    :param query_model:
     :param admin_faq_handler:
     :return:
     """
-    return await admin_faq_handler.get_category_list()
+    return await admin_faq_handler.get_category_list(model=query_model)
 
 
 @router.get(

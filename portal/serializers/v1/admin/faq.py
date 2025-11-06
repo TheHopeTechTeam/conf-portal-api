@@ -1,7 +1,7 @@
 """
 FAQ serializers
 """
-
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -16,16 +16,17 @@ class FaqCategoryBase(UUIDBaseModel):
     FAQ Category base model
     """
     name: str = Field(..., description="Name")
+    remark: Optional[str] = Field(None, description="Remark")
+    sequences: Optional[float] = Field(None, description="Sequences")
+    created_at: Optional[datetime] = Field(None, serialization_alias="createdAt", description="Created at")
+    updated_at: Optional[datetime] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
 class FaqCategoryItem(FaqCategoryBase):
     """
     FAQ Category item
     """
-    remark: Optional[str] = Field(None, description="Remark")
     description: Optional[str] = Field(None, description="Description")
-    created_at: Optional[str] = Field(None, serialization_alias="createdAt", description="Created at")
-    updated_at: Optional[str] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
 class FaqCategoryDetail(FaqCategoryItem):
@@ -63,8 +64,8 @@ class FaqBase(UUIDBaseModel):
     question: str = Field(..., description="Question")
     related_link: Optional[str] = Field(None, serialization_alias="relatedLink", description="Related Link")
     remark: Optional[str] = Field(None, description="Remark")
-    created_at: Optional[str] = Field(None, serialization_alias="createdAt", description="Created at")
-    updated_at: Optional[str] = Field(None, serialization_alias="updatedAt", description="Updated at")
+    created_at: Optional[datetime] = Field(None, serialization_alias="createdAt", description="Created at")
+    updated_at: Optional[datetime] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
 class FaqItem(FaqBase):

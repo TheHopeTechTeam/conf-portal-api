@@ -15,7 +15,7 @@ from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalFaq, PortalFaqCategory
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
-from portal.serializers.mixins.base import BulkAction
+from portal.serializers.mixins.base import BulkAction, DeleteQueryBaseModel
 from portal.serializers.v1.admin.faq import (
     FaqQuery,
     FaqBase,
@@ -230,17 +230,21 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
 
-    async def get_category_list(self) -> FaqCategoryList:
+    async def get_category_list(self, model: DeleteQueryBaseModel) -> FaqCategoryList:
         """
 
+        :param model:
         :return:
         """
         items: Optional[list[FaqCategoryBase]] = await (
             self._session.select(
                 PortalFaqCategory.id,
-                PortalFaqCategory.name
+                PortalFaqCategory.name,
+                PortalFaqCategory.remark,
+                PortalFaqCategory.created_at,
+                PortalFaqCategory.updated_at,
             )
-            .where(PortalFaqCategory.is_deleted == False)
+            .where(PortalFaqCategory.is_deleted == model.deleted)
             .order_by(PortalFaqCategory.sequence)
             .fetch(as_model=FaqCategoryItem)
         )
