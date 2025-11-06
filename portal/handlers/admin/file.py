@@ -2,6 +2,7 @@
 AdminFileHandler
 """
 import asyncio
+import base64
 import hashlib
 import io
 import mimetypes
@@ -208,7 +209,8 @@ class AdminFileHandler:
                 Key=s3_key,
                 ContentType=content_type,
                 Metadata={
-                    "original-name": original_filename,
+                    "original-name": base64.b64encode(original_filename.encode("utf-8")).decode("ascii"),
+                    "original-name-encoding": "base64",
                     "file-id": file_id.hex,
                     "upload-source": str(upload_source.value),
                 },
@@ -276,6 +278,69 @@ class AdminFileHandler:
             uploaded_files=uploaded_files,
             failed_files=failed_files
         )
+
+    @distributed_trace()
+    async def update_file_association(self, file_ids: list[uuid.UUID], resource_id: uuid.UUID, resource_name: str = None) -> None:
+        """
+        Update file association
+        :param file_ids:
+        :param resource_id:
+        :param resource_name:
+        :return:
+        """
+        try:
+            await (
+                self._session.delete(PortalFileAssociation)
+                .where(PortalFileAssociation.resource_id == resource_id)
+                .execute()
+            )
+            values = []
+            for file_id in file_ids:
+                values.append({"file_id": file_id, "resource_id": resource_id, "resource_name": resource_name})
+            await (
+                self._session.insert(PortalFileAssociation)
+                .values(values)
+                .on_conflict_do_nothing(index_where=["file_id", "resource_id"])
+                .execute()
+            )
+        except Exception as e:
+            raise Exception(f"Failed to create file association: {str(e)}")
+
+    @distributed_trace()
+    async def get_files_by_resource_id(self, resource_id: uuid.UUID) -> Optional[list[FileGridItem]]:
+        """
+
+        :param resource_id:
+        :return:
+        """
+        files: Optional[list[FileDetail]] = await (
+            self._session.select(
+                PortalFile.id,
+                PortalFile.original_name,
+                PortalFile.key,
+                PortalFile.storage,
+                PortalFile.bucket,
+                PortalFile.region,
+                PortalFile.content_type,
+                PortalFile.extension,
+                PortalFile.size_bytes
+            )
+            .outerjoin(PortalFileAssociation, PortalFileAssociation.file_id == PortalFile.id)
+            .where(PortalFileAssociation.resource_id.isnot(None))
+            .where(PortalFileAssociation.resource_id == resource_id)
+            .fetch(as_model=FileDetail)
+        )
+        if not files:
+            return None
+        file_items = []
+        for file in files:
+            file_items.append(
+                FileGridItem(
+                    **file.model_dump(),
+                    url=await self.get_signed_url(file=file)
+                )
+            )
+        return file_items
 
     @distributed_trace()
     async def get_signed_url_by_resource_id(self, resource_id: uuid.UUID) -> Optional[list[str]]:

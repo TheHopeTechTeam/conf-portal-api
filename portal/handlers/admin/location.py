@@ -23,7 +23,7 @@ from portal.serializers.v1.admin.location import (
     LocationPages,
     LocationDetail,
     LocationCreate,
-    LocationUpdate,
+    LocationUpdate, LocationItem,
 )
 
 
@@ -55,7 +55,7 @@ class AdminLocationHandler:
                 PortalLocation.room_number,
                 PortalLocation.remark,
                 PortalLocation.created_at,
-                PortalLocation.updated_at,
+                PortalLocation.updated_at
             )
             .where(PortalLocation.is_deleted == model.deleted)
             .where(
@@ -74,7 +74,7 @@ class AdminLocationHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=LocationBase
+                as_model=LocationItem
             )
         )
         return LocationPages(
@@ -111,7 +111,7 @@ class AdminLocationHandler:
         if not item:
             raise NotFoundException(detail=f"Location {location_id} not found")
 
-        item.image_urls = await self._file_handler.get_signed_url_by_resource_id(resource_id=item.id)
+        item.files = await self._file_handler.get_files_by_resource_id(resource_id=item.id)
         return item
 
     async def create_location(self, model: LocationCreate) -> UUIDBaseModel:
@@ -130,7 +130,11 @@ class AdminLocationHandler:
                 )
                 .execute()
             )
-            # TODO: create relation between location and files
+            await self._file_handler.update_file_association(
+                file_ids=model.file_ids,
+                resource_id=location_id,
+                resource_name=self.__class__.__name__,
+            )
         except UniqueViolationError as e:
             raise ConflictErrorException(
                 detail=f"Location {model.name} already exists",
@@ -140,6 +144,7 @@ class AdminLocationHandler:
             raise ApiBaseException(
                 status_code=500,
                 detail="Internal Server Error",
+                debug_detail=str(e),
             )
         else:
             return UUIDBaseModel(id=location_id)
@@ -165,7 +170,11 @@ class AdminLocationHandler:
                 )
                 .execute()
             )
-
+            await self._file_handler.update_file_association(
+                file_ids=model.file_ids,
+                resource_id=location_id,
+                resource_name=self.__class__.__name__,
+            )
         except UniqueViolationError as e:
             raise ConflictErrorException(
                 detail=f"Location {model.name} already exists",
@@ -175,6 +184,7 @@ class AdminLocationHandler:
             raise ApiBaseException(
                 status_code=500,
                 detail="Internal Server Error",
+                debug_detail=str(e),
             )
 
     @distributed_trace()
@@ -226,4 +236,3 @@ class AdminLocationHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
-
