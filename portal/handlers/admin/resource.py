@@ -5,9 +5,9 @@ import asyncio
 import uuid
 
 import sqlalchemy as sa
-from sqlalchemy.orm import aliased
 from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
+from sqlalchemy.orm import aliased
 
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, ConflictErrorException, UnauthorizedException, NotFoundException
@@ -24,7 +24,7 @@ from portal.serializers.v1.admin.resource import (
     ResourceItem,
     ResourceTree,
     ResourceTreeItem,
-    ResourceList, ResourceDetail,
+    ResourceList, ResourceDetail, ResourceChangeParent,
 )
 
 
@@ -107,6 +107,27 @@ class AdminResourceHandler:
             )
         else:
             return UUIDBaseModel(id=rid)
+
+    async def change_parent(self, resource_id: uuid.UUID, model: ResourceChangeParent):
+        """
+
+        :param resource_id:
+        :param model:
+        :return:
+        """
+        try:
+            await (
+                self._session.update(PortalResource)
+                .values(pid=model.pid)
+                .where(PortalResource.id == resource_id)
+                .execute()
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
 
     async def update_resource(self, resource_id: uuid.UUID, model: ResourceUpdate):
         """
@@ -273,10 +294,12 @@ class AdminResourceHandler:
                 PortalResource.sequence,
                 PortalResource.is_deleted
             )
-            .where(is_deleted == True, lambda: sa.or_(
-                PortalResource.is_deleted == is_deleted,
-                sa.and_(PortalResource.pid.is_(None), PortalResource.is_deleted == False)
-            ))
+            .where(
+                is_deleted == True, lambda: sa.or_(
+                    PortalResource.is_deleted == is_deleted,
+                    sa.and_(PortalResource.pid.is_(None), PortalResource.is_deleted == False)
+                )
+                )
             .where(is_deleted == False, lambda: PortalResource.is_deleted == is_deleted)
             .order_by(PortalResource.sequence)
             .fetch(as_model=ResourceItem)

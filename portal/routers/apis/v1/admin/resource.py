@@ -18,7 +18,7 @@ from portal.serializers.v1.admin.resource import (
     ResourceCreate,
     ResourceUpdate,
     ResourceChangeSequence,
-    ResourceList, ResourceDetail,
+    ResourceList, ResourceDetail, ResourceChangeParent,
 )
 
 router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
@@ -79,6 +79,26 @@ async def restore_resource(
     :return:
     """
     await admin_resource_handler.restore_resource(resource_id=resource_id)
+
+
+@router.put(
+    path="/change_parent/{resource_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def change_resource_parent(
+    resource_id: uuid.UUID,
+    model: ResourceChangeParent,
+    admin_resource_handler: AdminResourceHandler = Depends(Provide[Container.admin_resource_handler])
+):
+    """
+
+    :param resource_id:
+    :param model:
+    :param admin_resource_handler:
+    :return:
+    """
+    await admin_resource_handler.change_parent(resource_id=resource_id, model=model)
 
 
 @router.put(

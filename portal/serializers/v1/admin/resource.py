@@ -109,6 +109,11 @@ class ResourceUpdate(ResourceCreate):
     """ResourceUpdate"""
 
 
+class ResourceChangeParent(BaseModel):
+    """ResourceChangeParent"""
+    pid: UUID = Field(..., description="New parent resource ID")
+
+
 class ResourceBulkDelete(BaseModel):
     """ResourceBulkDelete"""
     ids: list[UUID] = Field(..., description="Resource IDs to delete")
