@@ -43,6 +43,7 @@ class AdminFeedbackHandler:
                 PortalFeedback.id,
                 PortalFeedback.name,
                 PortalFeedback.email,
+                PortalFeedback.message,
                 PortalFeedback.status,
                 PortalFeedback.remark,
                 PortalFeedback.created_at,

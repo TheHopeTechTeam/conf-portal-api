@@ -32,11 +32,11 @@ class FeedbackBase(UUIDBaseModel):
 
 class FeedbackItem(FeedbackBase):
     """Feedback item"""
+    message: Optional[str] = Field(None, description="Message")
 
 
 class FeedbackDetail(FeedbackItem):
     """Feedback detail"""
-    message: Optional[str] = Field(None, description="Message")
     description: Optional[str] = Field(default=None, description="Description")
 
 
