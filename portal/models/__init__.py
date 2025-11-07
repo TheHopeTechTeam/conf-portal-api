@@ -1,8 +1,9 @@
 """
 Top-level package for models.
 """
-from portal.config import settings
+from .auth import PortalAuthDevice, PortalRefreshToken
 from .conference import PortalConference, PortalConferenceInstructors
+from .demo import Demo
 from .event_info import PortalEventSchedule
 from .faq import PortalFaqCategory, PortalFaq
 from .fcm_device import PortalFcmDevice, PortalFcmUserDevice
@@ -23,13 +24,14 @@ from .rbac import (
     PortalVerb,
     PortalPermission,
     PortalUserRole,
-    PortalRolePermission
+    PortalRolePermission,
 )
 from .testimony import PortalTestimony
 from .workshop import PortalWorkshop, PortalWorkshopInstructor, PortalWorkshopRegistration
-from .auth import PortalAuthDevice, PortalRefreshToken
 
 __all__ = [
+    # demo
+    "Demo",
     # conference
     "PortalConference",
     "PortalConferenceInstructors",
@@ -80,8 +82,3 @@ __all__ = [
     "PortalAuthDevice",
     "PortalRefreshToken",
 ]
-
-if settings.is_dev:
-    from .demo import Demo
-
-    __all__.append("Demo")

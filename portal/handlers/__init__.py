@@ -1,9 +1,9 @@
 """
 Top level handlers package
 """
-from portal.config import settings
 from .admin.auth import AdminAuthHandler
 from .admin.conference import AdminConferenceHandler
+from .admin.demo import DemoHandler
 from .admin.faq import AdminFaqHandler
 from .admin.feedback import AdminFeedbackHandler
 from .admin.file import AdminFileHandler
@@ -25,6 +25,8 @@ from .user import UserHandler
 from .workshop import WorkshopHandler
 
 __all__ = [
+    # demo
+    "DemoHandler",
     # admin
     "AdminAuthHandler",
     "AdminConferenceHandler",
@@ -49,8 +51,3 @@ __all__ = [
     "UserHandler",
     "WorkshopHandler"
 ]
-
-if settings.is_dev:
-    from .admin.demo import DemoHandler
-
-    __all__.append("DemoHandler")
