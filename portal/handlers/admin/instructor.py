@@ -101,13 +101,12 @@ class AdminInstructorHandler:
                 PortalInstructor.updated_at,
             )
             .where(PortalInstructor.id == instructor_id)
-            .where(PortalInstructor.is_deleted == False)
             .fetchrow(as_model=InstructorDetail)
         )
         if not item:
             raise NotFoundException(detail=f"Instructor {instructor_id} not found")
 
-        item.image_urls = await self._file_handler.get_signed_url_by_resource_id(resource_id=item.id)
+        item.files = await self._file_handler.get_files_by_resource_id(resource_id=item.id)
         return item
 
     async def create_instructor(self, model: InstructorCreate) -> UUIDBaseModel:
@@ -126,7 +125,11 @@ class AdminInstructorHandler:
                 )
                 .execute()
             )
-            # TODO: create relation between instructor and files
+            await self._file_handler.update_file_association(
+                file_ids=model.file_ids,
+                resource_id=instructor_id,
+                resource_name=self.__class__.__name__,
+            )
         except UniqueViolationError as e:
             raise ConflictErrorException(
                 detail=f"Instructor {model.name} already exists",
@@ -136,6 +139,7 @@ class AdminInstructorHandler:
             raise ApiBaseException(
                 status_code=500,
                 detail="Internal Server Error",
+                debug_detail=str(e),
             )
         else:
             return UUIDBaseModel(id=instructor_id)
@@ -161,7 +165,11 @@ class AdminInstructorHandler:
                 )
                 .execute()
             )
-
+            await self._file_handler.update_file_association(
+                file_ids=model.file_ids,
+                resource_id=instructor_id,
+                resource_name=self.__class__.__name__,
+            )
         except UniqueViolationError as e:
             raise ConflictErrorException(
                 detail=f"Instructor {model.name} already exists",
@@ -171,6 +179,7 @@ class AdminInstructorHandler:
             raise ApiBaseException(
                 status_code=500,
                 detail="Internal Server Error",
+                debug_detail=str(e),
             )
 
     @distributed_trace()

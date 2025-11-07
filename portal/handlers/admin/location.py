@@ -105,7 +105,6 @@ class AdminLocationHandler:
                 PortalLocation.updated_at,
             )
             .where(PortalLocation.id == location_id)
-            .where(PortalLocation.is_deleted == False)
             .fetchrow(as_model=LocationDetail)
         )
         if not item:
