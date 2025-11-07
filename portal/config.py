@@ -4,12 +4,13 @@ Configuration
 import json
 import logging
 import os
-from pathlib import PosixPath, Path
+from functools import lru_cache
+from pathlib import Path
 from typing import Optional, Any, Type, Tuple
 
 from dotenv import load_dotenv
 from google.oauth2 import service_account
-from pydantic import field_validator, model_validator
+from pydantic import model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, EnvSettingsSource, PydanticBaseSettingsSource
 
@@ -37,7 +38,7 @@ class CustomSource(EnvSettingsSource):
         """
         if field.annotation is bool:
             return Converter.to_bool(value, default=field.default or False)
-        if field.annotation is list[str]:
+        if isinstance(list[str], type(field.annotation)):
             return [v for v in value.split(',')]
         return value
 
@@ -142,10 +143,12 @@ class Configuration(BaseSettings):
         if self.GOOGLE_APPLICATION_CREDENTIALS:
             candidate_paths.append(self.GOOGLE_APPLICATION_CREDENTIALS)
         project_dir = Path(__file__).resolve().parent.parent
-        candidate_paths.extend([
-            os.path.join(project_dir, "env/google_certificate.json"),
-            "/etc/secrets/google_certificate.json",
-        ])
+        candidate_paths.extend(
+            [
+                os.path.join(project_dir, "env/google_certificate.json"),
+                "/etc/secrets/google_certificate.json",
+            ]
+        )
 
         for candidate_path in candidate_paths:
             try:
@@ -165,5 +168,18 @@ class Configuration(BaseSettings):
 
         return self
 
+    @property
+    def is_prod(self) -> bool:
+        return self.ENV.lower() == "prod"
 
-settings: Configuration = Configuration()
+    @property
+    def is_dev(self) -> bool:
+        return self.ENV.lower() not in ("prod", "stg")
+
+
+@lru_cache()
+def get_settings() -> Configuration:
+    return Configuration()
+
+
+settings: Configuration = get_settings()

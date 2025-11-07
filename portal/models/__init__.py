@@ -81,7 +81,7 @@ __all__ = [
     "PortalRefreshToken",
 ]
 
-if settings.IS_DEV:
+if settings.is_dev:
     from .demo import Demo
 
     __all__.append("Demo")

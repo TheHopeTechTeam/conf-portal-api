@@ -34,7 +34,7 @@ router.include_router(testimony_router, prefix="/testimony", tags=["Admin - Test
 router.include_router(user_router, prefix="/user", tags=["Admin - User"])
 router.include_router(verb_router, prefix="/verb", tags=["Admin - Verb"])
 
-if settings.IS_DEV:
+if settings.is_dev:
     from .demo import router as demo_router
 
     router.include_router(demo_router, prefix="/demo", tags=["Demo"])

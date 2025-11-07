@@ -128,7 +128,7 @@ async def root():
     """
     Root path redirects to /docs in development environment
     """
-    if settings.IS_DEV:
+    if settings.is_dev:
         return RedirectResponse(url="/docs")
     return {"message": "Welcome to Conferences Portal API"}
 
@@ -177,7 +177,7 @@ async def root_api_exception_handler(request, exc: ApiBaseException):
         await session.rollback()
     content = defaultdict()
     content["detail"] = exc.detail
-    if settings.IS_DEV:
+    if settings.is_dev:
         content["debug_detail"] = exc.debug_detail
         content["url"] = str(request.url)
     return JSONResponse(
@@ -199,7 +199,7 @@ async def exception_handler(request: Request, exc):
         "message": "Internal Server Error",
         "url": str(request.url)
     }
-    if settings.IS_DEV:
+    if settings.is_dev:
         content["debug_detail"] = f"{exc.__class__.__name__}: {exc}"
     return JSONResponse(
         content=content,

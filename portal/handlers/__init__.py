@@ -50,7 +50,7 @@ __all__ = [
     "WorkshopHandler"
 ]
 
-if settings.IS_DEV:
+if settings.is_dev:
     from .admin.demo import DemoHandler
 
     __all__.append("DemoHandler")

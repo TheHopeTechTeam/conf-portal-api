@@ -106,7 +106,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     # [Handlers]
-    if settings.IS_DEV:
+    if settings.is_dev:
         demo_handler = providers.Factory(
             handlers.DemoHandler,
             session=request_session
