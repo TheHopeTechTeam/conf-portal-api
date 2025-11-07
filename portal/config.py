@@ -8,6 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional, Any, Type, Tuple
 
+import yaml
 from dotenv import load_dotenv
 from google.oauth2 import service_account
 from pydantic import model_validator
@@ -15,6 +16,7 @@ from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, EnvSettingsSource, PydanticBaseSettingsSource
 
 from portal.libs.shared import Converter
+from portal.schemas.rate_limiter import RateLimitersConfig
 
 load_dotenv()
 
@@ -115,6 +117,10 @@ class Configuration(BaseSettings):
     TOKEN_BLACKLIST_REDIS_DB: int = int(os.getenv(key="TOKEN_BLACKLIST_REDIS_DB", default="1"))
     TOKEN_BLACKLIST_CLEANUP_INTERVAL: int = int(os.getenv(key="TOKEN_BLACKLIST_CLEANUP_INTERVAL", default="3600"))
 
+    # [Rate Limiting]
+    # 限流器配置從 YAML 檔案載入，見 _load_rate_limiters_config 方法
+    RATE_LIMITERS_CONFIG: Optional[RateLimitersConfig] = None
+
     # [Sentry]
     SENTRY_URL: Optional[str] = os.getenv(key="SENTRY_URL")
 
@@ -165,6 +171,70 @@ class Configuration(BaseSettings):
             except Exception as exc:
                 logger = logging.getLogger(self.APP_NAME)
                 logger.warning(f"Failed to load Google Firebase certificate from {candidate_path}: {exc}")
+
+        return self
+
+    @model_validator(mode="after")
+    def _load_rate_limiters_config(self) -> "Configuration":
+        """
+        Load rate limiters configuration from the YAML file, in order:
+        1) RATE_LIMITERS_CONFIG_PATH env var (if provided)
+        2) env/rate_limiters.yaml
+        3) /etc/secrets/rate_limiters.yaml
+        """
+        if self.RATE_LIMITERS_CONFIG:
+            return self
+
+        candidate_paths: list[str] = []
+        rate_limiters_config_path = os.getenv(key="RATE_LIMITERS_CONFIG_PATH")
+        if rate_limiters_config_path:
+            candidate_paths.append(rate_limiters_config_path)
+
+        project_dir = Path(__file__).resolve().parent.parent
+        candidate_paths.extend(
+            [
+                os.path.join(project_dir, "env/rate_limiters.yaml"),
+                "/etc/secrets/rate_limiters.yaml",
+            ]
+        )
+
+        for candidate_path in candidate_paths:
+            try:
+                rate_limiters_path: Path = Path(candidate_path)
+                if rate_limiters_path.exists():
+                    config_dict = yaml.safe_load(rate_limiters_path.read_text())
+                    self.RATE_LIMITERS_CONFIG = RateLimitersConfig(**config_dict)
+                    logger = logging.getLogger(self.APP_NAME)
+                    logger.info(f"Rate limiters config loaded from {candidate_path}")
+                    break
+            except FileNotFoundError:
+                continue
+            except Exception as exc:
+                logger = logging.getLogger(self.APP_NAME)
+                logger.warning(f"Failed to load rate limiters config from {candidate_path}: {exc}")
+
+        # 如果沒有載入到配置，使用預設值
+        if not self.RATE_LIMITERS_CONFIG:
+            logger = logging.getLogger(self.APP_NAME)
+            logger.warning("Rate limiters config not found, using default values")
+            default_config_dict = {
+                "default": {
+                    "short": {"times": 10, "seconds": 1},
+                    "medium": {"times": 50, "seconds": 30},
+                    "long": {"times": 1000, "seconds": 3600},
+                },
+                "read": {
+                    "short": {"times": 20, "seconds": 1},
+                    "medium": {"times": 100, "seconds": 30},
+                    "long": {"times": 1800, "seconds": 3600},
+                },
+                "write": {
+                    "short": {"times": 10, "seconds": 1},
+                    "medium": {"times": 60, "seconds": 30},
+                    "long": {"times": 1200, "seconds": 3600},
+                }
+            }
+            self.RATE_LIMITERS_CONFIG = RateLimitersConfig(**default_config_dict)
 
         return self
 
