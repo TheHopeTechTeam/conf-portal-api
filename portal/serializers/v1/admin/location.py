@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import Field, BaseModel
 
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
 from portal.serializers.v1.admin.file import FileGridItem
 
@@ -19,7 +19,7 @@ class LocationQuery(GenericQueryBaseModel):
     room_number: Optional[str] = Field(None, description="Room number")
 
 
-class LocationBase(UUIDBaseModel):
+class LocationBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Location base model
     """

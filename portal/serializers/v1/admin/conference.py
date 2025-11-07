@@ -2,7 +2,7 @@
 Conference serializers
 """
 
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -17,7 +17,7 @@ class ConferenceQuery(GenericQueryBaseModel):
     """
     Conference query model
     """
-    is_active: Optional[bool] = Field(default=None, serialization_alias="isActive", description="Is Active")
+    is_active: Optional[bool] = Field(default=None, description="Is Active")
 
 
 class ConferenceBase(UUIDBaseModel):
@@ -29,8 +29,8 @@ class ConferenceBase(UUIDBaseModel):
     end_date: date = Field(..., serialization_alias="endDate", description="End Date")
     is_active: Optional[bool] = Field(default=None, serialization_alias="isActive", description="Is Active")
     remark: Optional[str] = Field(default=None, description="Remark")
-    created_at: Optional[str] = Field(default=None, serialization_alias="createdAt", description="Created at")
-    updated_at: Optional[str] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
+    created_at: Optional[datetime] = Field(default=None, serialization_alias="createdAt", description="Created at")
+    updated_at: Optional[datetime] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
 
 
 class ConferenceItem(ConferenceBase):

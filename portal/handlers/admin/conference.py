@@ -110,7 +110,6 @@ class AdminConferenceHandler:
             )
             .outerjoin(PortalLocation, PortalConference.location_id == PortalLocation.id)
             .where(PortalConference.id == conference_id)
-            .where(PortalConference.is_deleted == False)
             .fetchrow(as_model=ConferenceDetail)
         )
         if not item:
