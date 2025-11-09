@@ -86,6 +86,33 @@ class AdminConferenceHandler:
             items=items
         )
 
+    async def get_active_conference(self) -> ConferenceItem:
+        """
+
+        :return:
+        """
+        item: Optional[ConferenceItem] = await (
+            self._session.select(
+                PortalConference.id,
+                PortalConference.title,
+                PortalConference.start_date,
+                PortalConference.end_date,
+                PortalConference.is_active,
+                PortalConference.remark,
+                PortalConference.description,
+                PortalConference.created_at,
+                PortalConference.updated_at,
+                sa.func.coalesce(PortalLocation.name, sa.text("NULL")).label("location_name"),
+            )
+            .outerjoin(PortalLocation, PortalConference.location_id == PortalLocation.id)
+            .where(PortalConference.is_active == True)
+            .order_by(PortalConference.start_date)
+            .fetchrow(as_model=ConferenceItem)
+        )
+        if not item:
+            raise NotFoundException(detail="No active conference found")
+        return item
+
     async def get_conference_by_id(self, conference_id: uuid.UUID) -> ConferenceDetail:
         """
 
@@ -138,10 +165,11 @@ class AdminConferenceHandler:
                 detail=f"Conference {model.title} already exists",
                 debug_detail=str(e),
             )
-        except Exception:
+        except Exception as e:
             raise ApiBaseException(
                 status_code=500,
                 detail="Internal Server Error",
+                debug_detail=str(e),
             )
         else:
             return UUIDBaseModel(id=conference_id)

@@ -20,7 +20,7 @@ from portal.serializers.v1.admin.conference import (
     ConferenceDetail,
     ConferenceCreate,
     ConferenceUpdate,
-    ConferenceInstructorsUpdate,
+    ConferenceInstructorsUpdate, ConferenceItem,
 )
 
 router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
@@ -43,6 +43,23 @@ async def get_conference_pages(
     :return:
     """
     return await admin_conference_handler.get_conference_pages(model=query_model)
+
+
+@router.get(
+    path="/active",
+    status_code=status.HTTP_200_OK,
+    response_model=ConferenceItem
+)
+@inject
+async def get_active_conference(
+    admin_conference_handler: AdminConferenceHandler = Depends(Provide[Container.admin_conference_handler])
+):
+    """
+
+    :param admin_conference_handler:
+    :return:
+    """
+    return await admin_conference_handler.get_active_conference()
 
 
 @router.get(
