@@ -4,6 +4,7 @@ Top level handlers package
 from .admin.auth import AdminAuthHandler
 from .admin.conference import AdminConferenceHandler
 from .admin.demo import DemoHandler
+from .admin.event_info import AdminEventInfoHandler
 from .admin.faq import AdminFaqHandler
 from .admin.feedback import AdminFeedbackHandler
 from .admin.file import AdminFileHandler
@@ -30,6 +31,7 @@ __all__ = [
     # admin
     "AdminAuthHandler",
     "AdminConferenceHandler",
+    "AdminEventInfoHandler",
     "AdminFaqHandler",
     "AdminFeedbackHandler",
     "AdminFileHandler",

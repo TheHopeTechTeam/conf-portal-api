@@ -117,6 +117,11 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
     )
+    admin_event_info_handler = providers.Factory(
+        handlers.AdminEventInfoHandler,
+        session=request_session,
+        redis_client=redis_client,
+    )
     admin_faq_handler = providers.Factory(
         handlers.AdminFaqHandler,
         session=request_session,

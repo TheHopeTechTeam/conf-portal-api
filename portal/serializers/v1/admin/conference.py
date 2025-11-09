@@ -25,18 +25,18 @@ class ConferenceBase(UUIDBaseModel):
     Conference base model
     """
     title: str = Field(..., description="Title")
-    start_date: date = Field(..., serialization_alias="startDate", description="Start Date")
-    end_date: date = Field(..., serialization_alias="endDate", description="End Date")
-    is_active: Optional[bool] = Field(default=None, serialization_alias="isActive", description="Is Active")
-    remark: Optional[str] = Field(default=None, description="Remark")
-    created_at: Optional[datetime] = Field(default=None, serialization_alias="createdAt", description="Created at")
-    updated_at: Optional[datetime] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
 
 
 class ConferenceItem(ConferenceBase):
     """
     Conference item
     """
+    start_date: date = Field(..., serialization_alias="startDate", description="Start Date")
+    end_date: date = Field(..., serialization_alias="endDate", description="End Date")
+    is_active: Optional[bool] = Field(default=None, serialization_alias="isActive", description="Is Active")
+    remark: Optional[str] = Field(default=None, description="Remark")
+    created_at: Optional[datetime] = Field(default=None, serialization_alias="createdAt", description="Created at")
+    updated_at: Optional[datetime] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
     description: Optional[str] = Field(default=None, description="Description")
     location_name: Optional[str] = Field(default=None, serialization_alias="locationName", description="Location name")
 
