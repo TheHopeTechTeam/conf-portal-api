@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
 from portal.serializers.v1.admin.location import LocationBase
 
@@ -20,7 +20,7 @@ class ConferenceQuery(GenericQueryBaseModel):
     is_active: Optional[bool] = Field(default=None, description="Is Active")
 
 
-class ConferenceBase(UUIDBaseModel):
+class ConferenceBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Conference base model
     """

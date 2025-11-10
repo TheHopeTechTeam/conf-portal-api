@@ -77,9 +77,10 @@ class AdminEventInfoHandler:
                 PortalEventSchedule.description,
                 sa.func.json_build_object(
                     sa.cast("id", sa.VARCHAR(4)), PortalConference.id,
-                    sa.cast("title", sa.VARCHAR(4)), PortalConference.title
+                    sa.cast("title", sa.VARCHAR(8)), PortalConference.title
                 ).label('conference'),
             )
+            .outerjoin(PortalConference, PortalEventSchedule.conference_id == PortalConference.id)
             .where(PortalEventSchedule.id == event_id)
             .fetchrow(as_model=EventInfoDetail)
         )
@@ -133,7 +134,10 @@ class AdminEventInfoHandler:
                 )
                 .on_conflict_do_update(
                     index_elements=[PortalEventSchedule.id],
-                    set_=model.model_dump(exclude_none=True),
+                    set_={
+                        "updated_at": sa.func.now(),
+                        **model.model_dump()
+                    },
                 )
                 .execute()
             )
