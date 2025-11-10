@@ -13,7 +13,7 @@ from portal.exceptions.responses import NotFoundException, ConflictErrorExceptio
 from portal.libs.database import Session, RedisPool
 from portal.models import PortalEventSchedule, PortalConference
 from portal.schemas.mixins import UUIDBaseModel
-from portal.serializers.v1.admin.event_info import EventInfoQuery, EventInfoList, EventInfoItem, EventInfoDetail, EventInfoCreate, EventInfoUpdate
+from portal.serializers.v1.admin.event_info import EventInfoList, EventInfoItem, EventInfoDetail, EventInfoCreate, EventInfoUpdate
 
 
 class AdminEventInfoHandler:
@@ -27,10 +27,10 @@ class AdminEventInfoHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    async def get_event_info_list(self, model: EventInfoQuery) -> EventInfoList:
+    async def get_event_info_list(self, conference_id: uuid.UUID) -> EventInfoList:
         """
 
-        :param model:
+        :param conference_id:
         :return:
         """
         items: Optional[list[EventInfoItem]] = await (
@@ -44,9 +44,10 @@ class AdminEventInfoHandler:
                 PortalEventSchedule.background_color
             )
             .where(
-                PortalEventSchedule.is_deleted.is_(False),
-                PortalEventSchedule.start_datetime >= model.start_date if model.start_date else True,
-                PortalEventSchedule.end_datetime <= model.end_date if model.end_date else True,
+                sa.and_(
+                    PortalEventSchedule.is_deleted.is_(False),
+                    PortalEventSchedule.conference_id == conference_id,
+                )
             )
             .order_by(PortalEventSchedule.start_datetime.asc())
             .fetch(as_model=EventInfoItem)

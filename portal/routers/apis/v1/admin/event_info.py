@@ -24,22 +24,22 @@ router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token]
 
 
 @router.get(
-    path="/list",
+    path="/{conference_id}/list",
     status_code=status.HTTP_200_OK,
     response_model=EventInfoList
 )
 @inject
 async def get_event_info_list(
-    query_model: Annotated[EventInfoQuery, Query()],
+    conference_id: uuid.UUID,
     admin_event_info_handler: AdminEventInfoHandler = Depends(Provide[Container.admin_event_info_handler]),
 ):
     """
 
-    :param query_model:
+    :param conference_id:
     :param admin_event_info_handler:
     :return:
     """
-    return await admin_event_info_handler.get_event_info_list(model=query_model)
+    return await admin_event_info_handler.get_event_info_list(conference_id=conference_id)
 
 
 @router.get(
