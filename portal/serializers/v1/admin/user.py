@@ -48,13 +48,39 @@ class UserCreate(BaseModel):
     gender: Optional[Gender] = Field(Gender.UNKNOWN, description="User's gender")
     is_ministry: bool = Field(False, description="Is the user a ministry")
     remark: Optional[str] = Field(None, description="Remark")
+    password: str = Field(..., min_length=8, description="User's password")
+    password_confirm: str = Field(..., min_length=8, description="User's password confirmation")
 
 
 class UserUpdate(UserCreate):
     """UserUpdate"""
-    pass
+    password: Optional[str] = Field(None, exclude=True)
+    password_confirm: Optional[str] = Field(None, exclude=True)
+
+
+class ChangePassword(BaseModel):
+    """ChangePassword"""
+    old_password: str = Field(..., min_length=8, description="Old password")
+    new_password: str = Field(..., min_length=8, description="New password")
+    new_password_confirm: str = Field(..., min_length=8, description="New password confirmation")
+
+
+class ResetPassword(BaseModel):
+    """ResetPassword"""
+    new_password: str = Field(..., min_length=8, description="New password")
+    new_password_confirm: str = Field(..., min_length=8, description="New password confirmation")
 
 
 class UserBulkAction(BaseModel):
     """UserBulkAction"""
     ids: list[UUID] = Field(..., description="User IDs for bulk action")
+
+
+class UserRoles(BaseModel):
+    """UserRole"""
+    role_ids: list[UUID] = Field(..., description="User roles")
+
+
+class BindRole(BaseModel):
+    """BindRole"""
+    role_ids: list[UUID] = Field(..., description="Role IDs to assign to the user")

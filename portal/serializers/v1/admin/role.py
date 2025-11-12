@@ -2,11 +2,10 @@
 Role serializers
 """
 from datetime import datetime
-
-import ujson
 from typing import Optional
 from uuid import UUID
 
+import ujson
 from pydantic import Field, BaseModel, model_validator
 
 from portal.schemas.mixins import UUIDBaseModel
@@ -34,10 +33,14 @@ class RolePermission(UUIDBaseModel):
         return values
 
 
-class RoleItem(UUIDBaseModel):
-    """RoleItem"""
+class RoleBase(UUIDBaseModel):
+    """RoleBase"""
     code: str = Field(..., description="Role code")
     name: Optional[str] = Field(None, description="Role name")
+
+
+class RoleItem(RoleBase):
+    """RoleItem"""
     is_active: bool = Field(True, serialization_alias="isActive", description="Is role active")
 
 
@@ -60,7 +63,7 @@ class RolePages(PaginationBaseResponseModel):
 
 class RoleList(BaseModel):
     """RoleList"""
-    items: Optional[list[RoleItem]] = Field(..., description="Role Items")
+    items: Optional[list[RoleBase]] = Field(..., description="Role Items")
 
 
 class RoleCreate(BaseModel):

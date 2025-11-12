@@ -5,6 +5,7 @@ from dependency_injector import containers, providers
 
 from portal import handlers
 from portal.config import settings
+from portal.libs.authorization.permission_checker import PermissionChecker
 from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.libs.database.session_proxy import SessionProxy
 from portal.providers.jwt_provider import JWTProvider
@@ -23,6 +24,7 @@ class Container(containers.DeclarativeContainer):
             "portal.authorization",
             "portal.handlers",
             "portal.routers",
+            "portal.middlewares",
         ],
     )
 
@@ -168,6 +170,7 @@ class Container(containers.DeclarativeContainer):
         handlers.AdminUserHandler,
         session=request_session,
         redis_client=redis_client,
+        password_provider=password_provider,
     )
     admin_auth_handler = providers.Factory(
         handlers.AdminAuthHandler,
@@ -184,5 +187,11 @@ class Container(containers.DeclarativeContainer):
     admin_verb_handler = providers.Factory(
         handlers.AdminVerbHandler,
         session=request_session,
+        redis_client=redis_client,
+    )
+
+    # [Authorization]
+    permission_checker = providers.Factory(
+        PermissionChecker,
         redis_client=redis_client,
     )

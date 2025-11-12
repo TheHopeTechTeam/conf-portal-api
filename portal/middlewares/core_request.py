@@ -47,7 +47,6 @@ class CoreRequestMiddleware(BaseHTTPMiddleware):
             )
             response = await call_next(request)
         except Exception as e:
-            print("Error in database session middleware")
             await db_session.rollback()
             raise e
         else:

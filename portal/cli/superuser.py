@@ -110,12 +110,20 @@ def create_superuser_process():
             click.echo(
                 click.style("Invalid phone number format. Please enter a valid international format number like +886912345678.", fg="red")
             )
-    password = click.prompt(
-        click.style("Enter superuser password", fg="green"),
-        hide_input=True,
-        confirmation_prompt=click.style("Confirm password", fg="yellow"),
-        type=str
-    )
+    while True:
+        password = click.prompt(
+            click.style("Enter superuser password", fg="green"),
+            hide_input=True,
+            confirmation_prompt=click.style("Confirm password", fg="yellow"),
+            type=str
+        )
+        if len(password) < 8:
+            click.echo(
+                click.style("Password must be at least 8 characters long. Please try again.", fg="red")
+            )
+            continue
+        break
+
     display_name = click.prompt(
         click.style("Enter display name (optional)", fg="green"),
         default="",

@@ -5,17 +5,16 @@ import uuid
 from typing import Annotated
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends, Query, status, Request
+from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminUserHandler
-from portal.libs.depends import check_admin_access_token
-from portal.route_classes import LogRoute
+from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
-from portal.serializers.v1.admin.user import UserQuery, UserPages, UserCreate, UserItem, UserUpdate, UserBulkAction
+from portal.serializers.v1.admin.user import UserQuery, UserPages, UserCreate, UserItem, UserUpdate, UserBulkAction, BindRole, ChangePassword, UserRoles
 
-router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
+router = AuthRouter(is_admin=True)
 
 
 @router.get(
@@ -57,6 +56,26 @@ async def create_user(
 
 
 @router.get(
+    path="/{user_id}/roles",
+    status_code=status.HTTP_200_OK,
+    description="Get user roles",
+    response_model=UserRoles
+)
+@inject
+async def get_user_roles(
+    user_id: uuid.UUID,
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+    Get user roles
+    :param user_id:
+    :param admin_user_handler:
+    :return:
+    """
+    return await admin_user_handler.get_user_roles(user_id=user_id)
+
+
+@router.get(
     path="/{user_id}",
     status_code=status.HTTP_200_OK,
     response_model=UserItem
@@ -95,6 +114,46 @@ async def restore_users(
     :return:
     """
     await admin_user_handler.restore_user(model=model)
+
+
+@router.post(
+    path="/{user_id}/bind_role",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def bind_roles_to_user(
+    user_id: uuid.UUID,
+    model: BindRole,
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+    Bind roles to user
+    :param user_id:
+    :param model:
+    :param admin_user_handler:
+    :return:
+    """
+    await admin_user_handler.bind_roles(user_id=user_id, model=model)
+
+
+@router.post(
+    path="/{user_id}/change_password",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def change_user_password(
+    user_id: uuid.UUID,
+    model: ChangePassword,
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+
+    :param user_id:
+    :param model:
+    :param admin_user_handler:
+    :return:
+    """
+    await admin_user_handler.change_password(user_id=user_id, model=model)
 
 
 @router.put(

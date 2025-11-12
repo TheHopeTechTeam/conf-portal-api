@@ -312,16 +312,10 @@ class AdminResourceHandler:
         :param user_id:
         :return:
         """
-        resources: list[ResourceItem] = await (
+        user_resources_subquery = (
             self._session.select(
-                PortalResource.id,
-                PortalResource.pid,
-                PortalResource.name,
-                PortalResource.key,
-                PortalResource.code,
-                PortalResource.icon,
-                PortalResource.path,
-                PortalResource.sequence
+                PortalResource.id.label("resource_id"),
+                PortalResource.pid.label("parent_id")
             )
             .select_from(PortalUser)
             .join(PortalUser.roles)
@@ -336,6 +330,37 @@ class AdminResourceHandler:
             .where(PortalRole.is_active == True)
             .where(PortalRole.is_deleted == False)
             .where(sa.or_(PortalRolePermission.expire_date.is_(None), PortalRolePermission.expire_date > sa.func.now()))
+            .subquery()
+        )
+
+        # 查询资源：资源 ID 在子查询中，或者资源 ID 是子查询中某个资源的父 ID
+        resources: list[ResourceItem] = await (
+            self._session.select(
+                PortalResource.id,
+                PortalResource.pid,
+                PortalResource.name,
+                PortalResource.key,
+                PortalResource.code,
+                PortalResource.icon,
+                PortalResource.path,
+                PortalResource.type,
+                PortalResource.description,
+                PortalResource.sequence,
+                PortalResource.is_deleted
+            )
+            .where(
+                sa.or_(
+                    PortalResource.id.in_(
+                        sa.select(user_resources_subquery.c.resource_id)
+                    ),
+                    PortalResource.id.in_(
+                        sa.select(user_resources_subquery.c.parent_id)
+                        .where(user_resources_subquery.c.parent_id.isnot(None))
+                    )
+                )
+            )
+            .where(PortalResource.is_deleted == False)
+            .distinct()
             .order_by(PortalResource.sequence)
             .fetch(as_model=ResourceItem)
         )

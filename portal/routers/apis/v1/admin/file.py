@@ -4,18 +4,17 @@ Admin file API routes
 from typing import Annotated
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, UploadFile, Depends, status, Query
+from fastapi import UploadFile, Depends, status, Query
 
 from portal.container import Container
 from portal.handlers import AdminFileHandler
 from portal.libs.consts.enums import FileUploadSource
-from portal.libs.depends.authenticators import check_admin_access_token
 from portal.libs.depends.file_validation import FileValidation
-from portal.route_classes import LogRoute
+from portal.routers.auth_router import AuthRouter
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.file import FileUploadResponseModel, FilePages, FileQuery, BulkActionResponseModel
 
-router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
+router = AuthRouter(is_admin=True)
 
 ALLOWED_TYPES = [
     "image/apng",  # Animated Portable Network Graphics (APNG)

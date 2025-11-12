@@ -61,3 +61,22 @@ class RefreshTokenInvalidException(UnauthorizedException):
             headers=headers,
             **kwargs
         )
+
+
+class ForbiddenException(ApiBaseException):
+    """
+    Forbidden Exception
+    status_code: 403
+    """
+    def __init__(
+        self,
+        detail: str = "Forbidden",
+        headers: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+            headers=headers,
+            **kwargs
+        )

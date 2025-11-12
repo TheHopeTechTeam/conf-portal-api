@@ -6,21 +6,20 @@ from typing import Optional
 from uuid import UUID
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 from portal.config import settings
 from portal.exceptions.responses import ConflictErrorException, ApiBaseException
 from portal.libs.consts.cache_keys import create_user_role_key
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.libs.logger import logger
 from portal.models import PortalRole, PortalUser, PortalPermission, PortalResource, PortalRolePermission
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
 from portal.serializers.mixins import GenericQueryBaseModel, DeleteBaseModel
-from portal.serializers.v1.admin.role import RolePages, RoleTableItem, RoleCreate, RoleUpdate, RolePermissionAssign
+from portal.serializers.v1.admin.role import RolePages, RoleTableItem, RoleCreate, RoleUpdate, RolePermissionAssign, RoleBase, RoleList
 
 
 class AdminRoleHandler:
@@ -137,6 +136,25 @@ class AdminRoleHandler:
             total=count,
             items=items
         )
+
+    @distributed_trace()
+    async def get_active_roles(self) -> RoleList:
+        """
+
+        :return:
+        """
+        roles: list[RoleBase] = await (
+            self._session.select(
+                PortalRole.id,
+                PortalRole.code,
+                PortalRole.name
+            )
+            .where(PortalRole.is_active == True)
+            .fetch(as_model=RoleBase)
+        )
+        if not roles:
+            return RoleList(items=[])
+        return RoleList(items=roles)
 
     @distributed_trace()
     async def get_role_by_id(self, role_id: UUID) -> Optional[RoleTableItem]:
@@ -258,13 +276,12 @@ class AdminRoleHandler:
                 .where(PortalRolePermission.role_id == role_id)
                 .fetchvals()
             )
-            delete_permission_ids = []
-            insert_permission_ids = []
-            for permission_id in model.permissions:
-                if permission_id not in permission_ids:
-                    insert_permission_ids.append(permission_id)
-                if permission_id in permission_ids:
-                    delete_permission_ids.append(permission_id)
+            
+            # Determine which permissions to add and which to delete by set difference
+            new_permission_ids = set(model.permissions or [])
+            old_permission_ids = set(permission_ids)
+            insert_permission_ids = list(new_permission_ids - old_permission_ids)
+            delete_permission_ids = list(old_permission_ids - new_permission_ids)
 
             if insert_permission_ids:
                 await (
@@ -284,6 +301,7 @@ class AdminRoleHandler:
                     self._session.delete(PortalRolePermission)
                     .where(PortalRolePermission.role_id == role_id)
                     .where(PortalRolePermission.permission_id.in_(delete_permission_ids))
+                    .execute()
                 )
 
             if result == 0:

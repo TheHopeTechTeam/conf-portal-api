@@ -1,9 +1,8 @@
 """
 Admin API routes
 """
-from fastapi import APIRouter
-
 from portal.config import settings
+from portal.routers.auth_router import AuthRouter
 from .auth import router as auth_router
 from .conference import router as conference_router
 from .event_info import router as event_info_router
@@ -19,7 +18,7 @@ from .testimony import router as testimony_router
 from .user import router as user_router
 from .verb import router as verb_router
 
-router = APIRouter()
+router = AuthRouter(is_admin=True)
 
 router.include_router(auth_router, prefix="/auth", tags=["Admin - Authentication"])
 router.include_router(conference_router, prefix="/conference", tags=["Admin - Conference"])

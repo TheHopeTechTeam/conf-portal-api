@@ -1,6 +1,7 @@
 """
 AdminUserHandler
 """
+from token import OP
 import uuid
 from typing import Optional
 from uuid import UUID
@@ -12,13 +13,25 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses.base import ApiBaseException, ConflictErrorException
+from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models import PortalUser, PortalUserProfile
+from portal.models import PortalUser, PortalUserProfile, PortalUserRole
+from portal.providers.password_provider import PasswordProvider
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
 from portal.serializers.mixins.base import DeleteBaseModel
-from portal.serializers.v1.admin.user import UserCreate, UserTableItem, UserPages, UserUpdate, UserItem, UserQuery, UserBulkAction
+from portal.serializers.v1.admin.user import (
+    UserCreate,
+    UserTableItem,
+    UserPages,
+    UserUpdate,
+    UserItem,
+    UserQuery,
+    UserBulkAction,
+    ChangePassword,
+    ResetPassword, BindRole, UserRoles,
+)
 
 
 class AdminUserHandler:
@@ -28,9 +41,12 @@ class AdminUserHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        password_provider: PasswordProvider,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._password_provider = password_provider
+        self._user_ctx: Optional[UserContext] = get_user_context()
 
     @distributed_trace()
     async def get_user_detail_by_email(self, email: EmailStr) -> Optional[SUserSensitive]:
@@ -199,13 +215,23 @@ class AdminUserHandler:
         :param model:
         :return:
         """
+        if model.password != model.password_confirm:
+            raise ApiBaseException(status_code=400, detail="Passwords do not match")
         user_id = uuid.uuid4()
         try:
+            if not self._password_provider.validate_password(model.password):
+                raise ApiBaseException(
+                    status_code=400,
+                    detail="Password is not valid."
+                )
+            # Hash password
+            password_hash = self._password_provider.hash_password(model.password)
             # Create PortalUser
             user_fields = {
                 "id": user_id,
                 "phone_number": model.phone_number,
                 "email": model.email,
+                "password_hash": password_hash,
                 "verified": model.verified,
                 "is_active": model.is_active,
                 "is_superuser": model.is_superuser,
@@ -295,6 +321,7 @@ class AdminUserHandler:
         """
         Delete user
         :param user_id:
+        :param model:
         :return:
         """
         try:
@@ -326,3 +353,97 @@ class AdminUserHandler:
             )
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
+
+    @distributed_trace()
+    async def get_user_roles(self, user_id: UUID) -> UserRoles:
+        """
+
+        :param user_id:
+        :return:
+        """
+        roles: list[UUID] = await (
+            self._session.select(PortalUserRole.role_id)
+            .where(PortalUserRole.user_id == user_id)
+            .fetchvals()
+        )
+        return UserRoles(role_ids=roles)
+
+
+    @distributed_trace()
+    async def bind_roles(self, user_id: UUID, model: BindRole) -> None:
+        """
+
+        :param user_id:
+        :param model:
+        :return:
+        """
+        original_roles = await (
+            self._session.select(PortalUserRole.role_id)
+            .where(PortalUserRole.user_id == user_id)
+            .fetchvals()
+        )
+        new_role_ids = set(model.role_ids or [])
+        old_role_ids = set(original_roles)
+        insert_role_ids = list(new_role_ids - old_role_ids)
+        delete_role_ids = list(old_role_ids - new_role_ids)
+
+        try:
+            if insert_role_ids:
+                await (
+                    self._session.insert(PortalUserRole)
+                    .values(
+                        [
+                            {"user_id": user_id, "role_id": role_id} for role_id in insert_role_ids
+                        ]
+                    )
+                    .on_conflict_do_nothing(index_elements=["user_id", "role_id"])
+                    .execute()
+                )
+            if delete_role_ids:
+                await (
+                    self._session.delete(PortalUserRole)
+                    .where(PortalUserRole.user_id == user_id)
+                    .where(PortalUserRole.role_id.in_(delete_role_ids))
+                    .execute()
+                )
+        except Exception as e:
+            raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
+
+    @distributed_trace()
+    async def change_password(self, user_id: UUID, model: ChangePassword) -> None:
+        """
+
+        :param user_id:
+        :param model:
+        :return:
+        """
+        user: Optional[SUserSensitive] = await self.get_user_detail_by_id(user_id)
+        if not user:
+            raise ApiBaseException(status_code=404, detail="User not found")
+        if user.id != self._user_ctx.user_id:
+            raise ApiBaseException(status_code=403, detail="Forbidden")
+        if not self._password_provider.verify_password(model.old_password, user.password_hash):
+            raise ApiBaseException(status_code=400, detail="Old password is not valid")
+        if model.new_password != model.new_password_confirm:
+            raise ApiBaseException(status_code=400, detail="New passwords do not match")
+        if not self._password_provider.validate_password(model.new_password):
+            raise ApiBaseException(status_code=400, detail="New password is not valid")
+        password_hash = self._password_provider.hash_password(model.new_password)
+        await (
+            self._session.update(PortalUser)
+            .values(password_hash=password_hash, updated_at=sa.func.now())
+            .where(PortalUser.id == user_id)
+            .execute()
+        )
+        return None
+
+
+
+    @distributed_trace()
+    async def reset_password(self, user_id: UUID, model: ResetPassword) -> None:
+        """
+
+        :param user_id:
+        :param model:
+        :return:
+        """

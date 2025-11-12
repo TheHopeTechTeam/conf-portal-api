@@ -43,14 +43,14 @@ def set_user_context(context: UserContext) -> Token:
     return user_context_var.set(context)
 
 
-def get_user_context() -> UserContext:
+def get_user_context() -> Optional[UserContext]:
     """
     Get current request's user context. Middleware should have set it.
     """
     try:
         return user_context_var.get()
     except LookupError:
-        return UserContext()
+        return None
 
 
 def reset_user_context(token) -> None:

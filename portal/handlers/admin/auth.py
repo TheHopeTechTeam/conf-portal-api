@@ -1,15 +1,17 @@
 """
 Admin authentication handlers
 """
+import abc
+from abc import ABC
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
-from pydantic import EmailStr
 from redis.asyncio import Redis
 
 from portal.config import settings
+from portal.exceptions.responses import UnauthorizedException, ForbiddenException
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -31,7 +33,14 @@ from .role import AdminRoleHandler
 from .user import AdminUserHandler
 
 
-class AdminAuthHandler:
+class PasswordValidator(ABC):
+
+    @abc.abstractmethod
+    async def validate(self, login_data: AdminLoginRequest, user: SUserSensitive) -> None:
+        pass
+
+
+class AdminAuthHandler(PasswordValidator):
     """Admin authentication handler"""
 
     def __init__(
@@ -59,63 +68,57 @@ class AdminAuthHandler:
         self._admin_permission_handler = admin_permission_handler
         self._admin_role_handler = admin_role_handler
         self._admin_user_handler = admin_user_handler
-
-        try:
-            self._user_ctx: Optional[UserContext] = get_user_context()
-        except Exception:
-            self._user_ctx = None
+        # context
+        self._user_ctx: Optional[UserContext] = get_user_context()
 
     @distributed_trace()
-    async def authenticate_admin(self, email: EmailStr, password: str) -> Optional[SUserSensitive]:
+    async def validate(self, login_data: AdminLoginRequest, user: SUserSensitive) -> None:
         """
-        Authenticate admin user with email and password
+
+        :param login_data:
+        :param user:
+        :return:
         """
-        # Find user by email
-        user: SUserSensitive = await self._admin_user_handler.get_user_detail_by_email(email)
+        if not user.is_admin:
+            raise ForbiddenException(detail="User does not have admin privileges")
+        if not user.verified or not user.is_active:
+            raise UnauthorizedException()
+        # TODO: Implement GAC Authenticator
+        if not self._password_provider.verify_password(login_data.password, user.password_hash):
+            await self.record_login_fail(user)
+            raise UnauthorizedException()
+
+    @distributed_trace()
+    async def record_login_fail(self, user: SUserSensitive):
+        """
+        TODO: Record login failure for user
+        :param user:
+        :return:
+        """
+
+    @distributed_trace()
+    async def login_without_validate(self, login_data: AdminLoginRequest, device_id: UUID) -> AdminLoginResponse:
+        user: SUserSensitive = await self._admin_user_handler.get_user_detail_by_email(login_data.email)
         if not user:
-            return None
-
-        if not self._password_provider.verify_password(password, user.password_hash):
-            return None
-
-        if not user.is_admin and not user.is_superuser:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User does not have admin privileges"
-            )
-
-        return user
-
-    @distributed_trace()
-    async def update_last_login(self, user_id: UUID, last_login_at: Optional[datetime] = None) -> None:
-        """
-        Update admin's last login timestamp
-        """
-        if last_login_at is None:
-            last_login_at = datetime.now(timezone.utc)
-        await (
-            self._session.update(PortalUser)
-            .where(PortalUser.id == user_id)
-            .values(last_login_at=last_login_at)
-            .execute()
-        )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        return await self.login_by_user(user=user, device_id=device_id)
 
     @distributed_trace()
     async def login(self, login_data: AdminLoginRequest, device_id: UUID) -> AdminLoginResponse:
+        user: SUserSensitive = await self._admin_user_handler.get_user_detail_by_email(login_data.email)
+        if not user:
+            raise UnauthorizedException()
+        await self.validate(login_data, user)
+        return await self.login_by_user(user=user, device_id=device_id)
+
+    @distributed_trace()
+    async def login_by_user(self, user: SUserSensitive, device_id: UUID) -> AdminLoginResponse:
         """
         Admin login
-        :param login_data:
+        :param user:
         :param device_id:
         :return:
         """
-        # Authenticate admin
-        user: SUserSensitive = await self.authenticate_admin(login_data.email, login_data.password)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password"
-            )
-
         # Get admin roles and permissions
         roles = await self._admin_role_handler.init_user_roles_cache(user, self._expires_in)
         permissions = await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
@@ -164,6 +167,20 @@ class AdminAuthHandler:
         )
 
         return AdminLoginResponse(admin=admin_info, token=token)
+
+    @distributed_trace()
+    async def update_last_login(self, user_id: UUID, last_login_at: Optional[datetime] = None) -> None:
+        """
+        Update admin's last login timestamp
+        """
+        if last_login_at is None:
+            last_login_at = datetime.now(timezone.utc)
+        await (
+            self._session.update(PortalUser)
+            .where(PortalUser.id == user_id)
+            .values(last_login_at=last_login_at)
+            .execute()
+        )
 
     async def refresh_token(self, refresh_data: RefreshTokenRequest) -> AdminTokenResponse:
         """

@@ -5,12 +5,11 @@ import uuid
 from typing import Annotated
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminLocationHandler
-from portal.libs.depends import check_admin_access_token
-from portal.route_classes import LogRoute
+from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
@@ -22,7 +21,7 @@ from portal.serializers.v1.admin.location import (
     LocationUpdate,
 )
 
-router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
+router = AuthRouter(is_admin=True)
 
 
 @router.get(

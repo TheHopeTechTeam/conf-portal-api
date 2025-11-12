@@ -5,12 +5,11 @@ import uuid
 from typing import Annotated
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminRoleHandler
-from portal.libs.depends import check_admin_access_token
-from portal.route_classes import LogRoute
+from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
 from portal.serializers.v1.admin.role import (
@@ -18,10 +17,10 @@ from portal.serializers.v1.admin.role import (
     RoleCreate,
     RoleUpdate,
     RolePermissionAssign,
-    RoleTableItem,
+    RoleTableItem, RoleList,
 )
 
-router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
+router = AuthRouter(is_admin=True)
 
 
 @router.get(
@@ -41,6 +40,23 @@ async def get_role_pages(
     :return:
     """
     return await admin_role_handler.get_role_pages(model=query_model)
+
+
+@router.get(
+    path="/list",
+    status_code=status.HTTP_200_OK,
+    response_model=RoleList
+)
+@inject
+async def get_role_list(
+    admin_role_handler: AdminRoleHandler = Depends(Provide[Container.admin_role_handler])
+):
+    """
+    Get role list
+    :param admin_role_handler:
+    :return:
+    """
+    return await admin_role_handler.get_active_roles()
 
 
 @router.get(

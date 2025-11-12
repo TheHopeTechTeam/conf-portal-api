@@ -18,5 +18,6 @@ __all__ = [
     "InvalidTokenException",  # 401
     "UnauthorizedException",  # 401
     "RefreshTokenInvalidException",  # 401
+    "ForbiddenException"  # 403
 ]
 

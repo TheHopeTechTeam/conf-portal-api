@@ -1,16 +1,15 @@
 """
 Admin feedback API routes
 """
-from typing import Annotated
 import uuid
+from typing import Annotated
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminFeedbackHandler
-from portal.libs.depends import check_admin_access_token
-from portal.route_classes import LogRoute
+from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.admin.feedback import (
     FeedbackQuery,
     FeedbackPages,
@@ -18,7 +17,7 @@ from portal.serializers.v1.admin.feedback import (
     FeedbackUpdate,
 )
 
-router = APIRouter(route_class=LogRoute, dependencies=[check_admin_access_token])
+router = AuthRouter(is_admin=True)
 
 
 @router.get(

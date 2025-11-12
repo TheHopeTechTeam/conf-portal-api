@@ -3,6 +3,7 @@ Password Provider for DI using cryptography (PBKDF2HMAC) with embedded salt.
 """
 import base64
 import hmac
+import re
 import secrets
 
 from cryptography.hazmat.primitives import hashes
@@ -24,6 +25,7 @@ class PasswordProvider:
         """
         Initialize the PasswordProvider with the default parameters.
         """
+        self._PASSWORD_MIN_LENGTH = 8
         # PBKDF2 parameters (moderate defaults)
         self.__PBKDF2_ITERATIONS = 300000
         self.__HASH_ALGORITHM = hashes.SHA512()
@@ -35,6 +37,28 @@ class PasswordProvider:
         self.__FIXED_PAYLOAD_TOTAL_BYTES = 373
         # payload = [version:1][iterations:4][salt:self.__SALT_NUM_BYTES][dk:derived_len]
         self.__FIXED_DERIVED_KEY_LENGTH = self.__FIXED_PAYLOAD_TOTAL_BYTES - (1 + 4 + self.__SALT_NUM_BYTES)  # 240 bytes
+
+    def validate_password(self, password: str) -> bool:
+        """
+        Validate password
+        :param password:
+        :return:
+        """
+        errors = []
+        if len(password) < self._PASSWORD_MIN_LENGTH:
+            errors.append(f"密碼長度應至少為 8 個字元。")
+
+        if not re.search(r"[a-z]", password):
+            errors.append("請至少包含一個小寫字母。")
+        if not re.search(r"[A-Z]", password):
+            errors.append("請至少包含一個大寫字母。")
+        if not re.search(r"\d", password):
+            errors.append("請至少包含一個數字。")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-\\\[\]/~`+=]", password):
+            errors.append("請至少包含一個特殊字元 (如 !@#$%^&* 等)。")
+
+        is_valid = (len(errors) == 0)
+        return is_valid
 
 
     def _generate_salt_bytes(self) -> bytes:

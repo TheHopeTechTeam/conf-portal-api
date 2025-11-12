@@ -4,13 +4,13 @@ Admin authentication API routes
 import uuid
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import Depends, HTTPException, status, Response
 from fastapi.params import Cookie
 
+from portal.config import settings
 from portal.container import Container
 from portal.handlers import AdminAuthHandler
-from portal.libs.depends import check_admin_access_token
-from portal.route_classes import LogRoute
+from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminLoginResponse,
@@ -21,13 +21,52 @@ from portal.serializers.v1.admin.auth import (
     RefreshTokenRequest,
 )
 
-router = APIRouter(route_class=LogRoute)
+router = AuthRouter(is_admin=True)
+
+if settings.is_dev:
+    @router.post(
+        path="/local/login",
+        status_code=status.HTTP_200_OK,
+        include_in_schema=False,
+        require_auth=False
+    )
+    @inject
+    async def admin_local_login(
+        response: Response,
+        login_data: AdminLoginRequest,
+        device_id: uuid.UUID = Cookie(None, alias="device_id"),
+        admin_auth_handler: AdminAuthHandler = Depends(Provide[Container.admin_auth_handler])
+    ):
+        """
+        Admin login
+        """
+        if not device_id:
+            device_id = uuid.uuid4()
+        try:
+            result = await admin_auth_handler.login_without_validate(
+                login_data=login_data,
+                device_id=device_id
+            )
+        except Exception as e:
+            raise e
+        else:
+            response.set_cookie(
+                key="device_id",
+                value=str(device_id),
+                max_age=3600 * 24 * 365,  # 1 year
+                httponly=True,
+                secure=True,
+                samesite="lax",
+                path="/",
+            )
+            return result
 
 
 @router.post(
     path="/login",
     response_model=AdminLoginResponse,
     status_code=status.HTTP_200_OK,
+    require_auth=False
 )
 @inject
 async def admin_login(
@@ -84,7 +123,6 @@ async def admin_refresh_token(
     path="/me",
     response_model=AdminInfo,
     status_code=status.HTTP_200_OK,
-    dependencies=[check_admin_access_token]
 )
 @inject
 async def get_current_admin_info(
@@ -100,6 +138,7 @@ async def get_current_admin_info(
     path="/logout",
     response_model=LogoutResponse,
     status_code=status.HTTP_200_OK,
+    require_auth=False,
 )
 @inject
 async def admin_logout(

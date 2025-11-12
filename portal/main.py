@@ -24,7 +24,7 @@ from portal.exceptions.responses import ApiBaseException
 from portal.libs.contexts.request_session_context import get_request_session
 from portal.libs.logger import logger
 from portal.libs.utils.lifespan import lifespan
-from portal.middlewares import CoreRequestMiddleware
+from portal.middlewares import CoreRequestMiddleware, AuthMiddleware
 from portal.routers import api_router
 
 __all__ = ["app"]
@@ -65,9 +65,19 @@ def register_router(application: FastAPI) -> None:
 def register_middleware(application: FastAPI) -> None:
     """
     register middleware
+    Middleware order (from outer to inner, executed in reverse order):
+    1. CORSMiddleware - Handle CORS (outermost, executed last)
+    2. CoreRequestMiddleware - Setup request context and database session
+    3. AuthMiddleware - Verify token and set UserContext (innermost, executed first)
+
+    Note: AuthMiddleware executes after CoreRequestMiddleware to ensure database session is available.
+    Both authentication (token verification) and authorization (permission checking) are handled in AuthMiddleware.
+    No dependency injection is used for auth logic.
     :param application:
     :return:
     """
+    # CORS middleware should be outermost (added first, executed last)
+    application.add_middleware(AuthMiddleware)
     application.add_middleware(CoreRequestMiddleware)
     application.add_middleware(
         CORSMiddleware,

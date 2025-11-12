@@ -11,6 +11,7 @@ class AdminLoginRequest(BaseModel):
     """Admin login request"""
     email: EmailStr = Field(..., description="Admin email")
     password: str = Field(..., description="Admin password")
+    gac: Optional[str] = Field(None, description="Google Authenticator code")
 
 
 class AdminTokenResponse(BaseModel):
@@ -40,23 +41,6 @@ class AdminLoginResponse(BaseModel):
 class RefreshTokenRequest(BaseModel):
     """Refresh token request"""
     refresh_token: str = Field(..., description="Refresh token")
-
-
-class ChangePasswordRequest(BaseModel):
-    """Change password request"""
-    current_password: str = Field(..., description="Current password")
-    new_password: str = Field(..., min_length=6, description="New password")
-
-
-class ForgotPasswordRequest(BaseModel):
-    """Forgot password request"""
-    email: EmailStr = Field(..., description="User email")
-
-
-class ResetPasswordRequest(BaseModel):
-    """Reset password request"""
-    token: str = Field(..., description="Reset password token")
-    new_password: str = Field(..., min_length=6, description="New password")
 
 
 class LogoutRequest(BaseModel):
