@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 
 class TokenResponse(BaseModel):
     """Token response"""
-    access_token: str = Field(..., description="Access token", alias="accessToken")
-    refresh_token: str = Field(..., description="Refresh token", alias="refreshToken")
-    token_type: str = Field(default="bearer", description="Token type", alias="tokenType")
-    expires_in: int = Field(..., description="Access token expiration (seconds)", alias="expiresIn")
+    access_token: str = Field(..., description="Access token", serialization_alias="accessToken")
+    refresh_token: str = Field(..., description="Refresh token", serialization_alias="refreshToken")
+    token_type: str = Field(default="bearer", description="Token type", serialization_alias="tokenType")
+    expires_in: int = Field(..., description="Access token expiration (seconds)", serialization_alias="expiresIn")
 
 
 class LoginResponse(BaseModel):
@@ -21,7 +21,7 @@ class LoginResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request"""
-    refresh_token: str = Field(..., description="Refresh token", alias="refreshToken")
+    refresh_token: str = Field(..., description="Refresh token", serialization_alias="refreshToken")
 
 
 class LogoutRequest(BaseModel):
