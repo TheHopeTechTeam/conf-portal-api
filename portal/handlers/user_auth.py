@@ -111,6 +111,10 @@ class UserAuthHandler:
             device_id = await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=model.device_id)
             user_info = UserInfo(
                 id=user.id,
+                phone_number=user.phone_number,
+                email=user.email,
+                display_name=user.display_name,
+                volunteer=user.is_ministry,
                 verified=user.verified,
             )
             token = await self.get_token_info(user=user, device_id=device_id)
@@ -118,9 +122,12 @@ class UserAuthHandler:
             try:
                 user = await self._user_handler.create_user(token_payload=token_payload, provider=provider)
                 device_id = await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=model.device_id)
-
                 user_info = UserInfo(
                     id=user.id,
+                    phone_number=user.phone_number,
+                    email=user.email,
+                    display_name=user.display_name,
+                    volunteer=user.is_ministry,
                     verified=user.verified,
                     first_login=True,
                 )

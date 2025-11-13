@@ -34,7 +34,19 @@ class UserLogin(BaseModel):
     )
 
 
-class UserInfo(UUIDBaseModel):
+class UserBase(UUIDBaseModel):
+    """
+    User base
+    """
+    # google_uid: str = Field(..., serialization_alias="googleUid", description="Google UID")
+    phone_number: Optional[str] = Field(None, serialization_alias="phoneNumber", description="Phone Number")
+    email: Optional[str] = Field(default=None, description="Email")
+    display_name: Optional[str] = Field(default=None, serialization_alias="displayName", description="Display Name")
+    volunteer: Optional[bool] = Field(default=False, description="Volunteer")
+
+
+
+class UserInfo(UserBase):
     """User info"""
     verified: bool = Field(
         default=False,
@@ -47,23 +59,11 @@ class UserInfo(UUIDBaseModel):
     )
 
 
-
 class UserLoginResponse(LoginResponse):
     """
     Login response
     """
     user: UserInfo = Field(..., description="User info")
-
-
-class UserBase(UUIDBaseModel):
-    """
-    User base
-    """
-    # google_uid: str = Field(..., serialization_alias="googleUid", description="Google UID")
-    phone_number: str = Field(..., serialization_alias="phoneNumber", description="Phone Number")
-    email: Optional[str] = Field(default=None, description="Email")
-    display_name: Optional[str] = Field(default=None, serialization_alias="displayName", description="Display Name")
-    volunteer: Optional[bool] = Field(default=False, description="Volunteer")
 
 
 class UserDetail(UserBase):
