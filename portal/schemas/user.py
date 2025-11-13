@@ -15,7 +15,7 @@ class SUserBase(UUIDBaseModel, BaseMixinModel):
     """
     Base schema for User model, containing common fields.
     """
-    phone_number: str = Field(..., description="User's phone number")
+    phone_number: Optional[str] = Field(None, description="User's phone number")
     email: Optional[str] = Field(None, description="User's email address")
     verified: bool = Field(False, description="Is the user verified")
     is_active: bool = Field(description="Is the user active")
@@ -37,17 +37,17 @@ class SUserSensitive(SUserDetail):
     """
     Schema for User model including sensitive fields.
     """
-    password_hash: Optional[str] = Field(None, description="Hashed password for the user")
-    salt: Optional[str] = Field(None, description="Salt used for hashing the password")
-    password_changed_at: Optional[datetime] = Field(None, description="Timestamp of the user's password last change")
-    password_expires_at: Optional[datetime] = Field(None, description="Timestamp of the user's password expiration")
+    password_hash: Optional[str] = Field(None, description="Hashed password for the user", exclude=True)
+    salt: Optional[str] = Field(None, description="Salt used for hashing the password", exclude=True)
+    password_changed_at: Optional[datetime] = Field(None, description="Timestamp of the user's password last change", exclude=True)
+    password_expires_at: Optional[datetime] = Field(None, description="Timestamp of the user's password expiration", exclude=True)
 
 
 class SUserThirdParty(SUserDetail):
-    provider_id: UUID = Field(..., description="Provider ID")
-    provider: str = Field(..., description="Provider name")
-    provider_uid: str = Field(..., description="Provider UID")
-    additional_data: Optional[dict] = Field(None, description="Additional Data from the provider")
+    provider_id: UUID = Field(..., description="Provider ID", frozen=True, exclude=True)
+    provider: str = Field(..., description="Provider name", frozen=True, exclude=True)
+    provider_uid: str = Field(..., description="Provider UID", frozen=True, exclude=True)
+    additional_data: Optional[dict] = Field(None, description="Additional Data from the provider", frozen=True, exclude=True)
 
     @field_validator("additional_data", mode="before")
     @classmethod

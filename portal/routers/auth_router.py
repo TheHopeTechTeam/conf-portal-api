@@ -30,18 +30,34 @@ class AuthRouter(APIRouter):
     - Authorization: Permission checking
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        permissions: Optional[List[str]] = None,
+        require_all: Optional[bool] = False,
+        require_auth: Optional[bool] = True,
+        is_admin: Optional[bool] = False,
+        allow_superuser: Optional[bool] = False,
+        *args,
+        **kwargs
+    ):
         """
         Initialize AuthRouter
         Default route_class is AuthRoute if not specified.
         If route_class is specified but doesn't support auth_config,
         it will be validated and potentially replaced when auth configuration is used.
+        :param permissions:
+        :param require_all:
+        :param require_auth:
+        :param is_admin:
+        :param allow_superuser:
+        :param args:
+        :param kwargs:
         """
-        self._permissions = kwargs.pop("permissions", None)
-        self._require_all = kwargs.pop("require_all", False)
-        self._require_auth = kwargs.pop("require_auth", True)
-        self._is_admin = kwargs.pop("is_admin", False)
-        self._allow_superuser = kwargs.pop("allow_superuser", False)
+        self._permissions = permissions
+        self._require_all = require_all
+        self._require_auth = require_auth
+        self._is_admin = is_admin
+        self._allow_superuser = allow_superuser
 
         self._default_route_class = kwargs.pop("route_class", AuthRoute)
 

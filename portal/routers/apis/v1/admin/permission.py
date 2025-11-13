@@ -20,7 +20,7 @@ from portal.serializers.v1.admin.permission import (
     PermissionUpdate, PermissionBulkAction, PermissionList,
 )
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.get(

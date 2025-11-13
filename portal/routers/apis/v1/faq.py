@@ -4,17 +4,17 @@ FAQs API router
 import uuid
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 from starlette import status
 
 from portal.container import Container
 from portal.handlers import FAQHandler
 from portal.libs.depends import DEFAULT_RATE_LIMITERS
-from portal.route_classes import LogRoute
+from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.faq import FaqCategoryBase, FaqCategoryList, FaqBase, FaqList
 
-router = APIRouter(
-    route_class=LogRoute,
+router: AuthRouter = AuthRouter(
+    require_auth=False,
     dependencies=[
         *DEFAULT_RATE_LIMITERS
     ]

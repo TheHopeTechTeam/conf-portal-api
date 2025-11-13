@@ -14,7 +14,7 @@ from portal.routers.auth_router import AuthRouter
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.file import FileUploadResponseModel, FilePages, FileQuery, BulkActionResponseModel
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 ALLOWED_TYPES = [
     "image/apng",  # Animated Portable Network Graphics (APNG)

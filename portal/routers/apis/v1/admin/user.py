@@ -14,7 +14,7 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.user import UserQuery, UserPages, UserCreate, UserItem, UserUpdate, UserBulkAction, BindRole, ChangePassword, UserRoles
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.get(

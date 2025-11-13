@@ -21,7 +21,7 @@ from portal.serializers.v1.admin.location import (
     LocationUpdate,
 )
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.get(

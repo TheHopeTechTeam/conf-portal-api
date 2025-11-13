@@ -97,7 +97,16 @@ class Container(containers.DeclarativeContainer):
     user_handler = providers.Factory(
         handlers.UserHandler,
         session=request_session,
+        redis_client=redis_client
+    )
+    user_auth_handler = providers.Factory(
+        handlers.UserAuthHandler,
+        session=request_session,
         redis_client=redis_client,
+        jwt_provider=jwt_provider,
+        token_blacklist_provider=token_blacklist_provider,
+        refresh_token_provider=refresh_token_provider,
+        user_handler=user_handler,
         fcm_device_handler=fcm_device_handler,
     )
     workshop_handler = providers.Factory(

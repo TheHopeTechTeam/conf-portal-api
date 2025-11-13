@@ -5,12 +5,13 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from portal.libs.consts.enums import AuthProvider
+from portal.libs.consts.enums import AuthProvider, Gender
 from portal.schemas.mixins import UUIDBaseModel
+from portal.serializers.mixins import LoginResponse
 from portal.serializers.v1.ticket import TicketBase
 
 
-class AccountLogin(BaseModel):
+class UserLogin(BaseModel):
     """
     Account login
     """
@@ -33,10 +34,8 @@ class AccountLogin(BaseModel):
     )
 
 
-class LoginResponse(UUIDBaseModel):
-    """
-    Login response
-    """
+class UserInfo(UUIDBaseModel):
+    """User info"""
     verified: bool = Field(
         default=False,
         description="Verified"
@@ -48,9 +47,17 @@ class LoginResponse(UUIDBaseModel):
     )
 
 
-class AccountBase(UUIDBaseModel):
+
+class UserLoginResponse(LoginResponse):
     """
-    Account
+    Login response
+    """
+    user: UserInfo = Field(..., description="User info")
+
+
+class UserBase(UUIDBaseModel):
+    """
+    User base
     """
     # google_uid: str = Field(..., serialization_alias="googleUid", description="Google UID")
     phone_number: str = Field(..., serialization_alias="phoneNumber", description="Phone Number")
@@ -59,16 +66,17 @@ class AccountBase(UUIDBaseModel):
     volunteer: Optional[bool] = Field(default=False, description="Volunteer")
 
 
-class AccountDetail(AccountBase):
+class UserDetail(UserBase):
     """
     Account detail
     """
     ticket_detail: Optional[TicketBase] = Field(default=None, serialization_alias="ticketDetail", description="Ticket Detail")
 
 
-class AccountUpdate(BaseModel):
+class UserUpdate(BaseModel):
     """
     Account update
     """
     display_name: str = Field(..., serialization_alias="displayName", description="Display Name")
-    email: str = Field(..., description="Email")
+    gender: Optional[Gender] = Field(None, description="Gender")
+    # phone_number: Optional[str] = Field(None, serialization_alias="phoneNumber", description="Phone Number")

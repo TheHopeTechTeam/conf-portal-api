@@ -108,7 +108,7 @@ class AccessTokenAuth(HTTPBearer):
         :return:
         """
         try:
-            payload: FirebaseTokenPayload = FirebaseProvider().authentication.verify_id_token(id_token=token)
+            payload: FirebaseTokenPayload = FirebaseProvider().verify_id_token(id_token=token)
         except Exception:
             raise InvalidTokenException()
 

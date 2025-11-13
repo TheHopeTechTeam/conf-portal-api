@@ -20,7 +20,7 @@ from portal.serializers.v1.admin.resource import (
     ResourceList, ResourceDetail, ResourceChangeParent,
 )
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.post(

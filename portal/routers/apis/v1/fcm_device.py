@@ -2,16 +2,20 @@
 FCM Device API
 """
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import Depends, Request, Response
 from starlette import status
 
 from portal.container import Container
 from portal.handlers import FCMDeviceHandler
-from portal.route_classes import LogRoute
+from portal.libs.depends import DEFAULT_RATE_LIMITERS
+from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.fcm_device import FCMCreate
 
-router = APIRouter(
-    route_class=LogRoute
+router: AuthRouter = AuthRouter(
+    require_auth=False,
+    dependencies=[
+        *DEFAULT_RATE_LIMITERS
+    ]
 )
 
 

@@ -25,7 +25,7 @@ from portal.serializers.v1.admin.faq import (
     FaqUpdate,
 )
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.post(

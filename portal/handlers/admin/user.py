@@ -431,7 +431,11 @@ class AdminUserHandler:
         password_hash = self._password_provider.hash_password(model.new_password)
         await (
             self._session.update(PortalUser)
-            .values(password_hash=password_hash, updated_at=sa.func.now())
+            .values(
+                password_hash=password_hash,
+                updated_at=sa.func.now(),
+                password_changed_at=sa.func.now()
+            )
             .where(PortalUser.id == user_id)
             .execute()
         )

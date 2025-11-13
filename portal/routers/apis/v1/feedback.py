@@ -3,18 +3,18 @@ Feedback API Router
 """
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Depends
+from fastapi import Depends
 from starlette import status
 
 from portal.container import Container
 from portal.handlers import FeedbackHandler
 from portal.libs.depends import DEFAULT_RATE_LIMITERS
-from portal.route_classes import LogRoute
+from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.feedback import FeedbackCreate
 
-router = APIRouter(
-    route_class=LogRoute,
+router: AuthRouter = AuthRouter(
+    require_auth=False,
     dependencies=[
         *DEFAULT_RATE_LIMITERS
     ]

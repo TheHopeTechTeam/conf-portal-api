@@ -20,7 +20,7 @@ from portal.serializers.v1.admin.role import (
     RoleTableItem, RoleList,
 )
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.get(

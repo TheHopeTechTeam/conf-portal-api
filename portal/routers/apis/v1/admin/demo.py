@@ -4,18 +4,18 @@ Demo API Router
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
-from starlette import status
 from dependency_injector.wiring import inject, Provide
+from fastapi import Depends, Query
+from starlette import status
 
 from portal.container import Container
 from portal.handlers import DemoHandler
+from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, DeleteBaseModel
 from portal.serializers.v1.demo import DemoPages, DemoList, DemoCreate, DemoUpdate
-from portal.route_classes import LogRoute
 
-router = APIRouter(route_class=LogRoute)
+router: AuthRouter = AuthRouter(require_auth=False)
 
 
 @router.get(

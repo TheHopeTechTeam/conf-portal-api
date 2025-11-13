@@ -18,7 +18,7 @@ from .testimony import router as testimony_router
 from .user import router as user_router
 from .verb import router as verb_router
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 router.include_router(auth_router, prefix="/auth", tags=["Admin - Authentication"])
 router.include_router(conference_router, prefix="/conference", tags=["Admin - Conference"])

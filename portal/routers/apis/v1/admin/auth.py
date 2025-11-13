@@ -11,17 +11,19 @@ from portal.config import settings
 from portal.container import Container
 from portal.handlers import AdminAuthHandler
 from portal.routers.auth_router import AuthRouter
+from portal.serializers.mixins import (
+    TokenResponse,
+    RefreshTokenRequest,
+    LogoutRequest,
+    LogoutResponse
+)
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminLoginResponse,
-    AdminTokenResponse,
-    AdminInfo,
-    LogoutRequest,
-    LogoutResponse,
-    RefreshTokenRequest,
+    AdminInfo
 )
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 if settings.is_dev:
     @router.post(
@@ -102,8 +104,9 @@ async def admin_login(
 
 @router.post(
     path="/refresh",
-    response_model=AdminTokenResponse,
+    response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
+    require_auth=False
 )
 @inject
 async def admin_refresh_token(

@@ -2,6 +2,7 @@
 FCM Device Handler
 """
 import uuid
+from typing import Optional
 
 from sentry_sdk.tracing import Span
 
@@ -53,7 +54,7 @@ class FCMDeviceHandler:
             _span.set_status("error")
 
     @distributed_trace()
-    async def bind_user_device(self, user_id: uuid.UUID, device_key: str):
+    async def bind_user_device(self, user_id: uuid.UUID, device_key: str) -> Optional[uuid.UUID]:
         """
 
         :param user_id:
@@ -75,5 +76,6 @@ class FCMDeviceHandler:
                 .on_conflict_do_nothing(index_elements=["user_id", "device_id"])
                 .execute()
             )
+            return device_id
         except Exception as e:
             logger.warning(f"Binding device warning: {e}")

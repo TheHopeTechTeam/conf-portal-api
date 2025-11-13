@@ -3,8 +3,11 @@ Admin authentication serializers
 """
 from datetime import datetime
 from typing import Optional, List
-from uuid import UUID
+
 from pydantic import BaseModel, EmailStr, Field
+
+from portal.schemas.mixins import UUIDBaseModel
+from portal.serializers.mixins import LoginResponse
 
 
 class AdminLoginRequest(BaseModel):
@@ -14,17 +17,8 @@ class AdminLoginRequest(BaseModel):
     gac: Optional[str] = Field(None, description="Google Authenticator code")
 
 
-class AdminTokenResponse(BaseModel):
-    """Admin token response"""
-    access_token: str = Field(..., description="Access token")
-    refresh_token: str = Field(..., description="Refresh token")
-    token_type: str = Field(default="bearer", description="Token type")
-    expires_in: int = Field(..., description="Access token expiration (seconds)")
-
-
-class AdminInfo(BaseModel):
+class AdminInfo(UUIDBaseModel):
     """Admin info"""
-    id: UUID = Field(..., description="Admin ID")
     email: str = Field(..., description="Admin email")
     display_name: str = Field(..., description="Display name")
     roles: List[str] = Field(default=[], description="Admin roles")
@@ -32,23 +26,6 @@ class AdminInfo(BaseModel):
     last_login_at: Optional[datetime] = Field(None, description="Last login time")
 
 
-class AdminLoginResponse(BaseModel):
+class AdminLoginResponse(LoginResponse):
     """Admin login response"""
     admin: AdminInfo = Field(..., description="Admin info")
-    token: AdminTokenResponse = Field(..., description="Auth token")
-
-
-class RefreshTokenRequest(BaseModel):
-    """Refresh token request"""
-    refresh_token: str = Field(..., description="Refresh token")
-
-
-class LogoutRequest(BaseModel):
-    """Logout request"""
-    access_token: str = Field(..., description="Access token to blacklist")
-    refresh_token: Optional[str] = Field(None, description="Refresh token to blacklist")
-
-
-class LogoutResponse(BaseModel):
-    """Logout response"""
-    message: str = Field(..., description="Logout message")

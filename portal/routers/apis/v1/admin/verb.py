@@ -10,7 +10,7 @@ from portal.handlers import AdminVerbHandler
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.admin.verb import VerbList
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.get(

@@ -8,7 +8,9 @@ from uuid import UUID
 import jwt
 
 from portal.config import settings
+from portal.libs.consts.enums import AccessTokenAudType
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.base import AccessTokenPayload
 
@@ -25,7 +27,7 @@ class JWTProvider:
         self._audience = settings.APP_NAME
 
     @distributed_trace()
-    def create_admin_access_token(
+    def create_access_token(
         self,
         user_id: UUID,
         email: str,
@@ -33,10 +35,20 @@ class JWTProvider:
         family_id: UUID,
         roles: list = None,
         permissions: list = None,
+        aud_type: AccessTokenAudType = AccessTokenAudType.APP,
         expires_delta: Optional[timedelta] = None
     ) -> str:
         """
-        Create access token for admin users
+
+        :param aud_type:
+        :param user_id:
+        :param email:
+        :param display_name:
+        :param family_id:
+        :param roles:
+        :param permissions:
+        :param expires_delta:
+        :return:
         """
         now = datetime.now(timezone.utc)
         if expires_delta:
@@ -44,39 +56,44 @@ class JWTProvider:
         else:
             expire = now + timedelta(minutes=self.access_token_expire_minutes)
 
-        access_token_payload = AccessTokenPayload(
-            iss=self._issuer,
-            exp=int(expire.timestamp()),
-            sub=user_id,
-            aud=self._audience + "-admin",
-            iat=int(now.timestamp()),
-            user_id=user_id,
-            email=email,
-            display_name=display_name,
-            roles=roles or [],
-            permissions=permissions or [],
-            family_id=family_id
-        )
-
-        # Use Pydantic JSON mode to ensure UUIDs are serialized to strings
+        access_token_payload = None
+        match aud_type:
+            case AccessTokenAudType.ADMIN:
+                access_token_payload = AccessTokenPayload(
+                    iss=self._issuer,
+                    exp=int(expire.timestamp()),
+                    sub=user_id,
+                    aud=self._audience + "-admin",
+                    iat=int(now.timestamp()),
+                    user_id=user_id,
+                    email=email,
+                    display_name=display_name,
+                    roles=roles,
+                    permissions=permissions,
+                    family_id=family_id
+                )
+            case AccessTokenAudType.APP:
+                access_token_payload = AccessTokenPayload(
+                    iss=self._issuer,
+                    exp=int(expire.timestamp()),
+                    sub=user_id,
+                    aud=self._audience + "-app",
+                    iat=int(now.timestamp()),
+                    user_id=user_id,
+                    email=email,
+                    display_name=display_name,
+                    family_id=family_id
+                )
+            case _:
+                raise ValueError(f"Invalid access token aud type: {aud_type}")
+        if not access_token_payload:
+            raise ValueError("Invalid access token payload")
         encoded_jwt = jwt.encode(
             access_token_payload.model_dump(mode="json", exclude_none=True),
             self.secret_key,
             algorithm=self.algorithm,
         )
         return encoded_jwt
-
-    def create_user_access_token(
-        self,
-        subject: str,
-        user_id: UUID,
-        email: str,
-        display_name: str,
-        expires_delta: Optional[timedelta] = None
-    ) -> str:
-        """
-        Create access token for frontend users
-        """
 
     def verify_token(self, token: str, is_admin: bool = True, **kwargs) -> Optional[AccessTokenPayload]:
         """
@@ -87,16 +104,18 @@ class JWTProvider:
         :return:
         """
         try:
+            audience = self._audience + "-app" if not is_admin else self._audience + "-admin"
             payload = jwt.decode(
                 token,
                 self.secret_key,
                 algorithms=[self.algorithm],
-                audience=self._audience if not is_admin else self._audience + "-admin",
+                audience=audience,
                 issuer=self._issuer,
                 **kwargs
             )
             return AccessTokenPayload.model_validate(payload)
-        except jwt.PyJWTError:
+        except jwt.PyJWTError as e:
+            logger.error(f"Error decoding JWT: {e}")
             return None
 
     def is_token_expired(self, token: str, is_admin: bool = True) -> bool:

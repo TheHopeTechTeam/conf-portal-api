@@ -23,7 +23,7 @@ from portal.providers.firebase import FirebaseProvider
 from portal.providers.jwt_provider import JWTProvider
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.base import AccessTokenPayload
-from portal.schemas.user import SUserSensitive, SUserThirdParty
+from portal.schemas.user import SUserSensitive, SUserThirdParty, SUserDetail
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -170,7 +170,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
         :param admin_user_handler:
         :return:
         """
-
         payload: AccessTokenPayload = jwt_provider.verify_token(
             token=token,
             is_admin=True
@@ -208,6 +207,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self,
         request: Request,
         token: str,
+        jwt_provider: JWTProvider = Provide[Container.jwt_provider],
         user_handler: UserHandler = Provide[Container.user_handler],
     ) -> None:
         """
@@ -215,15 +215,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         :param request: FastAPI Request
         :param token: Firebase token
         """
-        try:
-            payload: FirebaseTokenPayload = FirebaseProvider().authentication.verify_id_token(id_token=token)
-        except Exception:
+        payload: AccessTokenPayload = jwt_provider.verify_token(
+            token=token,
+            is_admin=False
+        )
+        if not payload:
             raise InvalidTokenException()
 
-        try:
-            user: SUserThirdParty = await user_handler.get_user_detail_by_provider_info(payload.user_id)
-        except Exception:
-            raise UnauthorizedException()
+        user: SUserDetail = await user_handler.get_user_detail_by_id(payload.sub)
         if not user:
             raise UnauthorizedException()
         if not user.is_active or not user.verified:

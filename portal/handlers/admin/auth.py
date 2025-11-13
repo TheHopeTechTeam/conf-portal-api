@@ -2,7 +2,6 @@
 Admin authentication handlers
 """
 import abc
-from abc import ABC
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
@@ -12,9 +11,11 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import UnauthorizedException, ForbiddenException
+from portal.libs.consts.enums import AccessTokenAudType
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalUser
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
@@ -22,18 +23,18 @@ from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.base import RefreshTokenData
 from portal.schemas.user import SUserSensitive
+from portal.serializers.mixins import TokenResponse, RefreshTokenRequest
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
-    AdminTokenResponse,
     AdminInfo,
-    AdminLoginResponse, RefreshTokenRequest,
+    AdminLoginResponse,
 )
 from .permission import AdminPermissionHandler
 from .role import AdminRoleHandler
 from .user import AdminUserHandler
 
 
-class PasswordValidator(ABC):
+class PasswordValidator(abc.ABC):
 
     @abc.abstractmethod
     async def validate(self, login_data: AdminLoginRequest, user: SUserSensitive) -> None:
@@ -131,13 +132,14 @@ class AdminAuthHandler(PasswordValidator):
         family_id = uuid4()
 
         # Create access token with family id
-        access_token = self._jwt_provider.create_admin_access_token(
+        access_token = self._jwt_provider.create_access_token(
             user_id=user.id,
             email=user.email,
             display_name=user.display_name or user.email,
             roles=roles,
             permissions=permissions,
             family_id=family_id,
+            aud_type=AccessTokenAudType.ADMIN,
         )
         # Issue opaque refresh token bound to device and family
         try:
@@ -159,7 +161,7 @@ class AdminAuthHandler(PasswordValidator):
             last_login_at=last_login_at
         )
 
-        token = AdminTokenResponse(
+        token = TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
@@ -182,7 +184,7 @@ class AdminAuthHandler(PasswordValidator):
             .execute()
         )
 
-    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> AdminTokenResponse:
+    async def refresh_token(self, refresh_data: RefreshTokenRequest) -> TokenResponse:
         """
         Refresh admin access token
         :param refresh_data:
@@ -205,18 +207,18 @@ class AdminAuthHandler(PasswordValidator):
         permissions = await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
 
         # Create new access token with same family id
-        access_token = self._jwt_provider.create_admin_access_token(
+        access_token = self._jwt_provider.create_access_token(
             user_id=user.id,
             email=user.email,
             display_name=user.display_name or user.email,
             roles=roles,
             permissions=permissions,
-            family_id=rt_data.family_id
+            family_id=rt_data.family_id,
+            aud_type=AccessTokenAudType.ADMIN
         )
 
         # no blacklist; rotation handles invalidation
-
-        return AdminTokenResponse(
+        return TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
@@ -255,20 +257,21 @@ class AdminAuthHandler(PasswordValidator):
     async def logout(self, access_token: str, refresh_token: str = None) -> bool:
         """
         Logout admin user: blacklist AT and revoke RT family via provider
+        :param access_token:
+        :param refresh_token:
+        :return:
         """
         try:
             if not self._token_blacklist_provider:
                 return False
-
             # Get token expiration
             access_exp = self._jwt_provider.get_token_expiration(access_token)
             if access_exp:
                 await self._token_blacklist_provider.add_to_blacklist(access_token, access_exp)
-
             # Revoke refresh token (and family)
             if refresh_token:
                 await self._refresh_token_provider.revoke_by_token(refresh_token, revoke_family=True)
-
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error logging out: {e}")
             return False

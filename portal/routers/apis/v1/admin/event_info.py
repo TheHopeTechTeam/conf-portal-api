@@ -17,7 +17,7 @@ from portal.serializers.v1.admin.event_info import (
     EventInfoUpdate,
 )
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.get(

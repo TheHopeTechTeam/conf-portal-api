@@ -5,22 +5,22 @@ import uuid
 from typing import Annotated
 
 from dependency_injector.wiring import inject, Provide
-from fastapi import APIRouter, Request, Response, Depends
+from fastapi import Request, Response, Depends
 from fastapi.params import Header
 from starlette import status
 
 from portal.container import Container
 from portal.handlers import WorkshopHandler
-from portal.libs.depends import (
-    check_access_token,
-)
-from portal.route_classes import LogRoute
+from portal.libs.depends import DEFAULT_RATE_LIMITERS
+from portal.routers.auth_router import AuthRouter
 from portal.serializers.base import HeaderInfo
 from portal.serializers.response_examples import workshop
 from portal.serializers.v1.workshop import WorkshopDetail, WorkshopScheduleList, WorkshopRegisteredList
 
-router = APIRouter(
-    route_class=LogRoute
+router: AuthRouter = AuthRouter(
+    dependencies=[
+        *DEFAULT_RATE_LIMITERS
+    ]
 )
 
 
@@ -28,7 +28,8 @@ router = APIRouter(
     path="/schedules",
     response_model=WorkshopScheduleList,
     status_code=status.HTTP_200_OK,
-    responses=workshop.WORKSHOP_LIST
+    responses=workshop.WORKSHOP_LIST,
+    require_auth=False
 )
 @inject
 async def get_workshop_schedule_list(
@@ -54,7 +55,6 @@ async def get_workshop_schedule_list(
     path="/my_workshops",
     status_code=status.HTTP_200_OK,
     response_model=WorkshopRegisteredList,
-    dependencies=[check_access_token],
 )
 @inject
 async def get_my_workshops(
@@ -78,7 +78,6 @@ async def get_my_workshops(
     path="/account/registered",
     status_code=status.HTTP_200_OK,
     response_model=dict[str, bool],
-    dependencies=[check_access_token],
     responses={
         status.HTTP_200_OK: {
             "description": "Get registered workshops",
@@ -115,7 +114,8 @@ async def get_registered_workshops(
 @router.get(
     path="/{workshop_id}",
     response_model=WorkshopDetail,
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    require_auth=False
 )
 @inject
 async def get_workshop_detail(
@@ -140,8 +140,7 @@ async def get_workshop_detail(
 
 @router.post(
     path="/{workshop_id}/register",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[check_access_token]
+    status_code=status.HTTP_204_NO_CONTENT
 )
 @inject
 async def register_workshop(
@@ -165,8 +164,7 @@ async def register_workshop(
 
 @router.post(
     path="/{workshop_id}/unregister",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[check_access_token]
+    status_code=status.HTTP_204_NO_CONTENT
 )
 @inject
 async def unregister_workshop(

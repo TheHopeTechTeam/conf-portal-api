@@ -1,8 +1,9 @@
 """
 Schema for authentication
 """
-from typing import Optional
+from typing import Optional, Union
 
+from firebase_admin import App
 from pydantic import BaseModel
 
 

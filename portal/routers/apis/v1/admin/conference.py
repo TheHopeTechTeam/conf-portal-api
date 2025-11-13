@@ -22,7 +22,7 @@ from portal.serializers.v1.admin.conference import (
     ConferenceInstructorsUpdate, ConferenceItem,
 )
 
-router = AuthRouter(is_admin=True)
+router: AuthRouter = AuthRouter(is_admin=True)
 
 
 @router.get(
