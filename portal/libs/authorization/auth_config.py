@@ -24,7 +24,7 @@ class AuthConfig(BaseModel):
         description="Whether to require all permissions (True) or any permission (False)"
     )
     allow_superuser: bool = Field(
-        default=True,
+        default=False,
         description="Whether to allow superuser to bypass permission check"
     )
 

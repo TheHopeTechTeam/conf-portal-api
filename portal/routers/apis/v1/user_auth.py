@@ -27,12 +27,15 @@ router: AuthRouter = AuthRouter(
     require_auth=False,
 )
 @inject
-async def login(
+async def user_login(
     model: UserLogin,
     user_auth_handler: UserAuthHandler = Depends(Provide[Container.user_auth_handler])
 ) -> UserLoginResponse:
     """
-    Login
+    User login
+    :param model:
+    :param user_auth_handler:
+    :return:
     """
     return await user_auth_handler.login(model=model)
 
@@ -44,12 +47,12 @@ async def login(
     require_auth=False
 )
 @inject
-async def admin_refresh_token(
+async def user_refresh_token(
     refresh_data: RefreshTokenRequest,
     user_auth_handler: UserAuthHandler = Depends(Provide[Container.user_auth_handler])
 ):
     """
-    Refresh admin access token
+    User refresh token
     :param refresh_data:
     :param user_auth_handler:
     :return:
@@ -63,12 +66,15 @@ async def admin_refresh_token(
     require_auth=False,
 )
 @inject
-async def admin_logout(
+async def user_logout(
     logout_data: LogoutRequest,
     user_auth_handler: UserAuthHandler = Depends(Provide[Container.user_auth_handler])
 ):
     """
-    Admin logout
+    User logout
+    :param logout_data:
+    :param user_auth_handler:
+    :return:
     """
     success = await user_auth_handler.logout(
         logout_data.access_token,

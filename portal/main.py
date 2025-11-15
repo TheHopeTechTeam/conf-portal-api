@@ -21,6 +21,7 @@ from starlette.responses import RedirectResponse
 from portal.config import settings
 from portal.container import Container
 from portal.exceptions.responses import ApiBaseException
+from portal.libs.consts.base import SECURITY_SCHEMES
 from portal.libs.contexts.request_session_context import get_request_session
 from portal.libs.logger import logger
 from portal.libs.utils.lifespan import lifespan
@@ -110,10 +111,6 @@ def get_application() -> FastAPI:
     setup_tracing()
     application = FastAPI(
         lifespan=lifespan,
-        title=settings.APP_NAME.replace("-", " ").title().replace("Api", "API"),
-        version=settings.APP_VERSION,
-        summary="Conferences Portal API",
-        description="API documentation for Conferences Portal",
     )
 
     # set container
@@ -126,6 +123,23 @@ def get_application() -> FastAPI:
         logger.error(f"Error initializing firebase: {e}")
     register_middleware(application=application)
     register_router(application=application)
+
+    def custom_openapi():
+        if not application.openapi_schema:
+            openapi_schema = get_openapi(
+                title=settings.APP_NAME.replace("-", " ").title().replace("Api", "API"),
+                version=settings.APP_VERSION,
+                summary="Conferences Portal API",
+                description="API documentation for Conferences Portal",
+                routes=application.routes,
+            )
+            component = openapi_schema.get("components", {})
+            component["securitySchemes"] = SECURITY_SCHEMES
+            openapi_schema["components"] = component
+            application.openapi_schema = openapi_schema
+        return application.openapi_schema
+
+    application.openapi = custom_openapi
 
     return application
 

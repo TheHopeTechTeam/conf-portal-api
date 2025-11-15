@@ -13,7 +13,7 @@ from portal.serializers.v1.ticket import TicketBase
 
 class UserLogin(BaseModel):
     """
-    Account login
+    User login
     """
     login_method: AuthProvider = Field(
         default=AuthProvider.FIREBASE,

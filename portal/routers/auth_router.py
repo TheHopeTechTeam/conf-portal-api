@@ -2,23 +2,15 @@
 Authentication and Authorization Router
 """
 import inspect
-from typing import Any, Dict, List, Optional, Set, Union, Callable, Type, Sequence
-from enum import Enum
+from typing import List, Optional, Callable, Type
 
 from fastapi import APIRouter
-from fastapi.routing import APIRoute, generate_unique_id
-from fastapi.params import Depends as FastAPIDepends
-from fastapi.datastructures import Default, DefaultPlaceholder
-from fastapi.utils import get_value_or_default
-from starlette.responses import Response, JSONResponse
+from fastapi.routing import APIRoute
 
 from portal.libs.authorization.auth_config import AuthConfig
+from portal.libs.consts.base import ROUTER_SECURITY
 from portal.libs.logger import logger
 from portal.route_classes.auth_route import AuthRoute
-
-# Type aliases for FastAPI compatibility
-IncEx = Union[Set[int], Set[str], Dict[int, Any], Dict[str, Any], None]
-BaseRoute = APIRoute
 
 
 class AuthRouter(APIRouter):
@@ -60,6 +52,7 @@ class AuthRouter(APIRouter):
         self._allow_superuser = allow_superuser
 
         self._default_route_class = kwargs.pop("route_class", AuthRoute)
+        self._default_router_security = ROUTER_SECURITY
 
         # Validate that the route_class supports auth_config if it's not AuthRoute
         if self._default_route_class is not AuthRoute:
@@ -225,8 +218,17 @@ class AuthRouter(APIRouter):
         :param kwargs: Additional route parameters
         """
         # Set auth_config as metadata on endpoint function for middleware to access
+        openapi_extra = kwargs.pop("openapi_extra", None)
         if auth_config:
             setattr(endpoint, "__auth_config__", auth_config)
+            if auth_config.require_auth:
+                # Add security scheme to openapi_extra
+                if openapi_extra is None:
+                    openapi_extra = {}
+                security = openapi_extra.get("security", [])
+                security.extend(self._default_router_security)
+                openapi_extra["security"] = security
+
         # Extract route_class_override from kwargs if present
         route_class_override = kwargs.pop("route_class_override", None)
 
@@ -236,6 +238,7 @@ class AuthRouter(APIRouter):
             endpoint=endpoint,
             methods=[method],
             route_class_override=route_class_override or self.route_class,
+            openapi_extra=openapi_extra,
             **kwargs
         )
 
@@ -260,6 +263,7 @@ class AuthRouter(APIRouter):
         :param kwargs:
         :return:
         """
+
         def decorator(func: Callable) -> Callable:
             auth_config = None
             if require_auth or self._require_auth or permissions or self._permissions:
@@ -278,6 +282,7 @@ class AuthRouter(APIRouter):
                 **kwargs
             )
             return func
+
         return decorator
 
     def post(
@@ -301,6 +306,7 @@ class AuthRouter(APIRouter):
         :param kwargs:
         :return:
         """
+
         def decorator(func: Callable) -> Callable:
             auth_config = None
             if require_auth or self._require_auth or permissions or self._permissions:
@@ -319,6 +325,7 @@ class AuthRouter(APIRouter):
                 **kwargs
             )
             return func
+
         return decorator
 
     def put(
@@ -342,6 +349,7 @@ class AuthRouter(APIRouter):
         :param kwargs:
         :return:
         """
+
         def decorator(func: Callable) -> Callable:
             auth_config = None
             if require_auth or self._require_auth or permissions or self._permissions:
@@ -360,6 +368,7 @@ class AuthRouter(APIRouter):
                 **kwargs
             )
             return func
+
         return decorator
 
     def delete(
@@ -383,6 +392,7 @@ class AuthRouter(APIRouter):
         :param kwargs:
         :return:
         """
+
         def decorator(func: Callable) -> Callable:
             auth_config = None
             if require_auth or self._require_auth or permissions or self._permissions:
@@ -401,6 +411,7 @@ class AuthRouter(APIRouter):
                 **kwargs
             )
             return func
+
         return decorator
 
     def patch(
@@ -424,6 +435,7 @@ class AuthRouter(APIRouter):
         :param kwargs:
         :return:
         """
+
         def decorator(func: Callable) -> Callable:
             auth_config = None
             if require_auth or self._require_auth or permissions or self._permissions:
@@ -442,4 +454,5 @@ class AuthRouter(APIRouter):
                 **kwargs
             )
             return func
+
         return decorator
