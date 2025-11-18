@@ -20,7 +20,7 @@ from portal.serializers.mixins import (
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminLoginResponse,
-    AdminInfo
+    AdminInfo, RequestPasswordResetRequest, ResetPasswordWithTokenRequest,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -163,3 +163,41 @@ async def admin_logout(
         )
 
     return LogoutResponse(message="Successfully logged out")
+
+
+@router.post(
+    path="/password_reset/request",
+    status_code=status.HTTP_202_ACCEPTED,
+    require_auth=False,
+)
+@inject
+async def request_password_reset(
+    model: RequestPasswordResetRequest,
+    admin_auth_handler: AdminAuthHandler = Depends(Provide[Container.admin_auth_handler])
+):
+    """
+
+    :param model:
+    :param admin_auth_handler:
+    :return:
+    """
+    await admin_auth_handler.request_password_reset(model)
+
+
+@router.post(
+    path="/password_reset/confirm",
+    status_code=status.HTTP_205_RESET_CONTENT,
+    require_auth=False,
+)
+@inject
+async def confirm_password_reset(
+    model: ResetPasswordWithTokenRequest,
+    admin_auth_handler: AdminAuthHandler = Depends(Provide[Container.admin_auth_handler])
+):
+    """
+
+    :param model:
+    :param admin_auth_handler:
+    :return:
+    """
+    await admin_auth_handler.reset_password(model)

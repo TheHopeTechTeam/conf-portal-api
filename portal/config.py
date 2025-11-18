@@ -69,6 +69,7 @@ class Configuration(BaseSettings):
     IS_DEV: bool = ENV not in ["prod", "stg"]
     APP_FQDN: str = os.getenv(key="APP_FQDN", default="localhost")
     BASE_URL: str = f"https://{APP_FQDN}" if not IS_DEV else f"http://{APP_FQDN}"  # noqa
+    ADMIN_PORTAL_URL: str = os.getenv(key="ADMIN_PORTAL_URL", default="http://localhost:5173")
 
     # [FastAPI]
     HOST: str = os.getenv(key="HOST", default="127.0.0.1")
@@ -113,6 +114,10 @@ class Configuration(BaseSettings):
     REFRESH_TOKEN_HASH_SALT: str = os.getenv(key="REFRESH_TOKEN_HASH_SALT", default="")
     REFRESH_TOKEN_HASH_PEPPER: str = os.getenv(key="REFRESH_TOKEN_HASH_PEPPER", default="")
 
+    # [Password Reset]
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv(key="PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", default="60"))
+    PASSWORD_RESET_TOKEN_SALT: str = os.getenv(key="PASSWORD_RESET_TOKEN_SALT", default="")
+
     # [Token Blacklist]
     TOKEN_BLACKLIST_REDIS_DB: int = int(os.getenv(key="TOKEN_BLACKLIST_REDIS_DB", default="1"))
     TOKEN_BLACKLIST_CLEANUP_INTERVAL: int = int(os.getenv(key="TOKEN_BLACKLIST_CLEANUP_INTERVAL", default="3600"))
@@ -127,12 +132,20 @@ class Configuration(BaseSettings):
     # [Firebase]
     FIREBASE_TEST_PHONE_NUMBER: str = os.getenv(key="FIREBASE_TEST_PHONE_NUMBER")
 
+    # [Gmail SMTP]
+    SMTP_HOST: str = os.getenv(key="SMTP_HOST")
+    SMTP_PORT: int = int(os.getenv(key="SMTP_PORT", default="587"))
+    SMTP_USER: str = os.getenv(key="SMTP_USER")
+    SMTP_PASSWORD: str = os.getenv(key="SMTP_PASSWORD")
+    SMTP_FROM_EMAIL: str = os.getenv(key="SMTP_FROM_EMAIL")
+
     # [Google Cloud]
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = os.getenv(
         key="GOOGLE_APPLICATION_CREDENTIALS"
     )
     GS_CREDENTIALS: Optional[service_account.Credentials] = None
     GOOGLE_FIREBASE_CERTIFICATE: dict = {}
+
 
     @model_validator(mode="after")
     def _load_google_cloud_credentials(self) -> "Configuration":

@@ -12,6 +12,7 @@ from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
+from portal.providers.password_reset_token_provider import PasswordResetTokenProvider
 
 
 # pylint: disable=too-few-public-methods,c-extension-no-member
@@ -55,6 +56,10 @@ class Container(containers.DeclarativeContainer):
     password_provider = providers.Singleton(PasswordProvider)
     refresh_token_provider = providers.Factory(
         RefreshTokenProvider,
+        session=request_session,
+    )
+    password_reset_token_provider = providers.Factory(
+        PasswordResetTokenProvider,
         session=request_session,
     )
 
@@ -188,6 +193,7 @@ class Container(containers.DeclarativeContainer):
         jwt_provider=jwt_provider,
         password_provider=password_provider,
         token_blacklist_provider=token_blacklist_provider,
+        password_reset_token_provider=password_reset_token_provider,
         admin_permission_handler=admin_permission_handler,
         refresh_token_provider=refresh_token_provider,
         admin_role_handler=admin_role_handler,

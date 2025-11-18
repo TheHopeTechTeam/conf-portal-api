@@ -10,16 +10,20 @@ from fastapi import HTTPException, status
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses import UnauthorizedException, ForbiddenException
+from portal.exceptions.responses import UnauthorizedException, ForbiddenException, BadRequestException
 from portal.libs.consts.enums import AccessTokenAudType
+from portal.libs.contexts.request_context import RequestContext, get_request_context
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
+from portal.libs.smtp_client import smtp_client
 from portal.models import PortalUser
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
+from portal.providers.password_reset_token_provider import PasswordResetTokenProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
+from portal.providers.template_render_provider import TemplateRenderProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.base import RefreshTokenData
 from portal.schemas.user import SUserSensitive
@@ -27,7 +31,7 @@ from portal.serializers.mixins import TokenResponse, RefreshTokenRequest
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminInfo,
-    AdminLoginResponse,
+    AdminLoginResponse, RequestPasswordResetRequest, ResetPasswordWithTokenRequest,
 )
 from .permission import AdminPermissionHandler
 from .role import AdminRoleHandler
@@ -52,6 +56,7 @@ class AdminAuthHandler(PasswordValidator):
         password_provider: PasswordProvider,
         token_blacklist_provider: TokenBlacklistProvider,
         refresh_token_provider: RefreshTokenProvider,
+        password_reset_token_provider: PasswordResetTokenProvider,
         admin_permission_handler: AdminPermissionHandler,
         admin_role_handler: AdminRoleHandler,
         admin_user_handler: AdminUserHandler,
@@ -65,12 +70,14 @@ class AdminAuthHandler(PasswordValidator):
         self._password_provider = password_provider
         self._token_blacklist_provider = token_blacklist_provider
         self._refresh_token_provider = refresh_token_provider
+        self._password_reset_token_provider = password_reset_token_provider
         # handlers
         self._admin_permission_handler = admin_permission_handler
         self._admin_role_handler = admin_role_handler
         self._admin_user_handler = admin_user_handler
         # context
         self._user_ctx: Optional[UserContext] = get_user_context()
+        self._req_ctx: Optional[RequestContext] = get_request_context()
 
     @distributed_trace()
     async def validate(self, login_data: AdminLoginRequest, user: SUserSensitive) -> None:
@@ -275,3 +282,75 @@ class AdminAuthHandler(PasswordValidator):
         except Exception as e:
             logger.error(f"Error logging out: {e}")
             return False
+
+    @distributed_trace()
+    async def request_password_reset(self, model: RequestPasswordResetRequest) -> None:
+        """
+        Request password reset
+        :param model:
+        :return:
+        """
+        user: SUserSensitive = await self._admin_user_handler.get_user_detail_by_email(model.email)
+
+        # Always return success to prevent email enumeration
+        if not user:
+            logger.warning(f"Password reset requested for non-existent email: {model.email}")
+            raise BadRequestException(detail="Email not found")
+
+        # Generate reset token
+        ip_address = self._req_ctx.ip or self._req_ctx.client_ip
+        user_agent = self._req_ctx.user_agent
+        reset_token = await self._password_reset_token_provider.create_token(
+            user_id=user.id,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+        reset_password_html = await self._generate_password_reset_template(user=user, reset_token=reset_token)
+
+        await (
+            smtp_client.create()
+            .add_to(model.email)
+            .subject("Password Reset Requested")
+            .html(reset_password_html)
+            .asend()
+        )
+
+    @staticmethod
+    async def _generate_password_reset_template(user: SUserSensitive, reset_token: str) -> str:
+        """
+
+        :param user:
+        :param reset_token:
+        :return:
+        """
+        reset_link = f"{settings.ADMIN_PORTAL_URL}/reset-password?token={reset_token}&email={user.email}"
+        template_render_provider = TemplateRenderProvider()
+        reset_password_html = await template_render_provider.render_email_by_file(
+            name="reset_password.html",
+            display_name=user.display_name or user.email,
+            reset_link=reset_link,
+            expiry_minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES,
+            current_year=datetime.now(timezone.utc).year,
+        )
+        return reset_password_html
+
+    @distributed_trace()
+    async def reset_password(self, model: ResetPasswordWithTokenRequest) -> None:
+        """
+        Reset password
+        :param model:
+        :return:
+        """
+        if model.new_password != model.new_password_confirm:
+            raise BadRequestException(detail="Passwords do not match")
+
+        if not self._password_provider.validate_password(model.new_password):
+            raise BadRequestException(detail="Password does not meet complexity requirements")
+
+        user_id = await self._password_reset_token_provider.verify_token(model.token)
+        if not user_id:
+            raise BadRequestException(detail="Invalid or expired reset token")
+
+        await self._admin_user_handler.reset_password(user_id=user_id, new_password=model.new_password)
+        if not await self._password_reset_token_provider.mark_token_as_used(model.token):
+            raise BadRequestException(detail="Invalid or expired reset token")

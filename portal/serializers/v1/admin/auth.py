@@ -29,3 +29,15 @@ class AdminInfo(UUIDBaseModel):
 class AdminLoginResponse(LoginResponse):
     """Admin login response"""
     admin: AdminInfo = Field(..., description="Admin info")
+
+
+class RequestPasswordResetRequest(BaseModel):
+    """Request Password Reset Request"""
+    email: EmailStr = Field(..., description="User email address")
+
+
+class ResetPasswordWithTokenRequest(BaseModel):
+    """Reset Password With Token Request"""
+    token: str = Field(..., description="Password reset token")
+    new_password: str = Field(..., min_length=8, description="New password")
+    new_password_confirm: str = Field(..., min_length=8, description="New password confirmation")

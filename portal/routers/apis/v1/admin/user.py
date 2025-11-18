@@ -56,6 +56,23 @@ async def create_user(
 
 
 @router.get(
+    path="/me",
+    status_code=status.HTTP_200_OK,
+    response_model=UserItem
+)
+@inject
+async def get_current_user(
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+
+    :param admin_user_handler:
+    :return:
+    """
+    return await admin_user_handler.get_current_user()
+
+
+@router.get(
     path="/{user_id}/roles",
     status_code=status.HTTP_200_OK,
     description="Get user roles",

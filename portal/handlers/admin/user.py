@@ -1,7 +1,6 @@
 """
 AdminUserHandler
 """
-from token import OP
 import uuid
 from typing import Optional
 from uuid import UUID
@@ -30,7 +29,8 @@ from portal.serializers.v1.admin.user import (
     UserQuery,
     UserBulkAction,
     ChangePassword,
-    ResetPassword, BindRole, UserRoles,
+    BindRole,
+    UserRoles,
 )
 
 
@@ -209,6 +209,16 @@ class AdminUserHandler:
         return user
 
     @distributed_trace()
+    async def get_current_user(self) -> Optional[UserItem]:
+        """
+
+        :return:
+        """
+        if not self._user_ctx:
+            return None
+        return await self.get_user_by_id(self._user_ctx.user_id)
+
+    @distributed_trace()
     async def create_user(self, model: UserCreate) -> UUIDBaseModel:
         """
         Create user
@@ -368,7 +378,6 @@ class AdminUserHandler:
         )
         return UserRoles(role_ids=roles)
 
-
     @distributed_trace()
     async def bind_roles(self, user_id: UUID, model: BindRole) -> None:
         """
@@ -441,13 +450,22 @@ class AdminUserHandler:
         )
         return None
 
-
-
     @distributed_trace()
-    async def reset_password(self, user_id: UUID, model: ResetPassword) -> None:
+    async def reset_password(self, user_id: UUID, new_password: str) -> None:
         """
 
         :param user_id:
-        :param model:
+        :param new_password:
         :return:
         """
+        password_hash = self._password_provider.hash_password(new_password)
+        await (
+            self._session.update(PortalUser)
+            .values(
+                password_hash=password_hash,
+                password_changed_at=sa.func.now(),
+                updated_at=sa.func.now()
+            )
+            .where(PortalUser.id == user_id)
+            .execute()
+        )

@@ -14,6 +14,7 @@ from .language import PortalLanguage, PortalTranslation
 from .location import PortalLocation
 from .log import PortalLog
 from .notification import PortalNotification, PortalNotificationHistory
+from .password_reset import PortalPasswordResetToken
 from .rbac import (
     PortalUser,
     PortalUserProfile,
@@ -61,6 +62,8 @@ __all__ = [
     # notification
     "PortalNotification",
     "PortalNotificationHistory",
+    # password_reset
+    "PortalPasswordResetToken",
     # rbac
     "PortalUser",
     "PortalUserProfile",

@@ -65,12 +65,6 @@ class ChangePassword(BaseModel):
     new_password_confirm: str = Field(..., min_length=8, description="New password confirmation")
 
 
-class ResetPassword(BaseModel):
-    """ResetPassword"""
-    new_password: str = Field(..., min_length=8, description="New password")
-    new_password_confirm: str = Field(..., min_length=8, description="New password confirmation")
-
-
 class UserBulkAction(BaseModel):
     """UserBulkAction"""
     ids: list[UUID] = Field(..., description="User IDs for bulk action")
