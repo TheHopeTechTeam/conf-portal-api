@@ -72,6 +72,24 @@ async def get_current_user(
     return await admin_user_handler.get_current_user()
 
 
+@router.put(
+    path="/me",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def update_current_user(
+    user_data: UserUpdate,
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+
+    :param user_data:
+    :param admin_user_handler:
+    :return:
+    """
+    await admin_user_handler.update_current_user(model=user_data)
+
+
 @router.get(
     path="/{user_id}/roles",
     status_code=status.HTTP_200_OK,

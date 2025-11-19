@@ -277,6 +277,52 @@ class AdminUserHandler:
             return UUIDBaseModel(id=user_id)
 
     @distributed_trace()
+    async def update_current_user(self, model: UserUpdate) -> None:
+        """
+        Update current user
+        :param model:
+        :return:
+        """
+        if not self._user_ctx:
+            raise ApiBaseException(status_code=403, detail="Forbidden")
+        try:
+            user_fields = {
+                "phone_number": model.phone_number,
+                "email": model.email,
+                "remark": model.remark,
+            }
+
+            if user_fields:
+                result = await (
+                    self._session.update(PortalUser)
+                    .values(**user_fields, updated_at=sa.func.now())
+                    .where(PortalUser.id == self._user_ctx.user_id)
+                    .execute()
+                )
+                if result == 0:
+                    raise ApiBaseException(status_code=404, detail="User not found")
+
+            # Update PortalUserProfile
+            profile_fields = {
+                "display_name": model.display_name,
+                "gender": model.gender,
+            }
+
+            if profile_fields:
+                await (
+                    self._session.update(PortalUserProfile)
+                    .values(**profile_fields, updated_at=sa.func.now())
+                    .where(PortalUserProfile.user_id == self._user_ctx.user_id)
+                    .execute()
+                )
+        except UniqueViolationError as e:
+            raise ConflictErrorException(detail="User already exists", debug_detail=str(e))
+        except Exception as e:
+            raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
+
+
+
+    @distributed_trace()
     async def update_user(self, user_id: UUID, model: UserUpdate) -> None:
         """
         Update user
