@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from portal.libs.consts.enums import Gender
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.schemas.user import SUserDetail
 from portal.serializers.mixins import PaginationBaseResponseModel, GenericQueryBaseModel
 
@@ -19,6 +20,13 @@ class UserQuery(GenericQueryBaseModel):
     is_admin: Optional[bool] = Field(None, description="Can the user access the admin panel")
     is_ministry: Optional[bool] = Field(None, description="Is the user a ministry")
     gender: Optional[Gender] = Field(None, description="User's gender")
+
+
+class UserBase(UUIDBaseModel, JSONStringMixinModel):
+    """UserBase"""
+    phone_number: Optional[str] = Field(None, description="User's phone number", serialization_alias="phoneNumber")
+    email: Optional[str] = Field(None, description="User's email address")
+    display_name: Optional[str] = Field(None, description="User's display name", serialization_alias="displayName")
 
 
 class UserTableItem(SUserDetail):

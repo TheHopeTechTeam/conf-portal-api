@@ -18,6 +18,7 @@ from .testimony import router as testimony_router
 from .user import router as user_router
 from .verb import router as verb_router
 from .workshop import router as workshop_router
+from .workshop_registration import router as workshop_registration_router
 
 router: AuthRouter = AuthRouter(is_admin=True)
 
@@ -36,6 +37,7 @@ router.include_router(testimony_router, prefix="/testimony", tags=["Admin - Test
 router.include_router(user_router, prefix="/user", tags=["Admin - User"])
 router.include_router(verb_router, prefix="/verb", tags=["Admin - Verb"])
 router.include_router(workshop_router, prefix="/workshop", tags=["Admin - Workshop"])
+router.include_router(workshop_registration_router, prefix="/workshop_registration", tags=["Admin - Workshop Registration"])
 
 if settings.is_dev:
     from .demo import router as demo_router

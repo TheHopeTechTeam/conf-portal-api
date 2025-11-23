@@ -209,6 +209,11 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
     )
+    admin_workshop_registration_handler = providers.Factory(
+        handlers.AdminWorkshopRegistrationHandler,
+        session=request_session,
+        redis_client=redis_client,
+    )
 
     # [Authorization]
     permission_checker = providers.Factory(
