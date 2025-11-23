@@ -24,7 +24,7 @@ from portal.serializers.v1.admin.conference import (
     ConferenceDetail,
     ConferenceCreate,
     ConferenceUpdate,
-    ConferenceInstructorsUpdate,
+    ConferenceInstructorsUpdate, ConferenceList, ConferenceBase,
 )
 
 
@@ -85,6 +85,23 @@ class AdminConferenceHandler:
             total=count,
             items=items
         )
+
+    async def get_conference_list(self) -> ConferenceList:
+        """
+
+        :return:
+        """
+        items = await (
+            self._session.select(
+                PortalConference.id,
+                PortalConference.title,
+            )
+            .where(PortalConference.is_deleted == False)
+            .order_by(PortalConference.start_date.desc())
+            .fetch(as_model=ConferenceBase)
+        )
+        return ConferenceList(items=items)
+
 
     async def get_active_conference(self) -> ConferenceItem:
         """
@@ -191,7 +208,10 @@ class AdminConferenceHandler:
                 )
                 .on_conflict_do_update(
                     index_elements=[PortalConference.id],
-                    set_=model.model_dump(),
+                    set_={
+                        "updated_at": sa.func.now(),
+                        **model.model_dump()
+                    },
                 )
                 .execute()
             )
@@ -200,10 +220,11 @@ class AdminConferenceHandler:
                 detail=f"Conference {model.title} already exists",
                 debug_detail=str(e),
             )
-        except Exception:
+        except Exception as e:
             raise ApiBaseException(
                 status_code=500,
                 detail="Internal Server Error",
+                debug_detail=str(e),
             )
 
     @distributed_trace()

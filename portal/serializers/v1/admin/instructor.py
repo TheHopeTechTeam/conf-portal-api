@@ -48,6 +48,11 @@ class InstructorPages(PaginationBaseResponseModel):
     items: Optional[list[InstructorBase]] = Field(..., description="Items")
 
 
+class InstructorList(BaseModel):
+    """Instructor list"""
+    items: Optional[list[InstructorBase]] = Field(..., description="Items")
+
+
 class InstructorCreate(BaseModel):
     """Instructor create"""
     name: str = Field(..., description="Name")

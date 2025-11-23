@@ -18,7 +18,7 @@ from portal.serializers.v1.admin.location import (
     LocationPages,
     LocationDetail,
     LocationCreate,
-    LocationUpdate,
+    LocationUpdate, LocationList,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -41,6 +41,23 @@ async def get_location_pages(
     :return:
     """
     return await admin_location_handler.get_location_pages(model=query_model)
+
+
+@router.get(
+    path="/list",
+    status_code=status.HTTP_200_OK,
+    response_model=LocationList
+)
+@inject
+async def get_location_list(
+    admin_location_handler: AdminLocationHandler = Depends(Provide[Container.admin_location_handler])
+):
+    """
+
+    :param admin_location_handler:
+    :return:
+    """
+    return await admin_location_handler.get_location_list()
 
 
 @router.get(

@@ -9,7 +9,7 @@ from portal.libs.database.orm import ModelBase, Base
 from .mixins import BaseMixin, SortableMixin
 
 
-class PortalWorkshop(ModelBase, BaseMixin):
+class PortalWorkshop(ModelBase, BaseMixin, SortableMixin):
     """Workshop Model"""
     title = Column(sa.String(255), nullable=False, comment="Workshop title")
     start_datetime = Column(sa.TIMESTAMP(timezone=True), nullable=False, comment="Start datetime")

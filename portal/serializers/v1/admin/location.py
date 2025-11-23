@@ -51,6 +51,11 @@ class LocationPages(PaginationBaseResponseModel):
     items: Optional[list[LocationItem]] = Field(..., description="Items")
 
 
+class LocationList(BaseModel):
+    """Location list"""
+    items: Optional[list[LocationBase]] = Field(..., description="Items")
+
+
 class LocationCreate(BaseModel):
     """Location create"""
     name: str = Field(..., description="Name")

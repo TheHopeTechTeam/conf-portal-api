@@ -9,6 +9,7 @@ from pydantic import Field, BaseModel, field_validator
 from portal.libs.consts.enums import ResourceType
 from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import PaginationBaseResponseModel
+from portal.serializers.mixins.base import ChangeSequence
 
 
 class ResourceBase(UUIDBaseModel):
@@ -119,9 +120,5 @@ class ResourceBulkDelete(BaseModel):
     ids: list[UUID] = Field(..., description="Resource IDs to delete")
 
 
-class ResourceChangeSequence(BaseModel):
+class ResourceChangeSequence(ChangeSequence):
     """ResourceChangeSequence"""
-    id: UUID = Field(..., description="Resource ID")
-    sequence: float = Field(..., description="New sequence")
-    another_id: UUID = Field(..., description="Another resource ID to swap sequence with")
-    another_sequence: float = Field(..., description="Another resource's current sequence")

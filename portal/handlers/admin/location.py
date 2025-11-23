@@ -23,7 +23,7 @@ from portal.serializers.v1.admin.location import (
     LocationPages,
     LocationDetail,
     LocationCreate,
-    LocationUpdate, LocationItem,
+    LocationUpdate, LocationItem, LocationList,
 )
 
 
@@ -83,6 +83,22 @@ class AdminLocationHandler:
             total=count,
             items=items
         )
+
+    async def get_location_list(self) -> LocationList:
+        """
+        Get location list
+        :return:
+        """
+        items = await (
+            self._session.select(
+                PortalLocation.id,
+                PortalLocation.name,
+            )
+            .where(PortalLocation.is_deleted == False)
+            .order_by(PortalLocation.name)
+            .fetch(as_model=LocationBase)
+        )
+        return LocationList(items=items)
 
     async def get_location_by_id(self, location_id: uuid.UUID) -> LocationDetail:
         """

@@ -16,6 +16,7 @@ from .admin.role import AdminRoleHandler
 from .admin.testimony import AdminTestimonyHandler
 from .admin.user import AdminUserHandler
 from .admin.verb import AdminVerbHandler
+from .admin.workshop import AdminWorkshopHandler
 from .conference import ConferenceHandler
 from .event_info import EventInfoHandler
 from .faq import FAQHandler
@@ -44,6 +45,7 @@ __all__ = [
     "AdminTestimonyHandler",
     "AdminUserHandler",
     "AdminVerbHandler",
+    "AdminWorkshopHandler",
     # general
     "ConferenceHandler",
     "EventInfoHandler",

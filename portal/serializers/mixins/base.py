@@ -66,6 +66,14 @@ class DeleteBaseModel(BaseModel):
         return self
 
 
+class ChangeSequence(BaseModel):
+    """ChangeSequence"""
+    id: uuid.UUID = Field(..., description="Resource ID")
+    sequence: float = Field(..., description="New sequence")
+    another_id: uuid.UUID = Field(..., description="Another resource ID to swap sequence with")
+    another_sequence: float = Field(..., description="Another resource's current sequence")
+
+
 class BulkAction(BaseModel):
     """Bulk action model"""
     ids: list[uuid.UUID] = Field(..., description="Resource IDs for bulk action")

@@ -23,7 +23,7 @@ from portal.serializers.v1.admin.instructor import (
     InstructorPages,
     InstructorDetail,
     InstructorCreate,
-    InstructorUpdate,
+    InstructorUpdate, InstructorList,
 )
 
 
@@ -82,6 +82,27 @@ class AdminInstructorHandler:
             total=count,
             items=items
         )
+
+    async def get_instructor_list(self) -> InstructorList:
+        """
+
+        :return:
+        """
+        items = await (
+            self._session.select(
+                PortalInstructor.id,
+                PortalInstructor.name,
+                PortalInstructor.title,
+                PortalInstructor.bio,
+                PortalInstructor.remark,
+                PortalInstructor.created_at,
+                PortalInstructor.updated_at,
+            )
+            .where(PortalInstructor.is_deleted == False)
+            .order_by(PortalInstructor.created_at.desc())
+            .fetch(as_model=InstructorBase)
+        )
+        return InstructorList(items=items)
 
     async def get_instructor_by_id(self, instructor_id: uuid.UUID) -> InstructorDetail:
         """

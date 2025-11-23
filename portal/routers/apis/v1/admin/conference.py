@@ -19,7 +19,7 @@ from portal.serializers.v1.admin.conference import (
     ConferenceDetail,
     ConferenceCreate,
     ConferenceUpdate,
-    ConferenceInstructorsUpdate, ConferenceItem,
+    ConferenceInstructorsUpdate, ConferenceItem, ConferenceList,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -42,6 +42,23 @@ async def get_conference_pages(
     :return:
     """
     return await admin_conference_handler.get_conference_pages(model=query_model)
+
+
+@router.get(
+    path="/list",
+    status_code=status.HTTP_200_OK,
+    response_model=ConferenceList
+)
+@inject
+async def get_conference_list(
+    admin_conference_handler: AdminConferenceHandler = Depends(Provide[Container.admin_conference_handler])
+):
+    """
+
+    :param admin_conference_handler:
+    :return:
+    """
+    return await admin_conference_handler.get_conference_list()
 
 
 @router.get(

@@ -18,7 +18,7 @@ from portal.serializers.v1.admin.instructor import (
     InstructorPages,
     InstructorDetail,
     InstructorCreate,
-    InstructorUpdate,
+    InstructorUpdate, InstructorList,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -41,6 +41,23 @@ async def get_instructor_pages(
     :return:
     """
     return await admin_instructor_handler.get_instructor_pages(model=query_model)
+
+
+@router.get(
+    path="/list",
+    status_code=status.HTTP_200_OK,
+    response_model=InstructorList
+)
+@inject
+async def get_instructor_list(
+    admin_instructor_handler: AdminInstructorHandler = Depends(Provide[Container.admin_instructor_handler])
+):
+    """
+
+    :param admin_instructor_handler:
+    :return:
+    """
+    return await admin_instructor_handler.get_instructor_list()
 
 
 @router.get(
