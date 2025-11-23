@@ -13,7 +13,7 @@ from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models import PortalConference, PortalLocation, PortalConferenceInstructors
+from portal.models import PortalConference, PortalLocation, PortalConferenceInstructors, PortalInstructor
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
@@ -24,7 +24,11 @@ from portal.serializers.v1.admin.conference import (
     ConferenceDetail,
     ConferenceCreate,
     ConferenceUpdate,
-    ConferenceInstructorsUpdate, ConferenceList, ConferenceBase,
+    ConferenceInstructorsUpdate,
+    ConferenceList,
+    ConferenceBase,
+    ConferenceInstructors,
+    ConferenceInstructorItem,
 )
 
 
@@ -102,7 +106,6 @@ class AdminConferenceHandler:
         )
         return ConferenceList(items=items)
 
-
     async def get_active_conference(self) -> ConferenceItem:
         """
 
@@ -168,6 +171,9 @@ class AdminConferenceHandler:
         :return:
         """
         conference_id = uuid.uuid4()
+        active_conference = await self.get_active_conference()
+        if model.is_active and active_conference:
+            raise ConflictErrorException(detail="Only allowed one active conference at a time.")
         try:
             await (
                 self._session.insert(PortalConference)
@@ -199,6 +205,9 @@ class AdminConferenceHandler:
         :param model:
         :return:
         """
+        active_conference = await self.get_active_conference()
+        if conference_id != active_conference.id and model.is_active:
+            raise ConflictErrorException(detail="Only allowed one active conference at a time.")
         try:
             await (
                 self._session.insert(PortalConference)
@@ -228,6 +237,27 @@ class AdminConferenceHandler:
             )
 
     @distributed_trace()
+    async def get_conference_instructors(self, conference_id: uuid.UUID) -> ConferenceInstructors:
+        """
+
+        :param conference_id:
+        :return:
+        """
+        items = await (
+            self._session.select(
+                PortalConferenceInstructors.instructor_id,
+                PortalConferenceInstructors.is_primary,
+                PortalConferenceInstructors.sequence,
+                PortalInstructor.name
+            )
+            .outerjoin(PortalInstructor, PortalConferenceInstructors.instructor_id == PortalInstructor.id)
+            .where(PortalConferenceInstructors.conference_id == conference_id)
+            .order_by(PortalConferenceInstructors.sequence)
+            .fetch(as_model=ConferenceInstructorItem)
+        )
+        return ConferenceInstructors(items=items)
+
+    @distributed_trace()
     async def update_conference_instructors(self, conference_id: uuid.UUID, model: ConferenceInstructorsUpdate) -> None:
         """
 
@@ -247,7 +277,7 @@ class AdminConferenceHandler:
                 base_epoch = time.time()
                 values = []
                 for item in model.instructors:
-                    sequence = base_epoch + (item.sequence * 0.001)
+                    sequence = base_epoch + (item.sequence * 0.001) if isinstance(item.sequence, int) else item.sequence
                     values.append(
                         {
                             "conference_id": conference_id,

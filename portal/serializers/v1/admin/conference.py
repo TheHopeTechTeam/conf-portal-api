@@ -3,7 +3,7 @@ Conference serializers
 """
 
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -81,13 +81,24 @@ class ConferenceUpdate(ConferenceCreate):
     """Conference update"""
 
 
-class ConferenceInstructorItem(BaseModel):
-    """Conference instructor mapping item"""
+class ConferenceInstructorBase(BaseModel):
+    """Conference instructor base"""
     instructor_id: UUID = Field(..., description="Instructor ID")
     is_primary: bool = Field(default=False, description="Is primary instructor")
-    sequence: int = Field(..., description="Display order (small to large)")
+    sequence: Union[int, float] = Field(..., description="Display order (small to large)")
+
+
+class ConferenceInstructorItem(ConferenceInstructorBase):
+    """Conference instructor mapping item"""
+    name: str = Field(..., description="Instructor name")
+    sequence: float = Field(..., description="Display order (small to large)")
+
+
+class ConferenceInstructors(BaseModel):
+    """Conference instructors"""
+    items: list[ConferenceInstructorItem] = Field(..., description="Instructor mapping list")
 
 
 class ConferenceInstructorsUpdate(BaseModel):
     """Update conference instructors"""
-    instructors: list[ConferenceInstructorItem] = Field(..., description="Instructor mapping list")
+    instructors: list[ConferenceInstructorBase] = Field(..., description="Instructor mapping list")

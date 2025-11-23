@@ -19,7 +19,7 @@ from portal.serializers.v1.admin.conference import (
     ConferenceDetail,
     ConferenceCreate,
     ConferenceUpdate,
-    ConferenceInstructorsUpdate, ConferenceItem, ConferenceList,
+    ConferenceInstructorsUpdate, ConferenceItem, ConferenceList, ConferenceInstructors,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -134,6 +134,25 @@ async def update_conference(
     :return:
     """
     await admin_conference_handler.update_conference(conference_id=conference_id, model=conference_data)
+
+
+@router.get(
+    path="/instructors/{conference_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=ConferenceInstructors
+)
+@inject
+async def get_conference_instructors(
+    conference_id: uuid.UUID,
+    admin_conference_handler: AdminConferenceHandler = Depends(Provide[Container.admin_conference_handler])
+):
+    """
+    Get conference instructors mapping
+    :param conference_id:
+    :param admin_conference_handler:
+    :return:
+    """
+    return await admin_conference_handler.get_conference_instructors(conference_id=conference_id)
 
 
 @router.put(

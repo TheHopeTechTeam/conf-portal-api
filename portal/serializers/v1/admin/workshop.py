@@ -89,7 +89,7 @@ class WorkshopChangeSequence(ChangeSequence):
 
 
 class WorkshopInstructorBase(BaseModel):
-    """Workshop instructor mapping item"""
+    """Workshop instructor base"""
     instructor_id: UUID = Field(..., description="Instructor ID")
     is_primary: bool = Field(default=False, description="Is primary instructor")
     sequence: int = Field(..., description="Display order (small to large)")
