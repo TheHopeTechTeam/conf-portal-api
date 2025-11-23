@@ -36,7 +36,7 @@ class WorkshopItem(WorkshopBase):
     timezone: str = Field(..., description="Timezone")
     start_datetime: datetime = Field(..., serialization_alias="startTime", description="Start Datetime")
     end_datetime: datetime = Field(..., serialization_alias="endTime", description="End Datetime")
-    participant_limit: Optional[int] = Field(None, serialization_alias="participantLimit", description="Participants Limit")
+    participants_limit: Optional[int] = Field(None, serialization_alias="participantsLimit", description="Participants Limit")
     remark: Optional[str] = Field(None, description="Remark")
     sequence: float = Field(..., description="Display order (small to large)")
 
@@ -75,7 +75,7 @@ class WorkshopCreate(BaseModel):
     end_datetime: datetime = Field(..., description="End Datetime")
     location_id: UUID = Field(..., description="Location ID")
     conference_id: UUID = Field(..., description="Conference ID")
-    participant_limit: Optional[int] = Field(None, description="Participants Limit")
+    participants_limit: Optional[int] = Field(None, description="Participants Limit")
     remark: Optional[str] = Field(None, description="Remark")
     description: Optional[str] = Field(None, description="Description")
 
