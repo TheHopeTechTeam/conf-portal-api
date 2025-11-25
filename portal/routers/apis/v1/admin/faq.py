@@ -14,15 +14,15 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction, DeleteQueryBaseModel
 from portal.serializers.v1.admin.faq import (
-    FaqCategoryList,
-    FaqCategoryDetail,
-    FaqCategoryCreate,
-    FaqCategoryUpdate,
-    FaqQuery,
-    FaqPages,
-    FaqDetail,
-    FaqCreate,
-    FaqUpdate,
+    AdminFaqCategoryList,
+    AdminFaqCategoryDetail,
+    AdminFaqCategoryCreate,
+    AdminFaqCategoryUpdate,
+    AdminFaqQuery,
+    AdminFaqPages,
+    AdminFaqDetail,
+    AdminFaqCreate,
+    AdminFaqUpdate,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -35,7 +35,7 @@ router: AuthRouter = AuthRouter(is_admin=True)
 )
 @inject
 async def create_category(
-    category_data: FaqCategoryCreate,
+    category_data: AdminFaqCategoryCreate,
     admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
 ):
     """
@@ -54,7 +54,7 @@ async def create_category(
 @inject
 async def update_category(
     category_id: uuid.UUID,
-    category_data: FaqCategoryUpdate,
+    category_data: AdminFaqCategoryUpdate,
     admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
 ):
     """
@@ -108,11 +108,11 @@ async def restore_categories(
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=FaqPages
+    response_model=AdminFaqPages
 )
 @inject
 async def get_faq_pages(
-    query_model: Annotated[FaqQuery, Query()],
+    query_model: Annotated[AdminFaqQuery, Query()],
     admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
 ):
     """
@@ -127,7 +127,7 @@ async def get_faq_pages(
 @router.get(
     path="/{faq_id}",
     status_code=status.HTTP_200_OK,
-    response_model=FaqDetail
+    response_model=AdminFaqDetail
 )
 @inject
 async def get_faq(
@@ -150,7 +150,7 @@ async def get_faq(
 )
 @inject
 async def create_faq(
-    faq_data: FaqCreate,
+    faq_data: AdminFaqCreate,
     admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
 ):
     """
@@ -169,7 +169,7 @@ async def create_faq(
 @inject
 async def update_faq(
     faq_id: uuid.UUID,
-    faq_data: FaqUpdate,
+    faq_data: AdminFaqUpdate,
     admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
 ):
     """
@@ -223,7 +223,7 @@ async def restore_faqs(
 @router.get(
     path="/category/list",
     status_code=status.HTTP_200_OK,
-    response_model=FaqCategoryList
+    response_model=AdminFaqCategoryList
 )
 @inject
 async def get_category_list(
@@ -242,7 +242,7 @@ async def get_category_list(
 @router.get(
     path="/category/{category_id}",
     status_code=status.HTTP_200_OK,
-    response_model=FaqCategoryDetail
+    response_model=AdminFaqCategoryDetail
 )
 @inject
 async def get_category(

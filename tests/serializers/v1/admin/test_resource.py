@@ -8,15 +8,15 @@ from pydantic import ValidationError
 
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.resource import (
-    ResourceItem,
-    ResourcePages,
-    ResourceList,
-    ResourceTreeItem,
-    ResourceTree,
-    ResourceCreate,
-    ResourceUpdate,
-    ResourceBulkDelete,
-    ResourceChangeSequence,
+    AdminResourceItem,
+    AdminResourcePages,
+    AdminResourceList,
+    AdminResourceTreeItem,
+    AdminResourceTree,
+    AdminResourceCreate,
+    AdminResourceUpdate,
+    AdminResourceBulkDelete,
+    AdminResourceChangeSequence,
 )
 
 
@@ -25,7 +25,7 @@ def test_valid_resource_item():
     resource_id = uuid.uuid4()
     parent_id = uuid.uuid4()
 
-    resource = ResourceItem(
+    resource = AdminResourceItem(
         id=resource_id,
         pid=parent_id,
         name="使用者管理",
@@ -52,7 +52,7 @@ def test_valid_resource_item():
 
 def test_resource_item_without_optional_fields():
     """Test creating ResourceItem without optional fields."""
-    resource = ResourceItem(
+    resource = AdminResourceItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -69,7 +69,7 @@ def test_resource_item_without_optional_fields():
 
 def test_valid_resource_pages():
     """Test creating a valid ResourcePages."""
-    resource1 = ResourceItem(
+    resource1 = AdminResourceItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -77,7 +77,7 @@ def test_valid_resource_pages():
         sequence=1.0
     )
 
-    resource2 = ResourceItem(
+    resource2 = AdminResourceItem(
         pid=uuid.uuid4(),
         name="使用者管理",
         key="user_management",
@@ -85,7 +85,7 @@ def test_valid_resource_pages():
         sequence=2.0
     )
 
-    pages = ResourcePages(
+    pages = AdminResourcePages(
         page=1,
         page_size=10,
         total=25,
@@ -102,7 +102,7 @@ def test_valid_resource_pages():
 
 def test_valid_resource_list():
     """Test creating a valid ResourceList."""
-    resource1 = ResourceItem(
+    resource1 = AdminResourceItem(
         pid=None,
         name="會議管理",
         key="conference_management",
@@ -110,7 +110,7 @@ def test_valid_resource_list():
         sequence=1.0
     )
 
-    resource2 = ResourceItem(
+    resource2 = AdminResourceItem(
         pid=uuid.uuid4(),
         name="會議列表",
         key="conference_list",
@@ -118,7 +118,7 @@ def test_valid_resource_list():
         sequence=2.0
     )
 
-    resource_list = ResourceList(items=[resource1, resource2])
+    resource_list = AdminResourceList(items=[resource1, resource2])
 
     assert len(resource_list.items) == 2
     assert resource_list.items[0].name == "會議管理"
@@ -127,7 +127,7 @@ def test_valid_resource_list():
 
 def test_valid_single_level_tree_item():
     """Test creating a valid single level ResourceTreeItem."""
-    tree_item = ResourceTreeItem(
+    tree_item = AdminResourceTreeItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -142,7 +142,7 @@ def test_valid_single_level_tree_item():
 
 def test_valid_two_level_tree_item():
     """Test creating a valid two level ResourceTreeItem."""
-    child_item = ResourceTreeItem(
+    child_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="使用者管理",
         key="user_management",
@@ -151,7 +151,7 @@ def test_valid_two_level_tree_item():
         children=None
     )
 
-    parent_item = ResourceTreeItem(
+    parent_item = AdminResourceTreeItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -168,7 +168,7 @@ def test_valid_two_level_tree_item():
 def test_valid_three_level_tree_item():
     """Test creating a valid three level ResourceTreeItem."""
     # 第三層
-    level3_item = ResourceTreeItem(
+    level3_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="新增使用者",
         key="create_user",
@@ -178,7 +178,7 @@ def test_valid_three_level_tree_item():
     )
 
     # 第二層
-    level2_item = ResourceTreeItem(
+    level2_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="使用者管理",
         key="user_management",
@@ -188,7 +188,7 @@ def test_valid_three_level_tree_item():
     )
 
     # 第一層
-    level1_item = ResourceTreeItem(
+    level1_item = AdminResourceTreeItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -207,7 +207,7 @@ def test_valid_three_level_tree_item():
 def test_invalid_four_level_tree_item():
     """Test that four level tree item raises ValidationError."""
     # 第四層
-    level4_item = ResourceTreeItem(
+    level4_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="子功能",
         key="sub_function",
@@ -217,7 +217,7 @@ def test_invalid_four_level_tree_item():
     )
 
     # 第三層
-    level3_item = ResourceTreeItem(
+    level3_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="新增使用者",
         key="create_user",
@@ -227,7 +227,7 @@ def test_invalid_four_level_tree_item():
     )
 
     # 第二層
-    level2_item = ResourceTreeItem(
+    level2_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="使用者管理",
         key="user_management",
@@ -238,7 +238,7 @@ def test_invalid_four_level_tree_item():
 
     # 第一層 - 這裡會因為第四層的存在而失敗
     with pytest.raises(ValidationError) as exc_info:
-        ResourceTreeItem(
+        AdminResourceTreeItem(
             pid=None,
             name="系統管理",
             key="system_management",
@@ -252,13 +252,13 @@ def test_invalid_four_level_tree_item():
 
 def test_valid_empty_tree():
     """Test creating an empty ResourceTree."""
-    tree = ResourceTree(items=[])
+    tree = AdminResourceTree(items=[])
     assert tree.items == []
 
 
 def test_valid_single_level_tree():
     """Test creating a valid single level ResourceTree."""
-    root_item = ResourceTreeItem(
+    root_item = AdminResourceTreeItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -267,14 +267,14 @@ def test_valid_single_level_tree():
         children=None
     )
 
-    tree = ResourceTree(items=[root_item])
+    tree = AdminResourceTree(items=[root_item])
     assert tree.items[0].name == "系統管理"
 
 
 def test_valid_three_level_tree():
     """Test creating a valid three level ResourceTree."""
     # 第三層
-    level3_item = ResourceTreeItem(
+    level3_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="新增使用者",
         key="create_user",
@@ -284,7 +284,7 @@ def test_valid_three_level_tree():
     )
 
     # 第二層
-    level2_item = ResourceTreeItem(
+    level2_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="使用者管理",
         key="user_management",
@@ -294,7 +294,7 @@ def test_valid_three_level_tree():
     )
 
     # 第一層
-    root_item = ResourceTreeItem(
+    root_item = AdminResourceTreeItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -303,14 +303,14 @@ def test_valid_three_level_tree():
         children=[level2_item]
     )
 
-    tree = ResourceTree(items=[root_item])
+    tree = AdminResourceTree(items=[root_item])
     assert tree.items[0].name == "系統管理"
 
 
 def test_invalid_four_level_tree():
     """Test that four level tree raises ValidationError."""
     # 第四層
-    level4_item = ResourceTreeItem(
+    level4_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="子功能",
         key="sub_function",
@@ -320,7 +320,7 @@ def test_invalid_four_level_tree():
     )
 
     # 第三層
-    level3_item = ResourceTreeItem(
+    level3_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="新增使用者",
         key="create_user",
@@ -330,7 +330,7 @@ def test_invalid_four_level_tree():
     )
 
     # 第二層
-    level2_item = ResourceTreeItem(
+    level2_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="使用者管理",
         key="user_management",
@@ -341,7 +341,7 @@ def test_invalid_four_level_tree():
 
     # 第一層 - 這裡會因為第四層的存在而失敗
     with pytest.raises(ValidationError) as exc_info:
-        ResourceTreeItem(
+        AdminResourceTreeItem(
             pid=None,
             name="系統管理",
             key="system_management",
@@ -355,7 +355,7 @@ def test_invalid_four_level_tree():
 
 def test_valid_resource_create():
     """Test creating a valid ResourceCreate."""
-    resource = ResourceCreate(
+    resource = AdminResourceCreate(
         pid=uuid.uuid4(),
         name="角色管理",
         key="role_management",
@@ -377,7 +377,7 @@ def test_valid_resource_create():
 
 def test_resource_create_without_optional_fields():
     """Test creating ResourceCreate without optional fields."""
-    resource = ResourceCreate(
+    resource = AdminResourceCreate(
         name="系統管理",
         key="system_management",
         code="SYS_MGMT"
@@ -392,7 +392,7 @@ def test_resource_create_without_optional_fields():
 
 def test_valid_resource_update():
     """Test creating a valid ResourceUpdate."""
-    resource = ResourceUpdate(
+    resource = AdminResourceUpdate(
         pid=uuid.uuid4(),
         name="角色管理 (更新)",
         key="role_management",
@@ -412,7 +412,7 @@ def test_valid_resource_bulk_delete():
     """Test creating a valid ResourceBulkDelete."""
     resource_ids = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
 
-    bulk_delete = ResourceBulkDelete(ids=resource_ids)
+    bulk_delete = AdminResourceBulkDelete(ids=resource_ids)
 
     assert len(bulk_delete.ids) == 3
     assert all(isinstance(id_, uuid.UUID) for id_ in bulk_delete.ids)
@@ -423,7 +423,7 @@ def test_valid_resource_change_sequence():
     resource_id = uuid.uuid4()
     another_id = uuid.uuid4()
 
-    change_sequence = ResourceChangeSequence(
+    change_sequence = AdminResourceChangeSequence(
         id=resource_id,
         sequence=2.0,
         another_id=another_id,
@@ -440,7 +440,7 @@ def test_complex_three_level_tree():
     """Test a complex three level tree with multiple children at each level."""
     # 第三層 - 多個子項目
     level3_items = [
-        ResourceTreeItem(
+        AdminResourceTreeItem(
             pid=uuid.uuid4(),
             name="新增使用者",
             key="create_user",
@@ -448,7 +448,7 @@ def test_complex_three_level_tree():
             sequence=1.0,
             children=None
         ),
-        ResourceTreeItem(
+        AdminResourceTreeItem(
             pid=uuid.uuid4(),
             name="編輯使用者",
             key="edit_user",
@@ -456,7 +456,7 @@ def test_complex_three_level_tree():
             sequence=2.0,
             children=None
         ),
-        ResourceTreeItem(
+        AdminResourceTreeItem(
             pid=uuid.uuid4(),
             name="刪除使用者",
             key="delete_user",
@@ -468,7 +468,7 @@ def test_complex_three_level_tree():
 
     # 第二層 - 多個子項目
     level2_items = [
-        ResourceTreeItem(
+        AdminResourceTreeItem(
             pid=uuid.uuid4(),
             name="使用者管理",
             key="user_management",
@@ -476,7 +476,7 @@ def test_complex_three_level_tree():
             sequence=1.0,
             children=level3_items
         ),
-        ResourceTreeItem(
+        AdminResourceTreeItem(
             pid=uuid.uuid4(),
             name="角色管理",
             key="role_management",
@@ -487,7 +487,7 @@ def test_complex_three_level_tree():
     ]
 
     # 第一層
-    root_item = ResourceTreeItem(
+    root_item = AdminResourceTreeItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -496,7 +496,7 @@ def test_complex_three_level_tree():
         children=level2_items
     )
 
-    tree = ResourceTree(items=[root_item])
+    tree = AdminResourceTree(items=[root_item])
 
     # 驗證結構
     assert tree.items[0].name == "系統管理"
@@ -513,7 +513,7 @@ def test_complex_three_level_tree():
 def test_tree_with_mixed_depths():
     """Test tree where some branches have different depths."""
     # 第三層
-    level3_item = ResourceTreeItem(
+    level3_item = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="新增使用者",
         key="create_user",
@@ -523,7 +523,7 @@ def test_tree_with_mixed_depths():
     )
 
     # 第二層 - 一個有子項目，一個沒有
-    level2_with_children = ResourceTreeItem(
+    level2_with_children = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="使用者管理",
         key="user_management",
@@ -532,7 +532,7 @@ def test_tree_with_mixed_depths():
         children=[level3_item]
     )
 
-    level2_without_children = ResourceTreeItem(
+    level2_without_children = AdminResourceTreeItem(
         pid=uuid.uuid4(),
         name="角色管理",
         key="role_management",
@@ -542,7 +542,7 @@ def test_tree_with_mixed_depths():
     )
 
     # 第一層
-    root_item = ResourceTreeItem(
+    root_item = AdminResourceTreeItem(
         pid=None,
         name="系統管理",
         key="system_management",
@@ -551,7 +551,7 @@ def test_tree_with_mixed_depths():
         children=[level2_with_children, level2_without_children]
     )
 
-    tree = ResourceTree(items=[root_item])
+    tree = AdminResourceTree(items=[root_item])
 
     # 驗證結構
     assert len(tree.items[0].children) == 2

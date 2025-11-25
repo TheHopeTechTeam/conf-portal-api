@@ -9,21 +9,21 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from portal.schemas.mixins import UUIDBaseModel
-from portal.serializers.v1.admin.conference import ConferenceBase
+from portal.serializers.v1.admin.conference import AdminConferenceBase
 
 
-class EventInfoQuery(BaseModel):
+class AdminEventInfoQuery(BaseModel):
     """Event info query model"""
     start_date: Optional[date] = Field(None, description="Start date")
     end_date: Optional[date] = Field(None, description="End date")
 
 
-class EventInfoBase(UUIDBaseModel):
+class AdminEventInfoBase(UUIDBaseModel):
     """Event info base model"""
     title: str = Field(..., description="Title")
 
 
-class EventInfoItem(EventInfoBase):
+class AdminEventInfoItem(AdminEventInfoBase):
     """Event info item"""
     start_datetime: datetime = Field(..., serialization_alias="startTime", description="Start Datetime")
     end_datetime: datetime = Field(..., serialization_alias="endTime", description="End Datetime")
@@ -32,19 +32,19 @@ class EventInfoItem(EventInfoBase):
     background_color: str = Field(..., serialization_alias="backgroundColor", description="Background color")
 
 
-class EventInfoDetail(EventInfoItem):
+class AdminEventInfoDetail(AdminEventInfoItem):
     """Event info detail"""
     remark: Optional[str] = Field(default=None, description="Remark")
     description: Optional[str] = Field(default=None, description="Description")
-    conference: ConferenceBase = Field(..., description="Conference")
+    conference: AdminConferenceBase = Field(..., description="Conference")
 
 
-class EventInfoList(BaseModel):
+class AdminEventInfoList(BaseModel):
     """Event info list"""
-    items: Optional[list[EventInfoItem]] = Field(..., description="Items")
+    items: Optional[list[AdminEventInfoItem]] = Field(..., description="Items")
 
 
-class EventInfoCreate(BaseModel):
+class AdminEventInfoCreate(BaseModel):
     """Event info create"""
     title: str = Field(..., description="Title")
     start_datetime: datetime = Field(..., serialization_alias="startTime", description="Start Datetime")
@@ -57,5 +57,5 @@ class EventInfoCreate(BaseModel):
     description: Optional[str] = Field(default=None, description="Description")
 
 
-class EventInfoUpdate(EventInfoCreate):
+class AdminEventInfoUpdate(AdminEventInfoCreate):
     """Event info update"""

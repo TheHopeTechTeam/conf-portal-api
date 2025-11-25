@@ -14,10 +14,10 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import DeleteQueryBaseModel
 from portal.serializers.v1.admin.resource import (
-    ResourceCreate,
-    ResourceUpdate,
-    ResourceChangeSequence,
-    ResourceList, ResourceDetail, ResourceChangeParent,
+    AdminResourceCreate,
+    AdminResourceUpdate,
+    AdminResourceChangeSequence,
+    AdminResourceList, AdminResourceDetail, AdminResourceChangeParent,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -30,7 +30,7 @@ router: AuthRouter = AuthRouter(is_admin=True)
 )
 @inject
 async def create_resource(
-    resource_data: ResourceCreate,
+    resource_data: AdminResourceCreate,
     admin_resource_handler: AdminResourceHandler = Depends(Provide[Container.admin_resource_handler])
 ):
     """
@@ -87,7 +87,7 @@ async def restore_resource(
 @inject
 async def change_resource_parent(
     resource_id: uuid.UUID,
-    model: ResourceChangeParent,
+    model: AdminResourceChangeParent,
     admin_resource_handler: AdminResourceHandler = Depends(Provide[Container.admin_resource_handler])
 ):
     """
@@ -107,7 +107,7 @@ async def change_resource_parent(
 @inject
 async def update_resource(
     resource_id: uuid.UUID,
-    resource_data: ResourceUpdate,
+    resource_data: AdminResourceUpdate,
     admin_resource_handler: AdminResourceHandler = Depends(Provide[Container.admin_resource_handler])
 ):
     """
@@ -126,7 +126,7 @@ async def update_resource(
 )
 @inject
 async def change_resource_sequence(
-    model: ResourceChangeSequence,
+    model: AdminResourceChangeSequence,
     admin_resource_handler: AdminResourceHandler = Depends(Provide[Container.admin_resource_handler])
 ):
     """
@@ -141,7 +141,7 @@ async def change_resource_sequence(
 @router.get(
     "/list",
     status_code=status.HTTP_200_OK,
-    response_model=ResourceList
+    response_model=AdminResourceList
 )
 @inject
 async def get_resources(
@@ -160,7 +160,7 @@ async def get_resources(
 @router.get(
     path="/menus",
     status_code=status.HTTP_200_OK,
-    response_model=ResourceList
+    response_model=AdminResourceList
 )
 @inject
 async def get_menus(
@@ -177,7 +177,7 @@ async def get_menus(
 @router.get(
     path="/{resource_id}",
     status_code=status.HTTP_200_OK,
-    response_model=ResourceDetail
+    response_model=AdminResourceDetail
 )
 @inject
 async def get_resource(

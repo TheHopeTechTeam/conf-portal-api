@@ -9,24 +9,24 @@ from pydantic import Field, BaseModel
 
 from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
-from portal.serializers.v1.admin.file import FileGridItem
+from portal.serializers.v1.admin.file import AdminFileGridItem
 
 
-class LocationQuery(GenericQueryBaseModel):
+class AdminLocationQuery(GenericQueryBaseModel):
     """
     Location query model
     """
     room_number: Optional[str] = Field(None, description="Room number")
 
 
-class LocationBase(UUIDBaseModel, JSONStringMixinModel):
+class AdminLocationBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Location base model
     """
     name: str = Field(..., description="Name")
 
 
-class LocationItem(LocationBase):
+class AdminLocationItem(AdminLocationBase):
     """
     Location item
     """
@@ -38,25 +38,25 @@ class LocationItem(LocationBase):
     updated_at: Optional[datetime] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
-class LocationDetail(LocationItem):
+class AdminLocationDetail(AdminLocationItem):
     """Location detail"""
     latitude: Optional[float] = Field(None, description="Latitude")
     longitude: Optional[float] = Field(None, description="Longitude")
     description: Optional[str] = Field(None, description="Description")
-    files: Optional[list[FileGridItem]] = Field(None, description="Files")
+    files: Optional[list[AdminFileGridItem]] = Field(None, description="Files")
 
 
-class LocationPages(PaginationBaseResponseModel):
+class AdminLocationPages(PaginationBaseResponseModel):
     """Location pages"""
-    items: Optional[list[LocationItem]] = Field(..., description="Items")
+    items: Optional[list[AdminLocationItem]] = Field(..., description="Items")
 
 
-class LocationList(BaseModel):
+class AdminLocationList(BaseModel):
     """Location list"""
-    items: Optional[list[LocationBase]] = Field(..., description="Items")
+    items: Optional[list[AdminLocationBase]] = Field(..., description="Items")
 
 
-class LocationCreate(BaseModel):
+class AdminLocationCreate(BaseModel):
     """Location create"""
     name: str = Field(..., description="Name")
     address: Optional[str] = Field(None, description="Address")
@@ -69,5 +69,5 @@ class LocationCreate(BaseModel):
     file_ids: Optional[list[UUID]] = Field(None, description="File IDs")
 
 
-class LocationUpdate(LocationCreate):
+class AdminLocationUpdate(AdminLocationCreate):
     """Location update"""

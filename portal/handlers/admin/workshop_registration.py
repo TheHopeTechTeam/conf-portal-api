@@ -17,11 +17,11 @@ from portal.models import PortalWorkshopRegistration, PortalWorkshop, PortalUser
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.workshop_registration import (
-    WorkshopRegistrationQuery,
-    WorkshopRegistrationPages,
-    WorkshopRegistrationItem,
-    WorkshopRegistrationDetail,
-    WorkshopRegistrationCreate,
+    AdminWorkshopRegistrationQuery,
+    AdminWorkshopRegistrationPages,
+    AdminWorkshopRegistrationItem,
+    AdminWorkshopRegistrationDetail,
+    AdminWorkshopRegistrationCreate,
 )
 
 
@@ -37,7 +37,7 @@ class AdminWorkshopRegistrationHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
     @distributed_trace()
-    async def get_workshop_registration_pages(self, query_model: WorkshopRegistrationQuery) -> WorkshopRegistrationPages:
+    async def get_workshop_registration_pages(self, query_model: AdminWorkshopRegistrationQuery) -> AdminWorkshopRegistrationPages:
         """
         Get workshop registration pages
         :param query_model:
@@ -81,11 +81,11 @@ class AdminWorkshopRegistrationHandler:
             .offset(query_model.page * query_model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=WorkshopRegistrationItem
+                as_model=AdminWorkshopRegistrationItem
             )
         )
 
-        return WorkshopRegistrationPages(
+        return AdminWorkshopRegistrationPages(
             page=query_model.page,
             page_size=query_model.page_size,
             total=count,
@@ -93,13 +93,13 @@ class AdminWorkshopRegistrationHandler:
         )
 
     @distributed_trace()
-    async def get_workshop_registration_by_id(self, registration_id: uuid.UUID) -> WorkshopRegistrationDetail:
+    async def get_workshop_registration_by_id(self, registration_id: uuid.UUID) -> AdminWorkshopRegistrationDetail:
         """
         Get workshop registration by ID
         :param registration_id:
         :return:
         """
-        item: Optional[WorkshopRegistrationDetail] = await (
+        item: Optional[AdminWorkshopRegistrationDetail] = await (
             self._session.select(
                 PortalWorkshopRegistration.id,
                 sa.func.json_build_object(
@@ -118,7 +118,7 @@ class AdminWorkshopRegistrationHandler:
             .outerjoin(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
             .where(PortalWorkshopRegistration.id == registration_id)
             .where(PortalWorkshopRegistration.is_deleted == False)
-            .fetchrow(as_model=WorkshopRegistrationDetail)
+            .fetchrow(as_model=AdminWorkshopRegistrationDetail)
         )
 
         if not item:
@@ -126,7 +126,7 @@ class AdminWorkshopRegistrationHandler:
         return item
 
     @distributed_trace()
-    async def create_workshop_registration(self, model: WorkshopRegistrationCreate) -> UUIDBaseModel:
+    async def create_workshop_registration(self, model: AdminWorkshopRegistrationCreate) -> UUIDBaseModel:
         """
         Create workshop registration
         :param model:
@@ -175,7 +175,7 @@ class AdminWorkshopRegistrationHandler:
             )
             .where(PortalWorkshopRegistration.id == registration_id)
             .where(PortalWorkshopRegistration.is_deleted == False)
-            .fetchrow(as_model=WorkshopRegistrationItem)
+            .fetchrow(as_model=AdminWorkshopRegistrationItem)
         )
 
         if not registration:

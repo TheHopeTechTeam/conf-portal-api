@@ -13,11 +13,11 @@ from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalFeedback
 from portal.serializers.v1.admin.feedback import (
-    FeedbackQuery,
-    FeedbackItem,
-    FeedbackDetail,
-    FeedbackPages,
-    FeedbackUpdate,
+    AdminFeedbackQuery,
+    AdminFeedbackItem,
+    AdminFeedbackDetail,
+    AdminFeedbackPages,
+    AdminFeedbackUpdate,
 )
 
 
@@ -32,7 +32,7 @@ class AdminFeedbackHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    async def get_feedback_pages(self, model: FeedbackQuery) -> FeedbackPages:
+    async def get_feedback_pages(self, model: AdminFeedbackQuery) -> AdminFeedbackPages:
         """
 
         :param model:
@@ -66,10 +66,10 @@ class AdminFeedbackHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=FeedbackItem
+                as_model=AdminFeedbackItem
             )
         )
-        return FeedbackPages(
+        return AdminFeedbackPages(
             page=model.page,
             page_size=model.page_size,
             total=count,
@@ -77,13 +77,13 @@ class AdminFeedbackHandler:
         )
 
     @distributed_trace()
-    async def get_feedback_by_id(self, feedback_id: str) -> FeedbackDetail:
+    async def get_feedback_by_id(self, feedback_id: str) -> AdminFeedbackDetail:
         """
 
         :param feedback_id:
         :return:
         """
-        item: Optional[FeedbackDetail] = await (
+        item: Optional[AdminFeedbackDetail] = await (
             self._session.select(
                 PortalFeedback.id,
                 PortalFeedback.name,
@@ -96,14 +96,14 @@ class AdminFeedbackHandler:
                 PortalFeedback.updated_at,
             )
             .where(PortalFeedback.id == feedback_id)
-            .fetchrow(as_model=FeedbackDetail)
+            .fetchrow(as_model=AdminFeedbackDetail)
         )
         if not item:
             raise NotFoundException(detail=f"Feedback {feedback_id} not found")
         return item
 
     @distributed_trace()
-    async def update_feedback(self, feedback_id: uuid.UUID, model: FeedbackUpdate) -> None:
+    async def update_feedback(self, feedback_id: uuid.UUID, model: AdminFeedbackUpdate) -> None:
         """
 
         :param feedback_id:

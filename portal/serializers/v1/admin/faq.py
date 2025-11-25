@@ -11,7 +11,7 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
 
 
-class FaqCategoryBase(UUIDBaseModel):
+class AdminFaqCategoryBase(UUIDBaseModel):
     """
     FAQ Category base model
     """
@@ -22,42 +22,42 @@ class FaqCategoryBase(UUIDBaseModel):
     updated_at: Optional[datetime] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
-class FaqCategoryItem(FaqCategoryBase):
+class AdminFaqCategoryItem(AdminFaqCategoryBase):
     """
     FAQ Category item
     """
     description: Optional[str] = Field(None, description="Description")
 
 
-class FaqCategoryDetail(FaqCategoryItem):
+class AdminFaqCategoryDetail(AdminFaqCategoryItem):
     """FAQ Category detail"""
     pass
 
 
-class FaqCategoryList(BaseModel):
+class AdminFaqCategoryList(BaseModel):
     """FAQ Category list"""
-    categories: list[FaqCategoryBase] = Field(..., description="Categories")
+    categories: list[AdminFaqCategoryBase] = Field(..., description="Categories")
 
 
-class FaqCategoryCreate(BaseModel):
+class AdminFaqCategoryCreate(BaseModel):
     """FAQ Category create"""
     name: str = Field(..., description="Name")
     remark: Optional[str] = Field(None, description="Remark")
     description: Optional[str] = Field(None, description="Description")
 
 
-class FaqCategoryUpdate(FaqCategoryCreate):
+class AdminFaqCategoryUpdate(AdminFaqCategoryCreate):
     """FAQ Category update"""
 
 
-class FaqQuery(GenericQueryBaseModel):
+class AdminFaqQuery(GenericQueryBaseModel):
     """
     FAQ query model
     """
     category_id: Optional[UUID] = Field(None, serialization_alias="categoryId", description="Category ID")
 
 
-class FaqBase(UUIDBaseModel):
+class AdminFaqBase(UUIDBaseModel):
     """
     FAQ base model
     """
@@ -68,26 +68,26 @@ class FaqBase(UUIDBaseModel):
     updated_at: Optional[datetime] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
-class FaqItem(FaqBase):
+class AdminFaqItem(AdminFaqBase):
     """
     FAQ item
     """
     category_name: Optional[str] = Field(None, serialization_alias="categoryName", description="Category name")
 
 
-class FaqDetail(FaqBase):
+class AdminFaqDetail(AdminFaqBase):
     """FAQ detail"""
     answer: str = Field(..., description="Answer")
     description: Optional[str] = Field(None, description="Description")
-    category: Optional[FaqCategoryBase] = Field(None, description="Category")
+    category: Optional[AdminFaqCategoryBase] = Field(None, description="Category")
 
 
-class FaqPages(PaginationBaseResponseModel):
+class AdminFaqPages(PaginationBaseResponseModel):
     """FAQ pages"""
-    items: Optional[list[FaqItem]] = Field(..., description="Items")
+    items: Optional[list[AdminFaqItem]] = Field(..., description="Items")
 
 
-class FaqCreate(BaseModel):
+class AdminFaqCreate(BaseModel):
     """FAQ create"""
     category_id: UUID = Field(..., serialization_alias="categoryId", description="Category ID")
     question: str = Field(..., description="Question")
@@ -97,6 +97,6 @@ class FaqCreate(BaseModel):
     description: Optional[str] = Field(None, description="Description")
 
 
-class FaqUpdate(FaqCreate):
+class AdminFaqUpdate(AdminFaqCreate):
     """FAQ update"""
 

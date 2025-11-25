@@ -10,14 +10,14 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
 
 
-class TestimonyQuery(GenericQueryBaseModel):
+class AdminTestimonyQuery(GenericQueryBaseModel):
     """
     Testimony query model
     """
     share: Optional[bool] = Field(default=None, description="Share permission")
 
 
-class TestimonyBase(UUIDBaseModel):
+class AdminTestimonyBase(UUIDBaseModel):
     """
     Testimony base model
     """
@@ -29,15 +29,15 @@ class TestimonyBase(UUIDBaseModel):
     updated_at: Optional[datetime] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
 
 
-class TestimonyItem(TestimonyBase):
+class AdminTestimonyItem(AdminTestimonyBase):
     """Testimony item"""
 
 
-class TestimonyDetail(TestimonyItem):
+class AdminTestimonyDetail(AdminTestimonyItem):
     """Testimony detail"""
     message: Optional[str] = Field(..., description="Message")
     description: Optional[str] = Field(default=None, description="Description")
 
 
-class TestimonyPages(PaginationBaseResponseModel):
-    items: Optional[list[TestimonyItem]] = Field(..., description="Items")
+class AdminTestimonyPages(PaginationBaseResponseModel):
+    items: Optional[list[AdminTestimonyItem]] = Field(..., description="Items")

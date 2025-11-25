@@ -10,20 +10,20 @@ from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
 
 
-class PermissionResourceItem(UUIDBaseModel, JSONStringMixinModel):
+class AdminPermissionResourceItem(UUIDBaseModel, JSONStringMixinModel):
     """PermissionResourceItem"""
     name: str = Field(..., description="Name")
     key: str = Field(..., description="Key")
     code: str = Field(..., description="Code")
 
 
-class PermissionVerbItem(UUIDBaseModel, JSONStringMixinModel):
+class AdminPermissionVerbItem(UUIDBaseModel, JSONStringMixinModel):
     """PermissionVerbItem"""
     display_name: str = Field(..., serialization_alias="displayName", description="Display name")
     action: str = Field(..., description="Action")
 
 
-class PermissionBase(UUIDBaseModel):
+class AdminPermissionBase(UUIDBaseModel):
     """PermissionBase"""
     display_name: str = Field(..., serialization_alias="displayName", description="Display name")
     code: str = Field(..., description="Code")
@@ -32,35 +32,35 @@ class PermissionBase(UUIDBaseModel):
     remark: Optional[str] = Field(None, description="Remark")
 
 
-class PermissionItem(PermissionBase):
+class AdminPermissionItem(AdminPermissionBase):
     """PermissionItem"""
     resource_id: Optional[UUID] = Field(None, serialization_alias="resourceId", description="Resource ID")
     verb_id: Optional[UUID] = Field(None, serialization_alias="verbId", description="Verb ID")
 
 
-class PermissionDetail(PermissionBase):
+class AdminPermissionDetail(AdminPermissionBase):
     """PermissionDetail"""
-    resource: PermissionResourceItem = Field(..., description="Resource")
-    verb: PermissionVerbItem = Field(..., description="Verb")
+    resource: AdminPermissionResourceItem = Field(..., description="Resource")
+    verb: AdminPermissionVerbItem = Field(..., description="Verb")
 
 
-class PermissionPageItem(PermissionBase):
+class AdminPermissionPageItem(AdminPermissionBase):
     """PermissionPageItem"""
     resource_name: str = Field(..., serialization_alias="resourceName", description="Resource name")
     verb_name: str = Field(..., serialization_alias="verbName", description="Verb name")
 
 
-class PermissionPage(PaginationBaseResponseModel):
+class AdminPermissionPage(PaginationBaseResponseModel):
     """PermissionPage"""
-    items: Optional[list[PermissionPageItem]] = Field(..., description="Permissions")
+    items: Optional[list[AdminPermissionPageItem]] = Field(..., description="Permissions")
 
 
-class PermissionQuery(GenericQueryBaseModel):
+class AdminPermissionQuery(GenericQueryBaseModel):
     """PermissionQuery"""
     is_active: Optional[bool] = Field(None, description="Is active")
 
 
-class PermissionCreate(BaseModel):
+class AdminPermissionCreate(BaseModel):
     """PermissionCreate"""
     display_name: str = Field(..., serialization_alias="displayName", description="Display name")
     code: str = Field(..., description="Code")
@@ -71,15 +71,15 @@ class PermissionCreate(BaseModel):
     remark: Optional[str] = Field(None, description="Remark")
 
 
-class PermissionUpdate(PermissionCreate):
+class AdminPermissionUpdate(AdminPermissionCreate):
     """PermissionUpdate"""
 
 
-class PermissionList(BaseModel):
+class AdminPermissionList(BaseModel):
     """PermissionList"""
-    items: Optional[list[PermissionItem]] = Field(..., description="Permissions")
+    items: Optional[list[AdminPermissionItem]] = Field(..., description="Permissions")
 
 
-class PermissionBulkAction(BaseModel):
+class AdminPermissionBulkAction(BaseModel):
     """PermissionBulkAction"""
     ids: list[UUID] = Field(..., description="Permission IDs for bulk action")

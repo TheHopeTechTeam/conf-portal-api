@@ -7,7 +7,7 @@ from portal.config import settings
 from portal.libs.consts.cache_keys import CacheKeys, CacheExpiry
 from portal.libs.database import Session, RedisPool
 from portal.models import PortalVerb
-from portal.serializers.v1.admin.verb import VerbList, VerbItem
+from portal.serializers.v1.admin.verb import AdminVerbList, AdminVerbItem
 
 
 class AdminVerbHandler:
@@ -22,7 +22,7 @@ class AdminVerbHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
 
-    async def get_verb_list(self) -> VerbList:
+    async def get_verb_list(self) -> AdminVerbList:
         """
 
         :return:
@@ -30,8 +30,8 @@ class AdminVerbHandler:
         cache_key = CacheKeys(resource="verb").add_attribute("list").build()
         cached = await self._redis.get(cache_key)
         if cached:
-            return VerbList.model_validate_json(cached)
-        verbs: list[VerbItem] = await (
+            return AdminVerbList.model_validate_json(cached)
+        verbs: list[AdminVerbItem] = await (
             self._session.select(
                 PortalVerb.id,
                 PortalVerb.action,
@@ -41,11 +41,11 @@ class AdminVerbHandler:
             .where(PortalVerb.is_active == True)
             .where(PortalVerb.is_deleted == False)
             .order_by(PortalVerb.created_at)
-            .fetch(as_model=VerbItem)
+            .fetch(as_model=AdminVerbItem)
         )
         if not verbs:
-            return VerbList(items=[])
-        result = VerbList(items=verbs)
+            return AdminVerbList(items=[])
+        result = AdminVerbList(items=verbs)
         await self._redis.set(
             cache_key,
             result.model_dump_json(),

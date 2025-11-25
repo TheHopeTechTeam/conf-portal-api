@@ -17,18 +17,18 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction, DeleteQueryBaseModel
 from portal.serializers.v1.admin.faq import (
-    FaqQuery,
-    FaqBase,
-    FaqPages,
-    FaqDetail,
-    FaqCreate,
-    FaqUpdate,
-    FaqCategoryBase,
-    FaqCategoryItem,
-    FaqCategoryList,
-    FaqCategoryDetail,
-    FaqCategoryCreate,
-    FaqCategoryUpdate, FaqItem,
+    AdminFaqQuery,
+    AdminFaqBase,
+    AdminFaqPages,
+    AdminFaqDetail,
+    AdminFaqCreate,
+    AdminFaqUpdate,
+    AdminFaqCategoryBase,
+    AdminFaqCategoryItem,
+    AdminFaqCategoryList,
+    AdminFaqCategoryDetail,
+    AdminFaqCategoryCreate,
+    AdminFaqCategoryUpdate, AdminFaqItem,
 )
 
 
@@ -43,7 +43,7 @@ class AdminFaqHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    async def get_faq_pages(self, model: FaqQuery) -> FaqPages:
+    async def get_faq_pages(self, model: AdminFaqQuery) -> AdminFaqPages:
         """
 
         :param model:
@@ -77,23 +77,23 @@ class AdminFaqHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=FaqItem
+                as_model=AdminFaqItem
             )
         )
-        return FaqPages(
+        return AdminFaqPages(
             page=model.page,
             page_size=model.page_size,
             total=count,
             items=items
         )
 
-    async def get_faq_by_id(self, faq_id: uuid.UUID) -> FaqDetail:
+    async def get_faq_by_id(self, faq_id: uuid.UUID) -> AdminFaqDetail:
         """
 
         :param faq_id:
         :return:
         """
-        item: Optional[FaqDetail] = await (
+        item: Optional[AdminFaqDetail] = await (
             self._session.select(
                 PortalFaq.id,
                 PortalFaq.question,
@@ -111,14 +111,14 @@ class AdminFaqHandler:
             .outerjoin(PortalFaqCategory, PortalFaq.category_id == PortalFaqCategory.id)
             .where(PortalFaq.id == faq_id)
             .where(PortalFaq.is_deleted == False)
-            .fetchrow(as_model=FaqDetail)
+            .fetchrow(as_model=AdminFaqDetail)
         )
         if not item:
             raise NotFoundException(detail=f"FAQ {faq_id} not found")
 
         return item
 
-    async def create_faq(self, model: FaqCreate) -> UUIDBaseModel:
+    async def create_faq(self, model: AdminFaqCreate) -> UUIDBaseModel:
         """
 
         :param model:
@@ -148,7 +148,7 @@ class AdminFaqHandler:
             return UUIDBaseModel(id=faq_id)
 
     @distributed_trace()
-    async def update_faq(self, faq_id: uuid.UUID, model: FaqUpdate):
+    async def update_faq(self, faq_id: uuid.UUID, model: AdminFaqUpdate):
         """
 
         :param faq_id:
@@ -230,13 +230,13 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
 
-    async def get_category_list(self, model: DeleteQueryBaseModel) -> FaqCategoryList:
+    async def get_category_list(self, model: DeleteQueryBaseModel) -> AdminFaqCategoryList:
         """
 
         :param model:
         :return:
         """
-        items: Optional[list[FaqCategoryBase]] = await (
+        items: Optional[list[AdminFaqCategoryBase]] = await (
             self._session.select(
                 PortalFaqCategory.id,
                 PortalFaqCategory.name,
@@ -246,19 +246,19 @@ class AdminFaqHandler:
             )
             .where(PortalFaqCategory.is_deleted == model.deleted)
             .order_by(PortalFaqCategory.sequence)
-            .fetch(as_model=FaqCategoryItem)
+            .fetch(as_model=AdminFaqCategoryItem)
         )
         if not items:
-            return FaqCategoryList(categories=[])
-        return FaqCategoryList(categories=items)
+            return AdminFaqCategoryList(categories=[])
+        return AdminFaqCategoryList(categories=items)
 
-    async def get_category_by_id(self, category_id: uuid.UUID) -> FaqCategoryDetail:
+    async def get_category_by_id(self, category_id: uuid.UUID) -> AdminFaqCategoryDetail:
         """
 
         :param category_id:
         :return:
         """
-        item: Optional[FaqCategoryDetail] = await (
+        item: Optional[AdminFaqCategoryDetail] = await (
             self._session.select(
                 PortalFaqCategory.id,
                 PortalFaqCategory.name,
@@ -269,14 +269,14 @@ class AdminFaqHandler:
             )
             .where(PortalFaqCategory.id == category_id)
             .where(PortalFaqCategory.is_deleted == False)
-            .fetchrow(as_model=FaqCategoryDetail)
+            .fetchrow(as_model=AdminFaqCategoryDetail)
         )
         if not item:
             raise NotFoundException(detail=f"FAQ Category {category_id} not found")
 
         return item
 
-    async def create_category(self, model: FaqCategoryCreate) -> UUIDBaseModel:
+    async def create_category(self, model: AdminFaqCategoryCreate) -> UUIDBaseModel:
         """
 
         :param model:
@@ -306,7 +306,7 @@ class AdminFaqHandler:
             return UUIDBaseModel(id=category_id)
 
     @distributed_trace()
-    async def update_category(self, category_id: uuid.UUID, model: FaqCategoryUpdate):
+    async def update_category(self, category_id: uuid.UUID, model: AdminFaqCategoryUpdate):
         """
 
         :param category_id:

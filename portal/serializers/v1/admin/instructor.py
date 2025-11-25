@@ -9,17 +9,17 @@ from pydantic import Field, BaseModel
 
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
-from portal.serializers.v1.admin.file import FileGridItem
+from portal.serializers.v1.admin.file import AdminFileGridItem
 
 
-class InstructorQuery(GenericQueryBaseModel):
+class AdminInstructorQuery(GenericQueryBaseModel):
     """
     Instructor query model
     """
     pass
 
 
-class InstructorBase(UUIDBaseModel):
+class AdminInstructorBase(UUIDBaseModel):
     """
     Instructor base model
     """
@@ -31,29 +31,29 @@ class InstructorBase(UUIDBaseModel):
     updated_at: Optional[datetime] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
-class InstructorItem(InstructorBase):
+class AdminInstructorItem(AdminInstructorBase):
     """
     Instructor item
     """
     description: Optional[str] = Field(None, description="Description")
 
 
-class InstructorDetail(InstructorItem):
+class AdminInstructorDetail(AdminInstructorItem):
     """Instructor detail"""
-    files: Optional[list[FileGridItem]] = Field(None, description="Files")
+    files: Optional[list[AdminFileGridItem]] = Field(None, description="Files")
 
 
-class InstructorPages(PaginationBaseResponseModel):
+class AdminInstructorPages(PaginationBaseResponseModel):
     """Instructor pages"""
-    items: Optional[list[InstructorBase]] = Field(..., description="Items")
+    items: Optional[list[AdminInstructorBase]] = Field(..., description="Items")
 
 
-class InstructorList(BaseModel):
+class AdminInstructorList(BaseModel):
     """Instructor list"""
-    items: Optional[list[InstructorBase]] = Field(..., description="Items")
+    items: Optional[list[AdminInstructorBase]] = Field(..., description="Items")
 
 
-class InstructorCreate(BaseModel):
+class AdminInstructorCreate(BaseModel):
     """Instructor create"""
     name: str = Field(..., description="Name")
     title: Optional[str] = Field(None, description="Title")
@@ -63,6 +63,6 @@ class InstructorCreate(BaseModel):
     file_ids: Optional[list[UUID]] = Field(None, description="File IDs")
 
 
-class InstructorUpdate(InstructorCreate):
+class AdminInstructorUpdate(AdminInstructorCreate):
     """Instructor update"""
 

@@ -14,11 +14,11 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.instructor import (
-    InstructorQuery,
-    InstructorPages,
-    InstructorDetail,
-    InstructorCreate,
-    InstructorUpdate, InstructorList,
+    AdminInstructorQuery,
+    AdminInstructorPages,
+    AdminInstructorDetail,
+    AdminInstructorCreate,
+    AdminInstructorUpdate, AdminInstructorList,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -27,11 +27,11 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=InstructorPages
+    response_model=AdminInstructorPages
 )
 @inject
 async def get_instructor_pages(
-    query_model: Annotated[InstructorQuery, Query()],
+    query_model: Annotated[AdminInstructorQuery, Query()],
     admin_instructor_handler: AdminInstructorHandler = Depends(Provide[Container.admin_instructor_handler])
 ):
     """
@@ -46,7 +46,7 @@ async def get_instructor_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=InstructorList
+    response_model=AdminInstructorList
 )
 @inject
 async def get_instructor_list(
@@ -63,7 +63,7 @@ async def get_instructor_list(
 @router.get(
     path="/{instructor_id}",
     status_code=status.HTTP_200_OK,
-    response_model=InstructorDetail
+    response_model=AdminInstructorDetail
 )
 @inject
 async def get_instructor(
@@ -86,7 +86,7 @@ async def get_instructor(
 )
 @inject
 async def create_instructor(
-    instructor_data: InstructorCreate,
+    instructor_data: AdminInstructorCreate,
     admin_instructor_handler: AdminInstructorHandler = Depends(Provide[Container.admin_instructor_handler])
 ):
     """
@@ -105,7 +105,7 @@ async def create_instructor(
 @inject
 async def update_instructor(
     instructor_id: uuid.UUID,
-    instructor_data: InstructorUpdate,
+    instructor_data: AdminInstructorUpdate,
     admin_instructor_handler: AdminInstructorHandler = Depends(Provide[Container.admin_instructor_handler])
 ):
     """

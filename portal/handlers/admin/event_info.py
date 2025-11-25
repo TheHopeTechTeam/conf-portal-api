@@ -13,7 +13,7 @@ from portal.exceptions.responses import NotFoundException, ConflictErrorExceptio
 from portal.libs.database import Session, RedisPool
 from portal.models import PortalEventSchedule, PortalConference
 from portal.schemas.mixins import UUIDBaseModel
-from portal.serializers.v1.admin.event_info import EventInfoList, EventInfoItem, EventInfoDetail, EventInfoCreate, EventInfoUpdate
+from portal.serializers.v1.admin.event_info import AdminEventInfoList, AdminEventInfoItem, AdminEventInfoDetail, AdminEventInfoCreate, AdminEventInfoUpdate
 
 
 class AdminEventInfoHandler:
@@ -27,13 +27,13 @@ class AdminEventInfoHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    async def get_event_info_list(self, conference_id: uuid.UUID) -> EventInfoList:
+    async def get_event_info_list(self, conference_id: uuid.UUID) -> AdminEventInfoList:
         """
 
         :param conference_id:
         :return:
         """
-        items: Optional[list[EventInfoItem]] = await (
+        items: Optional[list[AdminEventInfoItem]] = await (
             self._session.select(
                 PortalEventSchedule.id,
                 PortalEventSchedule.title,
@@ -50,21 +50,21 @@ class AdminEventInfoHandler:
                 )
             )
             .order_by(PortalEventSchedule.start_datetime.asc())
-            .fetch(as_model=EventInfoItem)
+            .fetch(as_model=AdminEventInfoItem)
         )
 
         if not items:
-            return EventInfoList(items=[])
+            return AdminEventInfoList(items=[])
 
-        return EventInfoList(items=items)
+        return AdminEventInfoList(items=items)
 
-    async def get_event_info_by_id(self, event_id: uuid.UUID) -> EventInfoDetail:
+    async def get_event_info_by_id(self, event_id: uuid.UUID) -> AdminEventInfoDetail:
         """
 
         :param event_id:
         :return:
         """
-        item: Optional[EventInfoDetail] = await (
+        item: Optional[AdminEventInfoDetail] = await (
             self._session.select(
                 PortalEventSchedule.id,
                 PortalEventSchedule.title,
@@ -82,13 +82,13 @@ class AdminEventInfoHandler:
             )
             .outerjoin(PortalConference, PortalEventSchedule.conference_id == PortalConference.id)
             .where(PortalEventSchedule.id == event_id)
-            .fetchrow(as_model=EventInfoDetail)
+            .fetchrow(as_model=AdminEventInfoDetail)
         )
         if not item:
             raise NotFoundException(detail=f"Event info {event_id} not found")
         return item
 
-    async def create_event_info(self, model: EventInfoCreate) -> UUIDBaseModel:
+    async def create_event_info(self, model: AdminEventInfoCreate) -> UUIDBaseModel:
         """
 
         :param model:
@@ -118,7 +118,7 @@ class AdminEventInfoHandler:
         else:
             return UUIDBaseModel(id=event_id)
 
-    async def update_event_info(self, event_id: uuid.UUID, model: EventInfoUpdate) -> None:
+    async def update_event_info(self, event_id: uuid.UUID, model: AdminEventInfoUpdate) -> None:
         """
 
         :param event_id:

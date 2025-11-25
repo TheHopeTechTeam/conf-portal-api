@@ -12,10 +12,10 @@ from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalTestimony
 from portal.serializers.v1.admin.testimony import (
-    TestimonyQuery,
-    TestimonyItem,
-    TestimonyDetail,
-    TestimonyPages,
+    AdminTestimonyQuery,
+    AdminTestimonyItem,
+    AdminTestimonyDetail,
+    AdminTestimonyPages,
 )
 
 
@@ -30,7 +30,7 @@ class AdminTestimonyHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    async def get_testimony_pages(self, model: TestimonyQuery) -> TestimonyPages:
+    async def get_testimony_pages(self, model: AdminTestimonyQuery) -> AdminTestimonyPages:
         """
 
         :param model:
@@ -63,10 +63,10 @@ class AdminTestimonyHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=TestimonyItem
+                as_model=AdminTestimonyItem
             )
         )
-        return TestimonyPages(
+        return AdminTestimonyPages(
             page=model.page,
             page_size=model.page_size,
             total=count,
@@ -74,13 +74,13 @@ class AdminTestimonyHandler:
         )
 
     @distributed_trace()
-    async def get_testimony_by_id(self, testimony_id: str) -> TestimonyDetail:
+    async def get_testimony_by_id(self, testimony_id: str) -> AdminTestimonyDetail:
         """
 
         :param testimony_id:
         :return:
         """
-        item: Optional[TestimonyDetail] = await (
+        item: Optional[AdminTestimonyDetail] = await (
             self._session.select(
                 PortalTestimony.id,
                 PortalTestimony.name,
@@ -93,7 +93,7 @@ class AdminTestimonyHandler:
                 PortalTestimony.updated_at,
             )
             .where(PortalTestimony.id == testimony_id)
-            .fetchrow(as_model=TestimonyDetail)
+            .fetchrow(as_model=AdminTestimonyDetail)
         )
         if not item:
             raise NotFoundException(detail=f"Testimony {testimony_id} not found")

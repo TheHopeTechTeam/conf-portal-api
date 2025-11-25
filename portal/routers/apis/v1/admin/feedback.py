@@ -11,10 +11,10 @@ from portal.container import Container
 from portal.handlers import AdminFeedbackHandler
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.admin.feedback import (
-    FeedbackQuery,
-    FeedbackPages,
-    FeedbackDetail,
-    FeedbackUpdate,
+    AdminFeedbackQuery,
+    AdminFeedbackPages,
+    AdminFeedbackDetail,
+    AdminFeedbackUpdate,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -23,11 +23,11 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=FeedbackPages
+    response_model=AdminFeedbackPages
 )
 @inject
 async def get_feedback_pages(
-    query_model: Annotated[FeedbackQuery, Query()],
+    query_model: Annotated[AdminFeedbackQuery, Query()],
     admin_feedback_handler: AdminFeedbackHandler = Depends(Provide[Container.admin_feedback_handler])
 ):
     return await admin_feedback_handler.get_feedback_pages(model=query_model)
@@ -36,7 +36,7 @@ async def get_feedback_pages(
 @router.get(
     path="/{feedback_id}",
     status_code=status.HTTP_200_OK,
-    response_model=FeedbackDetail
+    response_model=AdminFeedbackDetail
 )
 @inject
 async def get_feedback(
@@ -53,7 +53,7 @@ async def get_feedback(
 @inject
 async def update_feedback(
     feedback_id: uuid.UUID,
-    body: FeedbackUpdate,
+    body: AdminFeedbackUpdate,
     admin_feedback_handler: AdminFeedbackHandler = Depends(Provide[Container.admin_feedback_handler])
 ):
     await admin_feedback_handler.update_feedback(feedback_id=feedback_id, model=body)

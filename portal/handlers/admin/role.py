@@ -19,7 +19,7 @@ from portal.models import PortalRole, PortalUser, PortalPermission, PortalResour
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
 from portal.serializers.mixins import GenericQueryBaseModel, DeleteBaseModel
-from portal.serializers.v1.admin.role import RolePages, RoleTableItem, RoleCreate, RoleUpdate, RolePermissionAssign, RoleBase, RoleList
+from portal.serializers.v1.admin.role import AdminRolePages, AdminRoleTableItem, AdminRoleCreate, AdminRoleUpdate, AdminRolePermissionAssign, AdminRoleBase, AdminRoleList
 
 
 class AdminRoleHandler:
@@ -66,7 +66,7 @@ class AdminRoleHandler:
         key = create_user_role_key(str(user_id))
         await self._redis.delete(key)
 
-    async def get_role_pages(self, model: GenericQueryBaseModel) -> RolePages:
+    async def get_role_pages(self, model: GenericQueryBaseModel) -> AdminRolePages:
         """
 
         :param model:
@@ -126,11 +126,11 @@ class AdminRoleHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=RoleTableItem
+                as_model=AdminRoleTableItem
             )
-        )  # type: (list[RoleTableItem], int)
+        )  # type: (list[AdminRoleTableItem], int)
 
-        return RolePages(
+        return AdminRolePages(
             page=model.page,
             page_size=model.page_size,
             total=count,
@@ -138,26 +138,26 @@ class AdminRoleHandler:
         )
 
     @distributed_trace()
-    async def get_active_roles(self) -> RoleList:
+    async def get_active_roles(self) -> AdminRoleList:
         """
 
         :return:
         """
-        roles: list[RoleBase] = await (
+        roles: list[AdminRoleBase] = await (
             self._session.select(
                 PortalRole.id,
                 PortalRole.code,
                 PortalRole.name
             )
             .where(PortalRole.is_active == True)
-            .fetch(as_model=RoleBase)
+            .fetch(as_model=AdminRoleBase)
         )
         if not roles:
-            return RoleList(items=[])
-        return RoleList(items=roles)
+            return AdminRoleList(items=[])
+        return AdminRoleList(items=roles)
 
     @distributed_trace()
-    async def get_role_by_id(self, role_id: UUID) -> Optional[RoleTableItem]:
+    async def get_role_by_id(self, role_id: UUID) -> Optional[AdminRoleTableItem]:
         """
 
         :param role_id:
@@ -180,7 +180,7 @@ class AdminRoleHandler:
             agg_permissions,
             sa.cast(sa.text("'{}'"), ARRAY(JSONB))
         ).label("permissions")
-        role: Optional[RoleTableItem] = await (
+        role: Optional[AdminRoleTableItem] = await (
             self._session.select(
                 PortalRole.id,
                 PortalRole.code,
@@ -201,14 +201,14 @@ class AdminRoleHandler:
             .outerjoin(PortalResource, PortalPermission.resource_id == PortalResource.id)
             .where(PortalRole.id == role_id)
             .group_by(PortalRole.id)
-            .fetchrow(as_model=RoleTableItem)
+            .fetchrow(as_model=AdminRoleTableItem)
         )
         if not role:
             return None
         return role
 
     @distributed_trace()
-    async def create_role(self, model: RoleCreate) -> UUIDBaseModel:
+    async def create_role(self, model: AdminRoleCreate) -> UUIDBaseModel:
         """
 
         :param model:
@@ -250,7 +250,7 @@ class AdminRoleHandler:
             return UUIDBaseModel(id=role_id)
 
     @distributed_trace()
-    async def update_role(self, role_id: UUID, model: RoleUpdate) -> None:
+    async def update_role(self, role_id: UUID, model: AdminRoleUpdate) -> None:
         """
 
         :param role_id:
@@ -276,7 +276,7 @@ class AdminRoleHandler:
                 .where(PortalRolePermission.role_id == role_id)
                 .fetchvals()
             )
-            
+
             # Determine which permissions to add and which to delete by set difference
             new_permission_ids = set(model.permissions or [])
             old_permission_ids = set(permission_ids)
@@ -378,7 +378,7 @@ class AdminRoleHandler:
             )
 
     @distributed_trace()
-    async def assign_role_permissions(self, role_id: UUID, model: RolePermissionAssign) -> None:
+    async def assign_role_permissions(self, role_id: UUID, model: AdminRolePermissionAssign) -> None:
         """
 
         :param role_id:

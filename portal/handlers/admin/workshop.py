@@ -18,18 +18,18 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.workshop import (
-    WorkshopQuery,
-    WorkshopDetail,
-    WorkshopPageItem,
-    WorkshopPages,
-    WorkshopCreate,
-    WorkshopUpdate,
-    WorkshopChangeSequence,
-    WorkshopInstructorBase,
-    WorkshopInstructorItem,
-    WorkshopInstructorsUpdate,
-    WorkshopSequenceItem,
-    WorkshopInstructors,
+    AdminWorkshopQuery,
+    AdminWorkshopDetail,
+    AdminWorkshopPageItem,
+    AdminWorkshopPages,
+    AdminWorkshopCreate,
+    AdminWorkshopUpdate,
+    AdminWorkshopChangeSequence,
+    AdminWorkshopInstructorBase,
+    AdminWorkshopInstructorItem,
+    AdminWorkshopInstructorsUpdate,
+    AdminWorkshopSequenceItem,
+    AdminWorkshopInstructors,
 )
 
 
@@ -45,7 +45,7 @@ class AdminWorkshopHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
     @distributed_trace()
-    async def get_workshop_pages(self, query_model: WorkshopQuery) -> WorkshopPages:
+    async def get_workshop_pages(self, query_model: AdminWorkshopQuery) -> AdminWorkshopPages:
         """
 
         :param query_model:
@@ -102,7 +102,7 @@ class AdminWorkshopHandler:
             .offset(query_model.page * query_model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=WorkshopPageItem
+                as_model=AdminWorkshopPageItem
             )
         )
 
@@ -137,7 +137,7 @@ class AdminWorkshopHandler:
             prev_item = await (
                 sequence_item_query
                 .offset(prev_page * query_model.page_size)
-                .fetchrow(as_model=WorkshopSequenceItem)
+                .fetchrow(as_model=AdminWorkshopSequenceItem)
             )
 
         # Get next item
@@ -146,10 +146,10 @@ class AdminWorkshopHandler:
             next_item = await (
                 sequence_item_query
                 .offset(next_page * query_model.page_size)
-                .fetchrow(as_model=WorkshopSequenceItem)
+                .fetchrow(as_model=AdminWorkshopSequenceItem)
             )
 
-        return WorkshopPages(
+        return AdminWorkshopPages(
             page=query_model.page,
             page_size=query_model.page_size,
             total=count,
@@ -159,13 +159,13 @@ class AdminWorkshopHandler:
         )
 
     @distributed_trace()
-    async def get_workshop_by_id(self, workshop_id: uuid.UUID) -> WorkshopDetail:
+    async def get_workshop_by_id(self, workshop_id: uuid.UUID) -> AdminWorkshopDetail:
         """
 
         :param workshop_id:
         :return:
         """
-        item: Optional[WorkshopDetail] = await (
+        item: Optional[AdminWorkshopDetail] = await (
             self._session.select(
                 PortalWorkshop.id,
                 PortalWorkshop.title,
@@ -188,7 +188,7 @@ class AdminWorkshopHandler:
             .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
             .outerjoin(PortalConference, PortalWorkshop.conference_id == PortalConference.id)
             .where(PortalWorkshop.id == workshop_id)
-            .fetchrow(as_model=WorkshopDetail)
+            .fetchrow(as_model=AdminWorkshopDetail)
         )
 
         if not item:
@@ -196,7 +196,7 @@ class AdminWorkshopHandler:
         return item
 
     @distributed_trace()
-    async def create_workshop(self, model: WorkshopCreate) -> UUIDBaseModel:
+    async def create_workshop(self, model: AdminWorkshopCreate) -> UUIDBaseModel:
         """
 
         :param model:
@@ -227,7 +227,7 @@ class AdminWorkshopHandler:
             return UUIDBaseModel(id=workshop_id)
 
     @distributed_trace()
-    async def update_workshop(self, workshop_id: uuid.UUID, model: WorkshopUpdate) -> None:
+    async def update_workshop(self, workshop_id: uuid.UUID, model: AdminWorkshopUpdate) -> None:
         """
 
         :param workshop_id:
@@ -263,7 +263,7 @@ class AdminWorkshopHandler:
             )
 
     @distributed_trace()
-    async def change_sequence(self, model: WorkshopChangeSequence):
+    async def change_sequence(self, model: AdminWorkshopChangeSequence):
         """
 
         :param model:
@@ -290,7 +290,7 @@ class AdminWorkshopHandler:
             )
 
     @distributed_trace()
-    async def get_workshop_instructors(self, workshop_id: uuid.UUID) -> WorkshopInstructors:
+    async def get_workshop_instructors(self, workshop_id: uuid.UUID) -> AdminWorkshopInstructors:
         """
 
         :param workshop_id:
@@ -306,12 +306,12 @@ class AdminWorkshopHandler:
             .outerjoin(PortalInstructor, PortalWorkshopInstructor.instructor_id == PortalInstructor.id)
             .where(PortalWorkshopInstructor.workshop_id == workshop_id)
             .order_by(PortalWorkshopInstructor.sequence)
-            .fetch(as_model=WorkshopInstructorItem)
+            .fetch(as_model=AdminWorkshopInstructorItem)
         )
-        return WorkshopInstructors(items=items)
+        return AdminWorkshopInstructors(items=items)
 
     @distributed_trace()
-    async def update_workshop_instructors(self, workshop_id: uuid.UUID, model: WorkshopInstructorsUpdate) -> None:
+    async def update_workshop_instructors(self, workshop_id: uuid.UUID, model: AdminWorkshopInstructorsUpdate) -> None:
         """
 
         :param workshop_id:
@@ -329,7 +329,7 @@ class AdminWorkshopHandler:
             if model.instructors:
                 base_epoch = time.time()
                 values = []
-                for item in model.instructors: # type: WorkshopInstructorBase
+                for item in model.instructors: # type: AdminWorkshopInstructorBase
                     sequence = base_epoch + (item.sequence * 0.001)
                     values.append(
                         {

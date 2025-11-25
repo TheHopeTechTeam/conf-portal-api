@@ -13,11 +13,11 @@ from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.permission import (
-    PermissionPage,
-    PermissionQuery,
-    PermissionDetail,
-    PermissionCreate,
-    PermissionUpdate, PermissionBulkAction, PermissionList,
+    AdminPermissionPage,
+    AdminPermissionQuery,
+    AdminPermissionDetail,
+    AdminPermissionCreate,
+    AdminPermissionUpdate, AdminPermissionBulkAction, AdminPermissionList,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -26,11 +26,11 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=PermissionPage
+    response_model=AdminPermissionPage
 )
 @inject
 async def get_permission_pages(
-    query_model: Annotated[PermissionQuery, Query()],
+    query_model: Annotated[AdminPermissionQuery, Query()],
     admin_permission_handler: AdminPermissionHandler = Depends(Provide[Container.admin_permission_handler])
 ):
     """
@@ -45,7 +45,7 @@ async def get_permission_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=PermissionList
+    response_model=AdminPermissionList
 )
 @inject
 async def get_permission_list(
@@ -66,7 +66,7 @@ async def get_permission_list(
 )
 @inject
 async def create_permission(
-    permission_data: PermissionCreate,
+    permission_data: AdminPermissionCreate,
     admin_permission_handler: AdminPermissionHandler = Depends(Provide[Container.admin_permission_handler])
 ):
     """
@@ -81,7 +81,7 @@ async def create_permission(
 @router.get(
     path="/{permission_id}",
     status_code=status.HTTP_200_OK,
-    response_model=PermissionDetail
+    response_model=AdminPermissionDetail
 )
 @inject
 async def get_permission(
@@ -103,7 +103,7 @@ async def get_permission(
 )
 @inject
 async def restore_permission(
-    model: PermissionBulkAction,
+    model: AdminPermissionBulkAction,
     admin_permission_handler: AdminPermissionHandler = Depends(Provide[Container.admin_permission_handler])
 ):
     """
@@ -122,7 +122,7 @@ async def restore_permission(
 @inject
 async def update_permission(
     permission_id: uuid.UUID,
-    permission_data: PermissionUpdate,
+    permission_data: AdminPermissionUpdate,
     admin_permission_handler: AdminPermissionHandler = Depends(Provide[Container.admin_permission_handler])
 ):
     """

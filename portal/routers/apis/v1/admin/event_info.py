@@ -11,10 +11,10 @@ from portal.handlers import AdminEventInfoHandler
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.admin.event_info import (
-    EventInfoDetail,
-    EventInfoList,
-    EventInfoCreate,
-    EventInfoUpdate,
+    AdminEventInfoDetail,
+    AdminEventInfoList,
+    AdminEventInfoCreate,
+    AdminEventInfoUpdate,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -23,7 +23,7 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/{conference_id}/list",
     status_code=status.HTTP_200_OK,
-    response_model=EventInfoList
+    response_model=AdminEventInfoList
 )
 @inject
 async def get_event_info_list(
@@ -42,7 +42,7 @@ async def get_event_info_list(
 @router.get(
     path="/{event_info_id}",
     status_code=status.HTTP_200_OK,
-    response_model=EventInfoDetail
+    response_model=AdminEventInfoDetail
 )
 @inject
 async def get_event_info_detail(
@@ -65,7 +65,7 @@ async def get_event_info_detail(
 )
 @inject
 async def create_event_info(
-    event_info_data: EventInfoCreate,
+    event_info_data: AdminEventInfoCreate,
     admin_event_info_handler: AdminEventInfoHandler = Depends(Provide[Container.admin_event_info_handler]),
 ):
     """
@@ -84,7 +84,7 @@ async def create_event_info(
 @inject
 async def update_event_info(
     event_info_id: uuid.UUID,
-    event_info_data: EventInfoUpdate,
+    event_info_data: AdminEventInfoUpdate,
     admin_event_info_handler: AdminEventInfoHandler = Depends(Provide[Container.admin_event_info_handler]),
 ):
     """

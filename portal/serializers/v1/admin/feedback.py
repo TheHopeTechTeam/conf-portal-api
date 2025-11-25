@@ -11,14 +11,14 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
 
 
-class FeedbackQuery(GenericQueryBaseModel):
+class AdminFeedbackQuery(GenericQueryBaseModel):
     """
     Feedback query model
     """
     status: Optional[int] = Field(default=None, description="Feedback status (int value)")
 
 
-class FeedbackBase(UUIDBaseModel):
+class AdminFeedbackBase(UUIDBaseModel):
     """
     Feedback base model
     """
@@ -30,21 +30,21 @@ class FeedbackBase(UUIDBaseModel):
     updated_at: Optional[datetime] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
 
 
-class FeedbackItem(FeedbackBase):
+class AdminFeedbackItem(AdminFeedbackBase):
     """Feedback item"""
     message: Optional[str] = Field(None, description="Message")
 
 
-class FeedbackDetail(FeedbackItem):
+class AdminFeedbackDetail(AdminFeedbackItem):
     """Feedback detail"""
     description: Optional[str] = Field(default=None, description="Description")
 
 
-class FeedbackPages(PaginationBaseResponseModel):
-    items: Optional[list[FeedbackItem]] = Field(..., description="Items")
+class AdminFeedbackPages(PaginationBaseResponseModel):
+    items: Optional[list[AdminFeedbackItem]] = Field(..., description="Items")
 
 
-class FeedbackUpdate(BaseModel):
+class AdminFeedbackUpdate(BaseModel):
     """Update feedback status"""
     remark: Optional[str] = Field(default=None, description="Remark")
     description: Optional[str] = Field(default=None, description="Description")

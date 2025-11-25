@@ -12,7 +12,7 @@ from portal.libs.consts.enums import ResourceType
 from portal.libs.contexts.user_context import UserContext
 from portal.libs.database.session_mock import SessionMock
 from portal.models import PortalPermission, PortalResource, PortalRole, PortalRolePermission, PortalUser
-from portal.serializers.v1.admin.resource import ResourceItem, ResourceTreeItem
+from portal.serializers.v1.admin.resource import AdminResourceItem, AdminResourceTreeItem
 
 
 @pytest.mark.asyncio
@@ -51,7 +51,7 @@ async def test_get_admin_resource_tree(admin_resource_handler: AdminResourceHand
     rid_root = uuid.uuid4()
     rid_child = uuid.uuid4()
     resources = [
-        ResourceItem(
+        AdminResourceItem(
             id=rid_root,
             pid=None,
             name="Root",
@@ -60,7 +60,7 @@ async def test_get_admin_resource_tree(admin_resource_handler: AdminResourceHand
             type=ResourceType.GENERAL,
             sequence=1.0,
         ),
-        ResourceItem(
+        AdminResourceItem(
             id=rid_child,
             pid=rid_root,
             name="Child",
@@ -90,8 +90,8 @@ def test_build_tree_hierarchy_and_sorting():
     rid_c2 = uuid.uuid4()
     rid_c2a = uuid.uuid4()
 
-    items: list[ResourceItem] = [
-        ResourceItem(
+    items: list[AdminResourceItem] = [
+        AdminResourceItem(
             id=rid_root,
             pid=None,
             name="Root",
@@ -100,7 +100,7 @@ def test_build_tree_hierarchy_and_sorting():
             type=ResourceType.GENERAL,
             sequence=1.0,
         ),
-        ResourceItem(
+        AdminResourceItem(
             id=rid_c2,
             pid=rid_root,
             name="Zeta",  # same sequence as c1 but name sorts after Alpha
@@ -109,7 +109,7 @@ def test_build_tree_hierarchy_and_sorting():
             type=ResourceType.GENERAL,
             sequence=2.0,
         ),
-        ResourceItem(
+        AdminResourceItem(
             id=rid_c1,
             pid=rid_root,
             name="Alpha",
@@ -118,7 +118,7 @@ def test_build_tree_hierarchy_and_sorting():
             type=ResourceType.GENERAL,
             sequence=2.0,
         ),
-        ResourceItem(
+        AdminResourceItem(
             id=rid_c2a,
             pid=rid_c2,
             name="Sub",
@@ -169,7 +169,7 @@ async def test_get_resource_menus_query(admin_resource_handler: AdminResourceHan
     admin_resource_handler._session = SessionMock()
     rid = uuid.uuid4()
     mocked = [
-        ResourceItem(
+        AdminResourceItem(
             id=rid,
             pid=None,
             name="Root",
@@ -209,7 +209,7 @@ async def test_get_resource_by_user_id_query(admin_resource_handler: AdminResour
     uid = uuid.uuid4()
     rid = uuid.uuid4()
     mocked = [
-        ResourceItem(
+        AdminResourceItem(
             id=rid,
             pid=None,
             name="Root",
@@ -275,7 +275,7 @@ async def test_get_user_permission_menus_admin_non_superuser(admin_resource_hand
     admin_resource_handler._user_ctx.is_admin = True
 
     mocked = [
-        ResourceItem(
+        AdminResourceItem(
             id=uuid.uuid4(),
             pid=None,
             name="Root",

@@ -12,7 +12,7 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import PaginationBaseResponseModel
 
 
-class RolePermission(UUIDBaseModel):
+class AdminRolePermission(UUIDBaseModel):
     """PermissionBase"""
     resource_name: str = Field(..., serialization_alias="resourceName", description="Resource name")
     display_name: str = Field(..., serialization_alias="displayName", description="Display name")
@@ -33,18 +33,18 @@ class RolePermission(UUIDBaseModel):
         return values
 
 
-class RoleBase(UUIDBaseModel):
+class AdminRoleBase(UUIDBaseModel):
     """RoleBase"""
     code: str = Field(..., description="Role code")
     name: Optional[str] = Field(None, description="Role name")
 
 
-class RoleItem(RoleBase):
+class AdminRoleItem(AdminRoleBase):
     """RoleItem"""
     is_active: bool = Field(True, serialization_alias="isActive", description="Is role active")
 
 
-class RoleTableItem(RoleItem):
+class AdminRoleTableItem(AdminRoleItem):
     """RoleTableItem"""
     created_at: Optional[datetime] = Field(None, serialization_alias="createAt", description="Create at")
     created_by: Optional[str] = Field(None, serialization_alias="createdBy", description="Created by")
@@ -53,20 +53,20 @@ class RoleTableItem(RoleItem):
     delete_reason: Optional[str] = Field(None, serialization_alias="deleteReason", description="Delete reason")
     description: Optional[str] = Field(None, description="Description")
     remark: Optional[str] = Field(None, description="Remark")
-    permissions: list[RolePermission] = Field(..., description="Permissions")
+    permissions: list[AdminRolePermission] = Field(..., description="Permissions")
 
 
-class RolePages(PaginationBaseResponseModel):
+class AdminRolePages(PaginationBaseResponseModel):
     """RolePages"""
-    items: Optional[list[RoleTableItem]] = Field(..., description="Role Items")
+    items: Optional[list[AdminRoleTableItem]] = Field(..., description="Role Items")
 
 
-class RoleList(BaseModel):
+class AdminRoleList(BaseModel):
     """RoleList"""
-    items: Optional[list[RoleBase]] = Field(..., description="Role Items")
+    items: Optional[list[AdminRoleBase]] = Field(..., description="Role Items")
 
 
-class RoleCreate(BaseModel):
+class AdminRoleCreate(BaseModel):
     """RoleCreate"""
     code: str = Field(..., description="Role code")
     name: Optional[str] = Field(None, description="Role name")
@@ -76,16 +76,16 @@ class RoleCreate(BaseModel):
     permissions: list[UUID] = Field(..., description="Permissions")
 
 
-class RoleUpdate(RoleCreate):
+class AdminRoleUpdate(AdminRoleCreate):
     """RoleUpdate"""
     pass
 
 
-class RoleBulkDelete(BaseModel):
+class AdminRoleBulkDelete(BaseModel):
     """RoleBulkDelete"""
     ids: list[UUID] = Field(..., description="Role IDs to delete")
 
 
-class RolePermissionAssign(BaseModel):
+class AdminRolePermissionAssign(BaseModel):
     """Assign or revoke permissions to a role"""
     permission_ids: list[UUID] = Field(..., serialization_alias="permissionIds", description="Permission IDs to assign or revoke")

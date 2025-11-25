@@ -13,11 +13,11 @@ from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
 from portal.serializers.v1.admin.role import (
-    RolePages,
-    RoleCreate,
-    RoleUpdate,
-    RolePermissionAssign,
-    RoleTableItem, RoleList,
+    AdminRolePages,
+    AdminRoleCreate,
+    AdminRoleUpdate,
+    AdminRolePermissionAssign,
+    AdminRoleTableItem, AdminRoleList,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -26,7 +26,7 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=RolePages
+    response_model=AdminRolePages
 )
 @inject
 async def get_role_pages(
@@ -45,7 +45,7 @@ async def get_role_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=RoleList
+    response_model=AdminRoleList
 )
 @inject
 async def get_role_list(
@@ -62,7 +62,7 @@ async def get_role_list(
 @router.get(
     path="/{role_id}",
     status_code=status.HTTP_200_OK,
-    response_model=RoleTableItem
+    response_model=AdminRoleTableItem
 )
 @inject
 async def get_role(
@@ -85,7 +85,7 @@ async def get_role(
 )
 @inject
 async def create_role(
-    role_data: RoleCreate,
+    role_data: AdminRoleCreate,
     admin_role_handler: AdminRoleHandler = Depends(Provide[Container.admin_role_handler])
 ):
     """
@@ -104,7 +104,7 @@ async def create_role(
 @inject
 async def update_role(
     role_id: uuid.UUID,
-    role_data: RoleUpdate,
+    role_data: AdminRoleUpdate,
     admin_role_handler: AdminRoleHandler = Depends(Provide[Container.admin_role_handler])
 ):
     """
@@ -162,7 +162,7 @@ async def restore_role(
 @inject
 async def assign_role_permissions(
     role_id: uuid.UUID,
-    model: RolePermissionAssign,
+    model: AdminRolePermissionAssign,
     admin_role_handler: AdminRoleHandler = Depends(Provide[Container.admin_role_handler])
 ):
     """

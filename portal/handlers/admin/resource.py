@@ -18,13 +18,13 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import DeleteQueryBaseModel
 from portal.serializers.v1.admin.resource import (
-    ResourceCreate,
-    ResourceUpdate,
-    ResourceChangeSequence,
-    ResourceItem,
-    ResourceTree,
-    ResourceTreeItem,
-    ResourceList, ResourceDetail, ResourceChangeParent,
+    AdminResourceCreate,
+    AdminResourceUpdate,
+    AdminResourceChangeSequence,
+    AdminResourceItem,
+    AdminResourceTree,
+    AdminResourceTreeItem,
+    AdminResourceList, AdminResourceDetail, AdminResourceChangeParent,
 )
 
 
@@ -40,14 +40,14 @@ class AdminResourceHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._user_ctx: UserContext = get_user_context()
 
-    async def get_resource(self, resource_id: uuid.UUID) -> ResourceDetail:
+    async def get_resource(self, resource_id: uuid.UUID) -> AdminResourceDetail:
         """
 
         :param resource_id:
         :return:
         """
         pr_parent = aliased(PortalResource)
-        resource: ResourceDetail = await (
+        resource: AdminResourceDetail = await (
             self._session.select(
                 PortalResource.id,
                 PortalResource.name,
@@ -71,13 +71,13 @@ class AdminResourceHandler:
             .select_from(PortalResource)
             .outerjoin(pr_parent, PortalResource.pid == pr_parent.id)
             .where(PortalResource.id == resource_id)
-            .fetchrow(as_model=ResourceDetail)
+            .fetchrow(as_model=AdminResourceDetail)
         )
         if not resource:
             raise NotFoundException(detail=f"Resource {resource_id} not found")
         return resource
 
-    async def create_resource(self, model: ResourceCreate) -> UUIDBaseModel:
+    async def create_resource(self, model: AdminResourceCreate) -> UUIDBaseModel:
         """
         Create a resource
         TODO: Log action
@@ -108,7 +108,7 @@ class AdminResourceHandler:
         else:
             return UUIDBaseModel(id=rid)
 
-    async def change_parent(self, resource_id: uuid.UUID, model: ResourceChangeParent):
+    async def change_parent(self, resource_id: uuid.UUID, model: AdminResourceChangeParent):
         """
 
         :param resource_id:
@@ -129,7 +129,7 @@ class AdminResourceHandler:
                 debug_detail=str(e),
             )
 
-    async def update_resource(self, resource_id: uuid.UUID, model: ResourceUpdate):
+    async def update_resource(self, resource_id: uuid.UUID, model: AdminResourceUpdate):
         """
         Update a resource
         TODO: Log action
@@ -161,7 +161,7 @@ class AdminResourceHandler:
                 debug_detail=str(e),
             )
 
-    async def change_sequence(self, model: ResourceChangeSequence):
+    async def change_sequence(self, model: AdminResourceChangeSequence):
         """
 
         :param model:
@@ -236,15 +236,15 @@ class AdminResourceHandler:
             )
 
     @staticmethod
-    def build_tree(items: list[ResourceItem]) -> list[ResourceTreeItem]:
+    def build_tree(items: list[AdminResourceItem]) -> list[AdminResourceTreeItem]:
         """
         Build a tree from flat resource items using id/pid relations.
         Returns a list of root nodes, each with recursive children.
         :param items:
         :return:
         """
-        nodes = {item.id: ResourceTreeItem(**item.model_dump()) for item in items}
-        root_items: list[ResourceTreeItem] = []
+        nodes = {item.id: AdminResourceTreeItem(**item.model_dump()) for item in items}
+        root_items: list[AdminResourceTreeItem] = []
         for node in nodes.values():
             if node.pid and node.pid in nodes:
                 if not nodes[node.pid].children:
@@ -253,7 +253,7 @@ class AdminResourceHandler:
             else:
                 root_items.append(node)
 
-        def sort_nodes(arr: list[ResourceTreeItem]) -> None:
+        def sort_nodes(arr: list[AdminResourceTreeItem]) -> None:
             arr.sort(key=lambda n: (n.sequence, n.name))
             for n in arr:
                 if n.children:
@@ -262,7 +262,7 @@ class AdminResourceHandler:
         sort_nodes(root_items)
         return root_items
 
-    async def get_admin_resource_tree(self) -> ResourceTree:
+    async def get_admin_resource_tree(self) -> AdminResourceTree:
         """
 
         :return:
@@ -270,17 +270,17 @@ class AdminResourceHandler:
         if not self._user_ctx.user_id or (not self._user_ctx.is_superuser and not self._user_ctx.is_admin):
             raise UnauthorizedException()
 
-        resources: list[ResourceItem] = await self.get_resource_menus()
+        resources: list[AdminResourceItem] = await self.get_resource_menus()
         hierarchical_items = self.build_tree(resources)
-        return ResourceTree(items=hierarchical_items)
+        return AdminResourceTree(items=hierarchical_items)
 
-    async def get_resource_menus(self, is_deleted: bool = False) -> list[ResourceItem]:
+    async def get_resource_menus(self, is_deleted: bool = False) -> list[AdminResourceItem]:
         """
 
         :param is_deleted:
         :return:
         """
-        resources: list[ResourceItem] = await (
+        resources: list[AdminResourceItem] = await (
             self._session.select(
                 PortalResource.id,
                 PortalResource.pid,
@@ -302,11 +302,11 @@ class AdminResourceHandler:
                 )
             .where(is_deleted == False, lambda: PortalResource.is_deleted == is_deleted)
             .order_by(PortalResource.sequence)
-            .fetch(as_model=ResourceItem)
+            .fetch(as_model=AdminResourceItem)
         )
         return resources
 
-    async def get_resource_by_user_id(self, user_id: uuid.UUID) -> list[ResourceItem]:
+    async def get_resource_by_user_id(self, user_id: uuid.UUID) -> list[AdminResourceItem]:
         """
 
         :param user_id:
@@ -334,7 +334,7 @@ class AdminResourceHandler:
         )
 
         # 查询资源：资源 ID 在子查询中，或者资源 ID 是子查询中某个资源的父 ID
-        resources: list[ResourceItem] = await (
+        resources: list[AdminResourceItem] = await (
             self._session.select(
                 PortalResource.id,
                 PortalResource.pid,
@@ -362,7 +362,7 @@ class AdminResourceHandler:
             .where(PortalResource.is_deleted == False)
             .distinct()
             .order_by(PortalResource.sequence)
-            .fetch(as_model=ResourceItem)
+            .fetch(as_model=AdminResourceItem)
         )
         return resources
 
@@ -375,9 +375,9 @@ class AdminResourceHandler:
         if not self._user_ctx.user_id or not self._user_ctx.is_admin:
             raise UnauthorizedException()
         resources = await self.get_resource_menus(is_deleted=model.deleted)
-        return ResourceList(items=resources)
+        return AdminResourceList(items=resources)
 
-    async def get_user_permission_menus(self) -> ResourceList:
+    async def get_user_permission_menus(self) -> AdminResourceList:
         """
 
         :return:
@@ -391,4 +391,4 @@ class AdminResourceHandler:
             resource_items = await self.get_resource_by_user_id(user_id=self._user_ctx.user_id)
 
         await asyncio.sleep(1)
-        return ResourceList(items=resource_items)
+        return AdminResourceList(items=resource_items)

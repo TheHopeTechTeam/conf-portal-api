@@ -14,16 +14,16 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import KeywordQueryBaseModel
 from portal.serializers.v1.admin.user import (
-    UserQuery,
-    UserPages,
-    UserCreate,
-    UserItem,
-    UserUpdate,
-    UserBulkAction,
-    BindRole,
-    ChangePassword,
-    UserRoles,
-    UserList,
+    AdminUserQuery,
+    AdminUserPages,
+    AdminUserCreate,
+    AdminUserItem,
+    AdminUserUpdate,
+    AdminUserBulkAction,
+    AdminBindRole,
+    AdminChangePassword,
+    AdminUserRoles,
+    AdminUserList,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -32,11 +32,11 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=UserPages
+    response_model=AdminUserPages
 )
 @inject
 async def get_user_pages(
-    query_model: Annotated[UserQuery, Query()],
+    query_model: Annotated[AdminUserQuery, Query()],
     admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
 ):
     """
@@ -51,7 +51,7 @@ async def get_user_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=UserList
+    response_model=AdminUserList
 )
 @inject
 async def get_user_list(
@@ -74,7 +74,7 @@ async def get_user_list(
 )
 @inject
 async def create_user(
-    user_data: UserCreate,
+    user_data: AdminUserCreate,
     admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
 ):
     """
@@ -89,7 +89,7 @@ async def create_user(
 @router.get(
     path="/me",
     status_code=status.HTTP_200_OK,
-    response_model=UserItem
+    response_model=AdminUserItem
 )
 @inject
 async def get_current_user(
@@ -109,7 +109,7 @@ async def get_current_user(
 )
 @inject
 async def update_current_user(
-    user_data: UserUpdate,
+    user_data: AdminUserUpdate,
     admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
 ):
     """
@@ -125,7 +125,7 @@ async def update_current_user(
     path="/{user_id}/roles",
     status_code=status.HTTP_200_OK,
     description="Get user roles",
-    response_model=UserRoles
+    response_model=AdminUserRoles
 )
 @inject
 async def get_user_roles(
@@ -144,7 +144,7 @@ async def get_user_roles(
 @router.get(
     path="/{user_id}",
     status_code=status.HTTP_200_OK,
-    response_model=UserItem
+    response_model=AdminUserItem
 )
 @inject
 async def get_user(
@@ -170,7 +170,7 @@ async def get_user(
 )
 @inject
 async def restore_users(
-    model: UserBulkAction,
+    model: AdminUserBulkAction,
     admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
 ):
     """
@@ -189,7 +189,7 @@ async def restore_users(
 @inject
 async def bind_roles_to_user(
     user_id: uuid.UUID,
-    model: BindRole,
+    model: AdminBindRole,
     admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
 ):
     """
@@ -209,7 +209,7 @@ async def bind_roles_to_user(
 @inject
 async def change_user_password(
     user_id: uuid.UUID,
-    model: ChangePassword,
+    model: AdminChangePassword,
     admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
 ):
     """
@@ -229,7 +229,7 @@ async def change_user_password(
 @inject
 async def update_user(
     user_id: uuid.UUID,
-    user_data: UserUpdate,
+    user_data: AdminUserUpdate,
     admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
 ):
     """

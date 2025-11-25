@@ -18,12 +18,12 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.location import (
-    LocationQuery,
-    LocationBase,
-    LocationPages,
-    LocationDetail,
-    LocationCreate,
-    LocationUpdate, LocationItem, LocationList,
+    AdminLocationQuery,
+    AdminLocationBase,
+    AdminLocationPages,
+    AdminLocationDetail,
+    AdminLocationCreate,
+    AdminLocationUpdate, AdminLocationItem, AdminLocationList,
 )
 
 
@@ -40,7 +40,7 @@ class AdminLocationHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
 
-    async def get_location_pages(self, model: LocationQuery) -> LocationPages:
+    async def get_location_pages(self, model: AdminLocationQuery) -> AdminLocationPages:
         """
 
         :param model:
@@ -74,17 +74,17 @@ class AdminLocationHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=LocationItem
+                as_model=AdminLocationItem
             )
         )
-        return LocationPages(
+        return AdminLocationPages(
             page=model.page,
             page_size=model.page_size,
             total=count,
             items=items
         )
 
-    async def get_location_list(self) -> LocationList:
+    async def get_location_list(self) -> AdminLocationList:
         """
         Get location list
         :return:
@@ -96,17 +96,17 @@ class AdminLocationHandler:
             )
             .where(PortalLocation.is_deleted == False)
             .order_by(PortalLocation.name)
-            .fetch(as_model=LocationBase)
+            .fetch(as_model=AdminLocationBase)
         )
-        return LocationList(items=items)
+        return AdminLocationList(items=items)
 
-    async def get_location_by_id(self, location_id: uuid.UUID) -> LocationDetail:
+    async def get_location_by_id(self, location_id: uuid.UUID) -> AdminLocationDetail:
         """
 
         :param location_id:
         :return:
         """
-        item: Optional[LocationDetail] = await (
+        item: Optional[AdminLocationDetail] = await (
             self._session.select(
                 PortalLocation.id,
                 PortalLocation.name,
@@ -121,7 +121,7 @@ class AdminLocationHandler:
                 PortalLocation.updated_at,
             )
             .where(PortalLocation.id == location_id)
-            .fetchrow(as_model=LocationDetail)
+            .fetchrow(as_model=AdminLocationDetail)
         )
         if not item:
             raise NotFoundException(detail=f"Location {location_id} not found")
@@ -129,7 +129,7 @@ class AdminLocationHandler:
         item.files = await self._file_handler.get_files_by_resource_id(resource_id=item.id)
         return item
 
-    async def create_location(self, model: LocationCreate) -> UUIDBaseModel:
+    async def create_location(self, model: AdminLocationCreate) -> UUIDBaseModel:
         """
 
         :param model:
@@ -165,7 +165,7 @@ class AdminLocationHandler:
             return UUIDBaseModel(id=location_id)
 
     @distributed_trace()
-    async def update_location(self, location_id: uuid.UUID, model: LocationUpdate):
+    async def update_location(self, location_id: uuid.UUID, model: AdminLocationUpdate):
         """
 
         :param location_id:

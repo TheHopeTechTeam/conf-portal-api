@@ -10,7 +10,7 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import OrderByQueryBaseModel, PaginationBaseResponseModel
 
 
-class FileBase(UUIDBaseModel):
+class AdminFileBase(UUIDBaseModel):
     """File Base Model"""
     original_name: str = Field(..., description="Original file name", serialization_alias="originalName")
     key: str = Field(..., description="Key")
@@ -22,7 +22,7 @@ class FileBase(UUIDBaseModel):
     size_bytes: Optional[int] = Field(None, description="Size in bytes", serialization_alias="sizeBytes")
 
 
-class FileDetail(FileBase):
+class AdminFileDetail(AdminFileBase):
     """File Base Model"""
     checksum_md5: Optional[str] = Field(None, description="MD5 checksum")
     checksum_sha256: Optional[str] = Field(None, description="SHA256 checksum")
@@ -35,39 +35,39 @@ class FileDetail(FileBase):
     source: Optional[FileUploadSource] = Field(None, description="Source")
 
 
-class FileGridItem(FileBase):
+class AdminFileGridItem(AdminFileBase):
     """File Grid Item"""
     url: Optional[str] = Field(None, description="URL")
 
 
-class FileQuery(OrderByQueryBaseModel):
+class AdminFileQuery(OrderByQueryBaseModel):
     """FileQuery"""
     keyword: Optional[str] = Field(None, description="Keyword filter")
 
 
-class FilePages(PaginationBaseResponseModel):
+class AdminFilePages(PaginationBaseResponseModel):
     """File Pages"""
-    items: Optional[list[FileGridItem]] = Field(..., description="Items")
+    items: Optional[list[AdminFileGridItem]] = Field(..., description="Items")
 
 
-class FailedUploadFile(BaseModel):
+class AdminFailedUploadFile(BaseModel):
     """Fail Upload File"""
     filename: str = Field(..., description="File name")
     error: str = Field(..., description="Error message")
 
 
-class BatchFileUploadResponseModel(BaseModel):
+class AdminBatchFileUploadResponseModel(BaseModel):
     """Batch File Upload Response Model"""
     uploaded_files: list[UUIDBaseModel] = Field(..., description="Uploaded files")
-    failed_files: list[FailedUploadFile] = Field(..., description="Failed files")
+    failed_files: list[AdminFailedUploadFile] = Field(..., description="Failed files")
 
 
-class FileUploadResponseModel(UUIDBaseModel):
+class AdminFileUploadResponseModel(UUIDBaseModel):
     """File Upload Response Model"""
     duplicate: Optional[bool] = Field(None, description="Is duplicate")
 
 
-class BulkActionResponseModel(BaseModel):
+class AdminBulkActionResponseModel(BaseModel):
     """Bulk Action Response Model"""
     success_count: int = Field(..., description="Count of items affected")
-    failed_items: Optional[list[FileBase]] = Field(None, description="Failed items")
+    failed_items: Optional[list[AdminFileBase]] = Field(None, description="Failed items")

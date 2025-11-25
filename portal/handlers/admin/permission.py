@@ -20,9 +20,9 @@ from portal.schemas.permission import PermissionBase
 from portal.schemas.user import SUserSensitive
 from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
 from portal.serializers.v1.admin.permission import (
-    PermissionDetail,
-    PermissionCreate,
-    PermissionUpdate, PermissionQuery, PermissionPageItem, PermissionPage, PermissionBulkAction, PermissionList, PermissionItem,
+    AdminPermissionDetail,
+    AdminPermissionCreate,
+    AdminPermissionUpdate, AdminPermissionQuery, AdminPermissionPageItem, AdminPermissionPage, AdminPermissionBulkAction, AdminPermissionList, AdminPermissionItem,
 )
 
 
@@ -133,14 +133,14 @@ class AdminPermissionHandler:
         )
 
     @distributed_trace()
-    async def get_permission_by_id(self, permission_id: UUID) -> Optional[PermissionDetail]:
+    async def get_permission_by_id(self, permission_id: UUID) -> Optional[AdminPermissionDetail]:
         """
         Get permission by id
         :param permission_id:
         :return:
         """
         try:
-            item: Optional[PermissionDetail] = await (
+            item: Optional[AdminPermissionDetail] = await (
                 self._session.select(
                     PortalPermission.id,
                     PortalPermission.display_name,
@@ -163,7 +163,7 @@ class AdminPermissionHandler:
                 .outerjoin(PortalResource, PortalPermission.resource_id == PortalResource.id)
                 .outerjoin(PortalVerb, PortalPermission.verb_id == PortalVerb.id)
                 .where(PortalPermission.id == permission_id)
-                .fetchrow(as_model=PermissionDetail)
+                .fetchrow(as_model=AdminPermissionDetail)
             )
         except Exception as e:
             raise ApiBaseException(
@@ -177,7 +177,7 @@ class AdminPermissionHandler:
     @distributed_trace()
     async def get_permission_pages(
         self,
-        model: PermissionQuery
+        model: AdminPermissionQuery
     ):
         """
 
@@ -212,9 +212,9 @@ class AdminPermissionHandler:
             )
             .limit(model.page_size)
             .offset(model.page * model.page_size)
-            .fetchpages(as_model=PermissionPageItem)
-        )  # type: (list[PermissionPageItem], int)
-        return PermissionPage(
+            .fetchpages(as_model=AdminPermissionPageItem)
+        )  # type: (list[AdminPermissionPageItem], int)
+        return AdminPermissionPage(
             page=model.page,
             page_size=model.page_size,
             total=count,
@@ -222,7 +222,7 @@ class AdminPermissionHandler:
         )
 
     @distributed_trace()
-    async def create_permission(self, model: PermissionCreate) -> UUIDBaseModel:
+    async def create_permission(self, model: AdminPermissionCreate) -> UUIDBaseModel:
         """
         Create a permission
         :param model:
@@ -253,7 +253,7 @@ class AdminPermissionHandler:
             return UUIDBaseModel(id=permission_id)
 
     @distributed_trace()
-    async def update_permission(self, permission_id: UUID, model: PermissionUpdate) -> None:
+    async def update_permission(self, permission_id: UUID, model: AdminPermissionUpdate) -> None:
         """
         Update a permission
         :param permission_id:
@@ -327,7 +327,7 @@ class AdminPermissionHandler:
             )
 
     @distributed_trace()
-    async def restore_permission(self, model: PermissionBulkAction) -> None:
+    async def restore_permission(self, model: AdminPermissionBulkAction) -> None:
         """
         Restore a permission
         :param model:
@@ -356,9 +356,9 @@ class AdminPermissionHandler:
         cache_key = CacheKeys(resource="permission").add_attribute("list").build()
         cached = await self._redis.get(cache_key)
         if cached:
-            return PermissionList.model_validate_json(cached)
+            return AdminPermissionList.model_validate_json(cached)
 
-        permissions: list[PermissionItem] = await (
+        permissions: list[AdminPermissionItem] = await (
             self._session.select(
                 PortalPermission.id,
                 PortalPermission.display_name,
@@ -371,8 +371,8 @@ class AdminPermissionHandler:
             )
             .where(PortalPermission.is_deleted == False)
             .order_by(PortalPermission.resource_id)
-            .fetch(as_model=PermissionItem)
+            .fetch(as_model=AdminPermissionItem)
         )
-        result = PermissionList(items=permissions)
+        result = AdminPermissionList(items=permissions)
         await self._redis.set(cache_key, result.model_dump_json(), ex=CacheExpiry.MONTH)
         return result

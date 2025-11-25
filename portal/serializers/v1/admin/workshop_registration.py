@@ -9,11 +9,11 @@ from pydantic import BaseModel, Field
 
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
-from portal.serializers.v1.admin.user import UserBase
-from portal.serializers.v1.admin.workshop import WorkshopBase
+from portal.serializers.v1.admin.user import AdminUserBase
+from portal.serializers.v1.admin.workshop import AdminWorkshopBase
 
 
-class WorkshopRegistrationQuery(GenericQueryBaseModel):
+class AdminWorkshopRegistrationQuery(GenericQueryBaseModel):
     """
     Workshop Registration query model
     """
@@ -21,7 +21,7 @@ class WorkshopRegistrationQuery(GenericQueryBaseModel):
     is_registered: Optional[bool] = Field(default=True, description="Is registered (unregistered_at is None)")
 
 
-class WorkshopRegistrationItem(UUIDBaseModel):
+class AdminWorkshopRegistrationItem(UUIDBaseModel):
     """Workshop Registration page item"""
     workshop_title: Optional[str] = Field(default=None, serialization_alias="workshopTitle", description="Workshop title")
     user_email: Optional[str] = Field(default=None, serialization_alias="userEmail", description="User email")
@@ -30,18 +30,18 @@ class WorkshopRegistrationItem(UUIDBaseModel):
     unregistered_at: Optional[datetime] = Field(default=None, serialization_alias="unregisteredAt", description="Unregistration time")
 
 
-class WorkshopRegistrationDetail(UUIDBaseModel):
+class AdminWorkshopRegistrationDetail(UUIDBaseModel):
     """Workshop Registration detail"""
-    workshop: WorkshopBase = Field(..., description="Workshop")
-    user: UserBase = Field(..., description="User")
+    workshop: AdminWorkshopBase = Field(..., description="Workshop")
+    user: AdminUserBase = Field(..., description="User")
 
 
-class WorkshopRegistrationPages(PaginationBaseResponseModel):
+class AdminWorkshopRegistrationPages(PaginationBaseResponseModel):
     """Workshop Registration pages"""
-    items: Optional[list[WorkshopRegistrationItem]] = Field(..., description="Items")
+    items: Optional[list[AdminWorkshopRegistrationItem]] = Field(..., description="Items")
 
 
-class WorkshopRegistrationCreate(BaseModel):
+class AdminWorkshopRegistrationCreate(BaseModel):
     """Workshop Registration create"""
     workshop_id: UUID = Field(..., description="Workshop ID")
     user_id: UUID = Field(..., description="User ID")

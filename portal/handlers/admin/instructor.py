@@ -18,12 +18,12 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.instructor import (
-    InstructorQuery,
-    InstructorBase,
-    InstructorPages,
-    InstructorDetail,
-    InstructorCreate,
-    InstructorUpdate, InstructorList,
+    AdminInstructorQuery,
+    AdminInstructorBase,
+    AdminInstructorPages,
+    AdminInstructorDetail,
+    AdminInstructorCreate,
+    AdminInstructorUpdate, AdminInstructorList,
 )
 
 
@@ -40,7 +40,7 @@ class AdminInstructorHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
 
-    async def get_instructor_pages(self, model: InstructorQuery) -> InstructorPages:
+    async def get_instructor_pages(self, model: AdminInstructorQuery) -> AdminInstructorPages:
         """
 
         :param model:
@@ -73,17 +73,17 @@ class AdminInstructorHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=InstructorBase
+                as_model=AdminInstructorBase
             )
         )
-        return InstructorPages(
+        return AdminInstructorPages(
             page=model.page,
             page_size=model.page_size,
             total=count,
             items=items
         )
 
-    async def get_instructor_list(self) -> InstructorList:
+    async def get_instructor_list(self) -> AdminInstructorList:
         """
 
         :return:
@@ -100,17 +100,17 @@ class AdminInstructorHandler:
             )
             .where(PortalInstructor.is_deleted == False)
             .order_by(PortalInstructor.created_at.desc())
-            .fetch(as_model=InstructorBase)
+            .fetch(as_model=AdminInstructorBase)
         )
-        return InstructorList(items=items)
+        return AdminInstructorList(items=items)
 
-    async def get_instructor_by_id(self, instructor_id: uuid.UUID) -> InstructorDetail:
+    async def get_instructor_by_id(self, instructor_id: uuid.UUID) -> AdminInstructorDetail:
         """
 
         :param instructor_id:
         :return:
         """
-        item: Optional[InstructorDetail] = await (
+        item: Optional[AdminInstructorDetail] = await (
             self._session.select(
                 PortalInstructor.id,
                 PortalInstructor.name,
@@ -122,7 +122,7 @@ class AdminInstructorHandler:
                 PortalInstructor.updated_at,
             )
             .where(PortalInstructor.id == instructor_id)
-            .fetchrow(as_model=InstructorDetail)
+            .fetchrow(as_model=AdminInstructorDetail)
         )
         if not item:
             raise NotFoundException(detail=f"Instructor {instructor_id} not found")
@@ -130,7 +130,7 @@ class AdminInstructorHandler:
         item.files = await self._file_handler.get_files_by_resource_id(resource_id=item.id)
         return item
 
-    async def create_instructor(self, model: InstructorCreate) -> UUIDBaseModel:
+    async def create_instructor(self, model: AdminInstructorCreate) -> UUIDBaseModel:
         """
 
         :param model:
@@ -166,7 +166,7 @@ class AdminInstructorHandler:
             return UUIDBaseModel(id=instructor_id)
 
     @distributed_trace()
-    async def update_instructor(self, instructor_id: uuid.UUID, model: InstructorUpdate):
+    async def update_instructor(self, instructor_id: uuid.UUID, model: AdminInstructorUpdate):
         """
 
         :param instructor_id:

@@ -8,7 +8,7 @@ from fastapi import Depends, status
 from portal.container import Container
 from portal.handlers import AdminVerbHandler
 from portal.routers.auth_router import AuthRouter
-from portal.serializers.v1.admin.verb import VerbList
+from portal.serializers.v1.admin.verb import AdminVerbList
 
 router: AuthRouter = AuthRouter(is_admin=True)
 
@@ -16,7 +16,7 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=VerbList
+    response_model=AdminVerbList
 )
 @inject
 async def get_verb_list(

@@ -29,13 +29,13 @@ from portal.models import PortalFile, PortalFileAssociation
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.file import (
-    BatchFileUploadResponseModel,
-    FailedUploadFile,
-    FileDetail,
-    FileUploadResponseModel,
-    FileQuery,
-    FileGridItem,
-    FilePages, FileBase, BulkActionResponseModel,
+    AdminBatchFileUploadResponseModel,
+    AdminFailedUploadFile,
+    AdminFileDetail,
+    AdminFileUploadResponseModel,
+    AdminFileQuery,
+    AdminFileGridItem,
+    AdminFilePages, AdminFileBase, AdminBulkActionResponseModel,
 )
 
 
@@ -62,7 +62,7 @@ class AdminFileHandler:
         self._folder_prefix = "original_files"
 
     @distributed_trace()
-    async def get_file_pages(self, model: FileQuery) -> FilePages:
+    async def get_file_pages(self, model: AdminFileQuery) -> AdminFilePages:
         """
         List files
         :return:
@@ -92,19 +92,19 @@ class AdminFileHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=FileGridItem
+                as_model=AdminFileGridItem
             )
-        )  # type: (list[FileGridItem], int)
+        )  # type: (list[AdminFileGridItem], int)
 
         tasks = []
         for file in file_items:
             tasks.append(self.get_signed_url(file=file))
 
         signed_urls = await asyncio.gather(*tasks)
-        for file, signed_url in zip(file_items, signed_urls):  # type: (FileGridItem, Optional[str])
+        for file, signed_url in zip(file_items, signed_urls):  # type: (AdminFileGridItem, Optional[str])
             file.url = signed_url
 
-        return FilePages(
+        return AdminFilePages(
             total=count,
             items=file_items,
             page=model.page,
@@ -118,7 +118,7 @@ class AdminFileHandler:
         upload_source: FileUploadSource,
         is_public: bool = False,
         check_duplicates: bool = True
-    ) -> FileUploadResponseModel:
+    ) -> AdminFileUploadResponseModel:
         """
         Upload file to AWS S3 and store metadata in database
 
@@ -161,7 +161,7 @@ class AdminFileHandler:
                 )
                 if existing_file:
                     # Return existing file ID instead of creating a new one
-                    return FileUploadResponseModel(
+                    return AdminFileUploadResponseModel(
                         id=existing_file.id,
                         duplicate=True
                     )
@@ -243,7 +243,7 @@ class AdminFileHandler:
                 debug_detail=str(e)
             )
         else:
-            return FileUploadResponseModel(id=file_id)
+            return AdminFileUploadResponseModel(id=file_id)
 
     @distributed_trace()
     async def upload_multiple_files(
@@ -272,9 +272,9 @@ class AdminFileHandler:
                 )
                 uploaded_files.append(file_id)
             except Exception as e:
-                failed_files.append(FailedUploadFile(filename=upload_file.filename, error=str(e)))
+                failed_files.append(AdminFailedUploadFile(filename=upload_file.filename, error=str(e)))
 
-        return BatchFileUploadResponseModel(
+        return AdminBatchFileUploadResponseModel(
             uploaded_files=uploaded_files,
             failed_files=failed_files
         )
@@ -307,13 +307,13 @@ class AdminFileHandler:
             raise Exception(f"Failed to create file association: {str(e)}")
 
     @distributed_trace()
-    async def get_files_by_resource_id(self, resource_id: uuid.UUID) -> Optional[list[FileGridItem]]:
+    async def get_files_by_resource_id(self, resource_id: uuid.UUID) -> Optional[list[AdminFileGridItem]]:
         """
 
         :param resource_id:
         :return:
         """
-        files: Optional[list[FileDetail]] = await (
+        files: Optional[list[AdminFileDetail]] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -328,14 +328,14 @@ class AdminFileHandler:
             .outerjoin(PortalFileAssociation, PortalFileAssociation.file_id == PortalFile.id)
             .where(PortalFileAssociation.resource_id.isnot(None))
             .where(PortalFileAssociation.resource_id == resource_id)
-            .fetch(as_model=FileDetail)
+            .fetch(as_model=AdminFileDetail)
         )
         if not files:
             return None
         file_items = []
         for file in files:
             file_items.append(
-                FileGridItem(
+                AdminFileGridItem(
                     **file.model_dump(),
                     url=await self.get_signed_url(file=file)
                 )
@@ -349,7 +349,7 @@ class AdminFileHandler:
         :param resource_id: Associated resource ID
         :return:
         """
-        files: Optional[list[FileDetail]] = await (
+        files: Optional[list[AdminFileDetail]] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -362,7 +362,7 @@ class AdminFileHandler:
             .where(PortalFile.is_public == True)
             .where(PortalFileAssociation.resource_id.isnot(None))
             .where(PortalFileAssociation.resource_id == resource_id)
-            .fetch(as_model=FileDetail)
+            .fetch(as_model=AdminFileDetail)
         )
         if not files:
             return None
@@ -373,7 +373,7 @@ class AdminFileHandler:
         return signed_urls
 
     @distributed_trace()
-    async def get_signed_url(self, file_id: uuid.UUID = None, file: FileBase = None, expiration: int = 3600) -> Optional[str]:
+    async def get_signed_url(self, file_id: uuid.UUID = None, file: AdminFileBase = None, expiration: int = 3600) -> Optional[str]:
         """
         Generate a signed URL for file access
         :param file_id:
@@ -411,7 +411,7 @@ class AdminFileHandler:
         self,
         file_content: bytes,
         checksum_sha256: Optional[str] = None
-    ) -> Optional[FileDetail]:
+    ) -> Optional[AdminFileDetail]:
         """
         Check if a file with the same content already exists
 
@@ -424,7 +424,7 @@ class AdminFileHandler:
             checksum_sha256 = hashlib.sha256(file_content).hexdigest()
 
         # Check for existing file with same SHA-256 checksum
-        existing_file: Optional[FileDetail] = await (
+        existing_file: Optional[AdminFileDetail] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -447,7 +447,7 @@ class AdminFileHandler:
             )
             .where(PortalFile.checksum_sha256 == checksum_sha256)
             .where(PortalFile.status != FileStatus.DELETED)
-            .fetchrow(as_model=FileDetail)
+            .fetchrow(as_model=AdminFileDetail)
         )
 
         return existing_file
@@ -458,7 +458,7 @@ class AdminFileHandler:
         file_content: bytes,
         content_type: str,
         file_size: int
-    ) -> Optional[FileDetail]:
+    ) -> Optional[AdminFileDetail]:
         """
         Check for duplicate files using multiple criteria for better accuracy
 
@@ -477,7 +477,7 @@ class AdminFileHandler:
 
         # If SHA-256 doesn't match, check by MD5 + size + content_type
         # This helps catch files that might have been corrupted during upload
-        existing_file: Optional[FileDetail] = await (
+        existing_file: Optional[AdminFileDetail] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -502,19 +502,19 @@ class AdminFileHandler:
             .where(PortalFile.size_bytes == file_size)
             .where(PortalFile.content_type == content_type)
             .where(PortalFile.status != FileStatus.DELETED)
-            .fetchrow(as_model=FileDetail)
+            .fetchrow(as_model=AdminFileDetail)
         )
 
         return existing_file
 
     @distributed_trace()
-    async def get_file_info(self, file_id: uuid.UUID) -> Optional[FileDetail]:
+    async def get_file_info(self, file_id: uuid.UUID) -> Optional[AdminFileDetail]:
         """
         Get file information from database
         :param file_id: PortalFile ID
         :return: PortalFile instance or None if not found
         """
-        file: Optional[FileDetail] = await (
+        file: Optional[AdminFileDetail] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -537,20 +537,20 @@ class AdminFileHandler:
             )
             .where(PortalFile.id == file_id)
             .where(PortalFile.status != FileStatus.DELETED)
-            .fetchrow(as_model=FileDetail)
+            .fetchrow(as_model=AdminFileDetail)
         )
         if not file:
             return None
         return file
 
     @distributed_trace()
-    async def delete_files(self, model: BulkAction) -> BulkActionResponseModel:
+    async def delete_files(self, model: BulkAction) -> AdminBulkActionResponseModel:
         """
         Delete files from S3 and mark as deleted in database
         :param model:
         :return:
         """
-        files: list[FileBase] = await (
+        files: list[AdminFileBase] = await (
             self._session.select(
                 PortalFile.id,
                 PortalFile.original_name,
@@ -560,7 +560,7 @@ class AdminFileHandler:
                 PortalFile.region
             )
             .where(PortalFile.id.in_(model.ids))
-            .fetch(as_model=FileBase)
+            .fetch(as_model=AdminFileBase)
         )
 
         if not files:
@@ -598,7 +598,7 @@ class AdminFileHandler:
                 .where(PortalFile.key.in_(success_keys))
                 .execute()
             )
-        return BulkActionResponseModel(
+        return AdminBulkActionResponseModel(
             success_count=len(success_keys),
             failed_items=failed_items
         )

@@ -14,14 +14,14 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.workshop import (
-    WorkshopQuery,
-    WorkshopDetail,
-    WorkshopPages,
-    WorkshopCreate,
-    WorkshopUpdate,
-    WorkshopChangeSequence,
-    WorkshopInstructorsUpdate,
-    WorkshopInstructors,
+    AdminWorkshopQuery,
+    AdminWorkshopDetail,
+    AdminWorkshopPages,
+    AdminWorkshopCreate,
+    AdminWorkshopUpdate,
+    AdminWorkshopChangeSequence,
+    AdminWorkshopInstructorsUpdate,
+    AdminWorkshopInstructors,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -30,11 +30,11 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=WorkshopPages,
+    response_model=AdminWorkshopPages,
 )
 @inject
 async def get_workshop_pages(
-    query_model: Annotated[WorkshopQuery, Query()],
+    query_model: Annotated[AdminWorkshopQuery, Query()],
     admin_workshop_handler: AdminWorkshopHandler = Depends(Provide[Container.admin_workshop_handler])
 ):
     """
@@ -49,7 +49,7 @@ async def get_workshop_pages(
 @router.get(
     path="/{workshop_id}",
     status_code=status.HTTP_200_OK,
-    response_model=WorkshopDetail,
+    response_model=AdminWorkshopDetail,
 )
 @inject
 async def get_workshop_by_id(
@@ -72,7 +72,7 @@ async def get_workshop_by_id(
 )
 @inject
 async def create_workshop(
-    model: WorkshopCreate,
+    model: AdminWorkshopCreate,
     admin_workshop_handler: AdminWorkshopHandler = Depends(Provide[Container.admin_workshop_handler])
 ):
     """
@@ -92,7 +92,7 @@ async def create_workshop(
 @inject
 async def update_workshop(
     workshop_id: uuid.UUID,
-    model: WorkshopUpdate,
+    model: AdminWorkshopUpdate,
     admin_workshop_handler: AdminWorkshopHandler = Depends(Provide[Container.admin_workshop_handler])
 ):
     """
@@ -133,7 +133,7 @@ async def delete_workshop(
 )
 @inject
 async def change_sequence(
-    model: WorkshopChangeSequence,
+    model: AdminWorkshopChangeSequence,
     admin_workshop_handler: AdminWorkshopHandler = Depends(Provide[Container.admin_workshop_handler])
 ):
     """
@@ -148,7 +148,7 @@ async def change_sequence(
 @router.get(
     path="/instructors/{workshop_id}",
     status_code=status.HTTP_200_OK,
-    response_model=WorkshopInstructors,
+    response_model=AdminWorkshopInstructors,
 )
 @inject
 async def get_workshop_instructors(
@@ -171,7 +171,7 @@ async def get_workshop_instructors(
 @inject
 async def update_workshop_instructors(
     workshop_id: uuid.UUID,
-    model: WorkshopInstructorsUpdate,
+    model: AdminWorkshopInstructorsUpdate,
     admin_workshop_handler: AdminWorkshopHandler = Depends(Provide[Container.admin_workshop_handler])
 ):
     """

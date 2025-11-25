@@ -13,10 +13,10 @@ from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.workshop_registration import (
-    WorkshopRegistrationQuery,
-    WorkshopRegistrationPages,
-    WorkshopRegistrationDetail,
-    WorkshopRegistrationCreate,
+    AdminWorkshopRegistrationQuery,
+    AdminWorkshopRegistrationPages,
+    AdminWorkshopRegistrationDetail,
+    AdminWorkshopRegistrationCreate,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -25,11 +25,11 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=WorkshopRegistrationPages,
+    response_model=AdminWorkshopRegistrationPages,
 )
 @inject
 async def get_workshop_registration_pages(
-    query_model: Annotated[WorkshopRegistrationQuery, Query()],
+    query_model: Annotated[AdminWorkshopRegistrationQuery, Query()],
     admin_workshop_registration_handler: AdminWorkshopRegistrationHandler = Depends(Provide[Container.admin_workshop_registration_handler])
 ):
     """
@@ -44,7 +44,7 @@ async def get_workshop_registration_pages(
 @router.get(
     path="/{registration_id}",
     status_code=status.HTTP_200_OK,
-    response_model=WorkshopRegistrationDetail,
+    response_model=AdminWorkshopRegistrationDetail,
 )
 @inject
 async def get_workshop_registration_by_id(
@@ -67,7 +67,7 @@ async def get_workshop_registration_by_id(
 )
 @inject
 async def create_workshop_registration(
-    model: WorkshopRegistrationCreate,
+    model: AdminWorkshopRegistrationCreate,
     admin_workshop_registration_handler: AdminWorkshopRegistrationHandler = Depends(Provide[Container.admin_workshop_registration_handler])
 ):
     """

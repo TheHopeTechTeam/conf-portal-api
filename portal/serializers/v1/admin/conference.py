@@ -10,24 +10,24 @@ from pydantic import BaseModel, Field
 
 from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
-from portal.serializers.v1.admin.location import LocationBase
+from portal.serializers.v1.admin.location import AdminLocationBase
 
 
-class ConferenceQuery(GenericQueryBaseModel):
+class AdminConferenceQuery(GenericQueryBaseModel):
     """
     Conference query model
     """
     is_active: Optional[bool] = Field(default=None, description="Is Active")
 
 
-class ConferenceBase(UUIDBaseModel, JSONStringMixinModel):
+class AdminConferenceBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Conference base model
     """
     title: str = Field(..., description="Title")
 
 
-class ConferenceItem(ConferenceBase):
+class AdminConferenceItem(AdminConferenceBase):
     """
     Conference item
     """
@@ -41,7 +41,7 @@ class ConferenceItem(ConferenceBase):
     location_name: Optional[str] = Field(default=None, serialization_alias="locationName", description="Location name")
 
 
-class ConferenceDetail(ConferenceBase):
+class AdminConferenceDetail(AdminConferenceBase):
     """
     Conference detail
     """
@@ -52,20 +52,20 @@ class ConferenceDetail(ConferenceBase):
     created_at: Optional[datetime] = Field(default=None, serialization_alias="createdAt", description="Created at")
     updated_at: Optional[datetime] = Field(default=None, serialization_alias="updatedAt", description="Updated at")
     description: Optional[str] = Field(default=None, description="Description")
-    location: Optional[LocationBase] = Field(default=None, description="Location object with id and name")
+    location: Optional[AdminLocationBase] = Field(default=None, description="Location object with id and name")
 
 
-class ConferencePages(PaginationBaseResponseModel):
+class AdminConferencePages(PaginationBaseResponseModel):
     """Conference pages"""
-    items: Optional[list[ConferenceItem]] = Field(..., description="Items")
+    items: Optional[list[AdminConferenceItem]] = Field(..., description="Items")
 
 
-class ConferenceList(BaseModel):
+class AdminConferenceList(BaseModel):
     """Conference list"""
-    items: Optional[list[ConferenceBase]] = Field(..., description="Items")
+    items: Optional[list[AdminConferenceBase]] = Field(..., description="Items")
 
 
-class ConferenceCreate(BaseModel):
+class AdminConferenceCreate(BaseModel):
     """Conference create"""
     title: str = Field(..., description="Title")
     timezone: str = Field(..., description="Timezone")
@@ -77,28 +77,28 @@ class ConferenceCreate(BaseModel):
     description: Optional[str] = Field(default=None, description="Description")
 
 
-class ConferenceUpdate(ConferenceCreate):
+class AdminConferenceUpdate(AdminConferenceCreate):
     """Conference update"""
 
 
-class ConferenceInstructorBase(BaseModel):
+class AdminConferenceInstructorBase(BaseModel):
     """Conference instructor base"""
     instructor_id: UUID = Field(..., description="Instructor ID")
     is_primary: bool = Field(default=False, description="Is primary instructor")
     sequence: Union[int, float] = Field(..., description="Display order (small to large)")
 
 
-class ConferenceInstructorItem(ConferenceInstructorBase):
+class AdminConferenceInstructorItem(AdminConferenceInstructorBase):
     """Conference instructor mapping item"""
     name: str = Field(..., description="Instructor name")
     sequence: float = Field(..., description="Display order (small to large)")
 
 
-class ConferenceInstructors(BaseModel):
+class AdminConferenceInstructors(BaseModel):
     """Conference instructors"""
-    items: list[ConferenceInstructorItem] = Field(..., description="Instructor mapping list")
+    items: list[AdminConferenceInstructorItem] = Field(..., description="Instructor mapping list")
 
 
-class ConferenceInstructorsUpdate(BaseModel):
+class AdminConferenceInstructorsUpdate(BaseModel):
     """Update conference instructors"""
-    instructors: list[ConferenceInstructorBase] = Field(..., description="Instructor mapping list")
+    instructors: list[AdminConferenceInstructorBase] = Field(..., description="Instructor mapping list")

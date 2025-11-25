@@ -21,16 +21,16 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
 from portal.serializers.mixins.base import DeleteBaseModel
 from portal.serializers.v1.admin.user import (
-    UserCreate,
-    UserTableItem,
-    UserPages,
-    UserUpdate,
-    UserItem,
-    UserQuery,
-    UserBulkAction,
-    ChangePassword,
-    BindRole,
-    UserRoles, UserBase, UserList,
+    AdminUserCreate,
+    AdminUserTableItem,
+    AdminUserPages,
+    AdminUserUpdate,
+    AdminUserItem,
+    AdminUserQuery,
+    AdminUserBulkAction,
+    AdminChangePassword,
+    AdminBindRole,
+    AdminUserRoles, AdminUserBase, AdminUserList,
 )
 
 
@@ -117,7 +117,7 @@ class AdminUserHandler:
         return user
 
     @distributed_trace()
-    async def get_user_pages(self, model: UserQuery):
+    async def get_user_pages(self, model: AdminUserQuery):
         """
         Get user pages
         :param model:
@@ -166,10 +166,10 @@ class AdminUserHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=UserTableItem
+                as_model=AdminUserTableItem
             )
-        )  # type: (list[UserTableItem], int)
-        return UserPages(
+        )  # type: (list[AdminUserTableItem], int)
+        return AdminUserPages(
             page=model.page,
             page_size=model.page_size,
             total=count,
@@ -177,13 +177,13 @@ class AdminUserHandler:
         )
 
     @distributed_trace()
-    async def get_user_list(self, keyword: Optional[str] = None) -> UserList:
+    async def get_user_list(self, keyword: Optional[str] = None) -> AdminUserList:
         """
         Get user list
         :param keyword:
         :return:
         """
-        users: list[UserBase] = await (
+        users: list[AdminUserBase] = await (
             self._session.select(
                 PortalUser.id,
                 PortalUser.phone_number,
@@ -202,12 +202,12 @@ class AdminUserHandler:
             .where(PortalUser.is_active == True)
             .order_by(PortalUser.created_at.asc())
             .limit(100)
-            .fetch(as_model=UserBase)
+            .fetch(as_model=AdminUserBase)
         )
-        return UserList(items=users)
+        return AdminUserList(items=users)
 
     @distributed_trace()
-    async def get_user_by_id(self, user_id: UUID) -> Optional[UserItem]:
+    async def get_user_by_id(self, user_id: UUID) -> Optional[AdminUserItem]:
         """
         Get user by ID
         :param user_id:
@@ -234,12 +234,12 @@ class AdminUserHandler:
             .join(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
             .where(PortalUser.id == user_id)
             .where(PortalUser.is_deleted == False)
-            .fetchrow(as_model=UserItem)
+            .fetchrow(as_model=AdminUserItem)
         )
         return user
 
     @distributed_trace()
-    async def get_current_user(self) -> Optional[UserItem]:
+    async def get_current_user(self) -> Optional[AdminUserItem]:
         """
 
         :return:
@@ -249,7 +249,7 @@ class AdminUserHandler:
         return await self.get_user_by_id(self._user_ctx.user_id)
 
     @distributed_trace()
-    async def create_user(self, model: UserCreate) -> UUIDBaseModel:
+    async def create_user(self, model: AdminUserCreate) -> UUIDBaseModel:
         """
         Create user
         :param model:
@@ -307,7 +307,7 @@ class AdminUserHandler:
             return UUIDBaseModel(id=user_id)
 
     @distributed_trace()
-    async def update_current_user(self, model: UserUpdate) -> None:
+    async def update_current_user(self, model: AdminUserUpdate) -> None:
         """
         Update current user
         :param model:
@@ -351,7 +351,7 @@ class AdminUserHandler:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
 
     @distributed_trace()
-    async def update_user(self, user_id: UUID, model: UserUpdate) -> None:
+    async def update_user(self, user_id: UUID, model: AdminUserUpdate) -> None:
         """
         Update user
         :param user_id:
@@ -419,7 +419,7 @@ class AdminUserHandler:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
 
     @distributed_trace()
-    async def restore_user(self, model: UserBulkAction) -> None:
+    async def restore_user(self, model: AdminUserBulkAction) -> None:
         """
         Restore users
         :param model:
@@ -439,7 +439,7 @@ class AdminUserHandler:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
 
     @distributed_trace()
-    async def get_user_roles(self, user_id: UUID) -> UserRoles:
+    async def get_user_roles(self, user_id: UUID) -> AdminUserRoles:
         """
 
         :param user_id:
@@ -450,10 +450,10 @@ class AdminUserHandler:
             .where(PortalUserRole.user_id == user_id)
             .fetchvals()
         )
-        return UserRoles(role_ids=roles)
+        return AdminUserRoles(role_ids=roles)
 
     @distributed_trace()
-    async def bind_roles(self, user_id: UUID, model: BindRole) -> None:
+    async def bind_roles(self, user_id: UUID, model: AdminBindRole) -> None:
         """
 
         :param user_id:
@@ -493,7 +493,7 @@ class AdminUserHandler:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
 
     @distributed_trace()
-    async def change_password(self, user_id: UUID, model: ChangePassword) -> None:
+    async def change_password(self, user_id: UUID, model: AdminChangePassword) -> None:
         """
 
         :param user_id:

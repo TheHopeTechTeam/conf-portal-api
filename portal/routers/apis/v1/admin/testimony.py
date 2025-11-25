@@ -11,9 +11,9 @@ from portal.container import Container
 from portal.handlers import AdminTestimonyHandler
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.admin.testimony import (
-    TestimonyQuery,
-    TestimonyPages,
-    TestimonyDetail,
+    AdminTestimonyQuery,
+    AdminTestimonyPages,
+    AdminTestimonyDetail,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -22,11 +22,11 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=TestimonyPages
+    response_model=AdminTestimonyPages
 )
 @inject
 async def get_testimony_pages(
-    query_model: Annotated[TestimonyQuery, Query()],
+    query_model: Annotated[AdminTestimonyQuery, Query()],
     admin_testimony_handler: AdminTestimonyHandler = Depends(Provide[Container.admin_testimony_handler])
 ):
     return await admin_testimony_handler.get_testimony_pages(model=query_model)
@@ -35,7 +35,7 @@ async def get_testimony_pages(
 @router.get(
     path="/{testimony_id}",
     status_code=status.HTTP_200_OK,
-    response_model=TestimonyDetail
+    response_model=AdminTestimonyDetail
 )
 @inject
 async def get_testimony(

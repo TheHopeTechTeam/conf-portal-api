@@ -18,17 +18,17 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.conference import (
-    ConferenceQuery,
-    ConferencePages,
-    ConferenceItem,
-    ConferenceDetail,
-    ConferenceCreate,
-    ConferenceUpdate,
-    ConferenceInstructorsUpdate,
-    ConferenceList,
-    ConferenceBase,
-    ConferenceInstructors,
-    ConferenceInstructorItem,
+    AdminConferenceQuery,
+    AdminConferencePages,
+    AdminConferenceItem,
+    AdminConferenceDetail,
+    AdminConferenceCreate,
+    AdminConferenceUpdate,
+    AdminConferenceInstructorsUpdate,
+    AdminConferenceList,
+    AdminConferenceBase,
+    AdminConferenceInstructors,
+    AdminConferenceInstructorItem,
 )
 
 
@@ -43,7 +43,7 @@ class AdminConferenceHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    async def get_conference_pages(self, model: ConferenceQuery) -> ConferencePages:
+    async def get_conference_pages(self, model: AdminConferenceQuery) -> AdminConferencePages:
         """
 
         :param model:
@@ -80,17 +80,17 @@ class AdminConferenceHandler:
             .offset(model.page * model.page_size)
             .fetchpages(
                 no_order_by=False,
-                as_model=ConferenceItem
+                as_model=AdminConferenceItem
             )
         )
-        return ConferencePages(
+        return AdminConferencePages(
             page=model.page,
             page_size=model.page_size,
             total=count,
             items=items
         )
 
-    async def get_conference_list(self) -> ConferenceList:
+    async def get_conference_list(self) -> AdminConferenceList:
         """
 
         :return:
@@ -102,16 +102,16 @@ class AdminConferenceHandler:
             )
             .where(PortalConference.is_deleted == False)
             .order_by(PortalConference.start_date.desc())
-            .fetch(as_model=ConferenceBase)
+            .fetch(as_model=AdminConferenceBase)
         )
-        return ConferenceList(items=items)
+        return AdminConferenceList(items=items)
 
-    async def get_active_conference(self) -> ConferenceItem:
+    async def get_active_conference(self) -> AdminConferenceItem:
         """
 
         :return:
         """
-        item: Optional[ConferenceItem] = await (
+        item: Optional[AdminConferenceItem] = await (
             self._session.select(
                 PortalConference.id,
                 PortalConference.title,
@@ -127,19 +127,19 @@ class AdminConferenceHandler:
             .outerjoin(PortalLocation, PortalConference.location_id == PortalLocation.id)
             .where(PortalConference.is_active == True)
             .order_by(PortalConference.start_date)
-            .fetchrow(as_model=ConferenceItem)
+            .fetchrow(as_model=AdminConferenceItem)
         )
         if not item:
             raise NotFoundException(detail="No active conference found")
         return item
 
-    async def get_conference_by_id(self, conference_id: uuid.UUID) -> ConferenceDetail:
+    async def get_conference_by_id(self, conference_id: uuid.UUID) -> AdminConferenceDetail:
         """
 
         :param conference_id:
         :return:
         """
-        item: Optional[ConferenceDetail] = await (
+        item: Optional[AdminConferenceDetail] = await (
             self._session.select(
                 PortalConference.id,
                 PortalConference.title,
@@ -157,14 +157,14 @@ class AdminConferenceHandler:
             )
             .outerjoin(PortalLocation, PortalConference.location_id == PortalLocation.id)
             .where(PortalConference.id == conference_id)
-            .fetchrow(as_model=ConferenceDetail)
+            .fetchrow(as_model=AdminConferenceDetail)
         )
         if not item:
             raise NotFoundException(detail=f"Conference {conference_id} not found")
 
         return item
 
-    async def create_conference(self, model: ConferenceCreate) -> UUIDBaseModel:
+    async def create_conference(self, model: AdminConferenceCreate) -> UUIDBaseModel:
         """
 
         :param model:
@@ -198,7 +198,7 @@ class AdminConferenceHandler:
             return UUIDBaseModel(id=conference_id)
 
     @distributed_trace()
-    async def update_conference(self, conference_id: uuid.UUID, model: ConferenceUpdate) -> None:
+    async def update_conference(self, conference_id: uuid.UUID, model: AdminConferenceUpdate) -> None:
         """
 
         :param conference_id:
@@ -237,7 +237,7 @@ class AdminConferenceHandler:
             )
 
     @distributed_trace()
-    async def get_conference_instructors(self, conference_id: uuid.UUID) -> ConferenceInstructors:
+    async def get_conference_instructors(self, conference_id: uuid.UUID) -> AdminConferenceInstructors:
         """
 
         :param conference_id:
@@ -253,12 +253,12 @@ class AdminConferenceHandler:
             .outerjoin(PortalInstructor, PortalConferenceInstructors.instructor_id == PortalInstructor.id)
             .where(PortalConferenceInstructors.conference_id == conference_id)
             .order_by(PortalConferenceInstructors.sequence)
-            .fetch(as_model=ConferenceInstructorItem)
+            .fetch(as_model=AdminConferenceInstructorItem)
         )
-        return ConferenceInstructors(items=items)
+        return AdminConferenceInstructors(items=items)
 
     @distributed_trace()
-    async def update_conference_instructors(self, conference_id: uuid.UUID, model: ConferenceInstructorsUpdate) -> None:
+    async def update_conference_instructors(self, conference_id: uuid.UUID, model: AdminConferenceInstructorsUpdate) -> None:
         """
 
         :param conference_id:

@@ -31,7 +31,7 @@ from portal.serializers.mixins import TokenResponse, RefreshTokenRequest
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminInfo,
-    AdminLoginResponse, RequestPasswordResetRequest, ResetPasswordWithTokenRequest,
+    AdminLoginResponse, AdminRequestPasswordResetRequest, AdminResetPasswordWithTokenRequest,
 )
 from .permission import AdminPermissionHandler
 from .role import AdminRoleHandler
@@ -284,7 +284,7 @@ class AdminAuthHandler(PasswordValidator):
             return False
 
     @distributed_trace()
-    async def request_password_reset(self, model: RequestPasswordResetRequest) -> None:
+    async def request_password_reset(self, model: AdminRequestPasswordResetRequest) -> None:
         """
         Request password reset
         :param model:
@@ -335,7 +335,7 @@ class AdminAuthHandler(PasswordValidator):
         return reset_password_html
 
     @distributed_trace()
-    async def reset_password(self, model: ResetPasswordWithTokenRequest) -> None:
+    async def reset_password(self, model: AdminResetPasswordWithTokenRequest) -> None:
         """
         Reset password
         :param model:

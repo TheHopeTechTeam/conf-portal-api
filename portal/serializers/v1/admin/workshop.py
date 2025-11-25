@@ -11,11 +11,11 @@ from pydantic import BaseModel, Field
 from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
 from portal.serializers.mixins.base import ChangeSequence
-from portal.serializers.v1.admin.location import LocationBase
-from portal.serializers.v1.admin.conference import ConferenceBase
+from portal.serializers.v1.admin.location import AdminLocationBase
+from portal.serializers.v1.admin.conference import AdminConferenceBase
 
 
-class WorkshopQuery(GenericQueryBaseModel):
+class AdminWorkshopQuery(GenericQueryBaseModel):
     """
     Workshop query model
     """
@@ -26,12 +26,12 @@ class WorkshopQuery(GenericQueryBaseModel):
     end_datatime: Optional[datetime] = Field(default=None, description="End Datetime")
 
 
-class WorkshopBase(UUIDBaseModel, JSONStringMixinModel):
+class AdminWorkshopBase(UUIDBaseModel, JSONStringMixinModel):
     """Workshop base model"""
     title: str = Field(..., description="Title")
 
 
-class WorkshopItem(WorkshopBase):
+class AdminWorkshopItem(AdminWorkshopBase):
     """Workshop item"""
     timezone: str = Field(..., description="Timezone")
     start_datetime: datetime = Field(..., serialization_alias="startTime", description="Start Datetime")
@@ -41,33 +41,33 @@ class WorkshopItem(WorkshopBase):
     sequence: float = Field(..., description="Display order (small to large)")
 
 
-class WorkshopSequenceItem(UUIDBaseModel):
+class AdminWorkshopSequenceItem(UUIDBaseModel):
     """Workshop sequence item"""
     sequence: float = Field(..., description="Display order (small to large)")
 
 
-class WorkshopDetail(WorkshopItem):
+class AdminWorkshopDetail(AdminWorkshopItem):
     """Workshop detail"""
-    location: LocationBase = Field(..., description="Location")
-    conference: ConferenceBase = Field(..., description="Conference")
+    location: AdminLocationBase = Field(..., description="Location")
+    conference: AdminConferenceBase = Field(..., description="Conference")
     description: Optional[str] = Field(None, description="Description")
 
 
-class WorkshopPageItem(WorkshopItem):
+class AdminWorkshopPageItem(AdminWorkshopItem):
     """Workshop page item"""
     conference_title: Optional[str] = Field(default=None, serialization_alias="conferenceTitle", description="Conference title")
     location_name: Optional[str] = Field(default=None, serialization_alias="locationName", description="Location name")
     registered_count: int = Field(..., serialization_alias="registeredCount", description="Registered count")
 
 
-class WorkshopPages(PaginationBaseResponseModel):
+class AdminWorkshopPages(PaginationBaseResponseModel):
     """Workshop pages"""
-    items: Optional[list[WorkshopPageItem]] = Field(..., description="Items")
-    prev_item: Optional[WorkshopSequenceItem] = Field(None, serialization_alias="prevItem", description="Previous workshop item")
-    next_item: Optional[WorkshopSequenceItem] = Field(None, serialization_alias="nextItem", description="Next workshop item")
+    items: Optional[list[AdminWorkshopPageItem]] = Field(..., description="Items")
+    prev_item: Optional[AdminWorkshopSequenceItem] = Field(None, serialization_alias="prevItem", description="Previous workshop item")
+    next_item: Optional[AdminWorkshopSequenceItem] = Field(None, serialization_alias="nextItem", description="Next workshop item")
 
 
-class WorkshopCreate(BaseModel):
+class AdminWorkshopCreate(BaseModel):
     """Workshop create"""
     title: str = Field(..., description="Title")
     timezone: str = Field(..., description="Timezone")
@@ -80,32 +80,32 @@ class WorkshopCreate(BaseModel):
     description: Optional[str] = Field(None, description="Description")
 
 
-class WorkshopUpdate(WorkshopCreate):
+class AdminWorkshopUpdate(AdminWorkshopCreate):
     """Workshop update"""
 
 
-class WorkshopChangeSequence(ChangeSequence):
+class AdminWorkshopChangeSequence(ChangeSequence):
     """Workshop change sequence"""
 
 
-class WorkshopInstructorBase(BaseModel):
+class AdminWorkshopInstructorBase(BaseModel):
     """Workshop instructor base"""
     instructor_id: UUID = Field(..., description="Instructor ID")
     is_primary: bool = Field(default=False, description="Is primary instructor")
     sequence: int = Field(..., description="Display order (small to large)")
 
 
-class WorkshopInstructorItem(WorkshopInstructorBase):
+class AdminWorkshopInstructorItem(AdminWorkshopInstructorBase):
     """Workshop instructor mapping item"""
     name: str = Field(..., description="Instructor name")
     sequence: float = Field(..., description="Display order (small to large)")
 
 
-class WorkshopInstructors(BaseModel):
+class AdminWorkshopInstructors(BaseModel):
     """Workshop instructors"""
-    items: list[WorkshopInstructorItem] = Field(..., description="Instructor mapping list")
+    items: list[AdminWorkshopInstructorItem] = Field(..., description="Instructor mapping list")
 
 
-class WorkshopInstructorsUpdate(BaseModel):
+class AdminWorkshopInstructorsUpdate(BaseModel):
     """Update workshop instructors"""
-    instructors: list[WorkshopInstructorBase] = Field(..., description="Instructor mapping list")
+    instructors: list[AdminWorkshopInstructorBase] = Field(..., description="Instructor mapping list")

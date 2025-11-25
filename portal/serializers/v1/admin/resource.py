@@ -12,7 +12,7 @@ from portal.serializers.mixins import PaginationBaseResponseModel
 from portal.serializers.mixins.base import ChangeSequence
 
 
-class ResourceBase(UUIDBaseModel):
+class AdminResourceBase(UUIDBaseModel):
     """ResourceBase"""
     name: str = Field(..., description="Name")
     key: str = Field(..., description="Key")
@@ -20,7 +20,7 @@ class ResourceBase(UUIDBaseModel):
     icon: Optional[str] = Field(None, description="Icon")
 
 
-class ResourceItem(ResourceBase):
+class AdminResourceItem(AdminResourceBase):
     """ResourceItem"""
     pid: Optional[UUID] = Field(None, description="Parent resource id")
     path: Optional[str] = Field(None, description="Path")
@@ -31,7 +31,7 @@ class ResourceItem(ResourceBase):
     is_deleted: bool = Field(False, description="Is deleted")
 
 
-class ResourceParent(ResourceBase, JSONStringMixinModel):
+class AdminResourceParent(AdminResourceBase, JSONStringMixinModel):
     """ResourceParent"""
     id: Optional[UUID] = Field(None, description="Resource id")
     name: Optional[str] = Field(None, description="Name")
@@ -40,25 +40,25 @@ class ResourceParent(ResourceBase, JSONStringMixinModel):
     icon: Optional[str] = Field(None, description="Icon")
 
 
-class ResourceDetail(ResourceItem):
+class AdminResourceDetail(AdminResourceItem):
     """ResourceDetail"""
     pid: Optional[UUID] = Field(None, description="Parent resource id", exclude=True)
-    parent: Optional[ResourceParent] = Field(None, description="Parent resource")
+    parent: Optional[AdminResourceParent] = Field(None, description="Parent resource")
 
 
-class ResourcePages(PaginationBaseResponseModel):
+class AdminResourcePages(PaginationBaseResponseModel):
     """ResourcePages"""
-    items: Optional[list[ResourceItem]] = Field(..., description="Resource Items")
+    items: Optional[list[AdminResourceItem]] = Field(..., description="Resource Items")
 
 
-class ResourceList(BaseModel):
+class AdminResourceList(BaseModel):
     """ResourceList"""
-    items: Optional[list[ResourceItem]] = Field(..., description="Resource Items")
+    items: Optional[list[AdminResourceItem]] = Field(..., description="Resource Items")
 
 
-class ResourceTreeItem(ResourceItem):
+class AdminResourceTreeItem(AdminResourceItem):
     """Resource Tree Item"""
-    children: Optional[list["ResourceTreeItem"]] = Field(None, description="Resource children")
+    children: Optional[list["AdminResourceTreeItem"]] = Field(None, description="Resource children")
 
     @field_validator('children')
     def validate_children_depth(cls, v):
@@ -69,7 +69,7 @@ class ResourceTreeItem(ResourceItem):
         return v
 
     @classmethod
-    def validate_node_depth(cls, node: "ResourceTreeItem", current_depth: int):
+    def validate_node_depth(cls, node: "AdminResourceTreeItem", current_depth: int):
         """validate node depth"""
         if current_depth > 2:
             raise ValueError("Tree structure exceeds three levels limit")
@@ -79,20 +79,20 @@ class ResourceTreeItem(ResourceItem):
                 cls.validate_node_depth(child, current_depth + 1)
 
 
-class ResourceTree(BaseModel):
+class AdminResourceTree(BaseModel):
     """Resource Tree - Max 2 levels"""
-    items: Optional[list[ResourceTreeItem]] = Field(None, description="Root resource items")
+    items: Optional[list[AdminResourceTreeItem]] = Field(None, description="Root resource items")
 
     @field_validator('items')
     def validate_tree_depth(cls, v):
         """validate tree depth not exceed limit"""
         if v:
             for root in v:
-                ResourceTreeItem.validate_node_depth(root, 1)  # start from first level
+                AdminResourceTreeItem.validate_node_depth(root, 1)  # start from first level
         return v
 
 
-class ResourceCreate(BaseModel):
+class AdminResourceCreate(BaseModel):
     """ResourceCreate"""
     pid: Optional[UUID] = Field(None, description="Parent resource id")
     name: str = Field(..., description="Name")
@@ -106,19 +106,19 @@ class ResourceCreate(BaseModel):
     remark: Optional[str] = Field(None, description="Remark")
 
 
-class ResourceUpdate(ResourceCreate):
+class AdminResourceUpdate(AdminResourceCreate):
     """ResourceUpdate"""
 
 
-class ResourceChangeParent(BaseModel):
+class AdminResourceChangeParent(BaseModel):
     """ResourceChangeParent"""
     pid: UUID = Field(..., description="New parent resource ID")
 
 
-class ResourceBulkDelete(BaseModel):
+class AdminResourceBulkDelete(BaseModel):
     """ResourceBulkDelete"""
     ids: list[UUID] = Field(..., description="Resource IDs to delete")
 
 
-class ResourceChangeSequence(ChangeSequence):
+class AdminResourceChangeSequence(ChangeSequence):
     """ResourceChangeSequence"""

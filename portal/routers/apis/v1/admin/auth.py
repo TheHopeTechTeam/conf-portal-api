@@ -20,7 +20,7 @@ from portal.serializers.mixins import (
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminLoginResponse,
-    AdminInfo, RequestPasswordResetRequest, ResetPasswordWithTokenRequest,
+    AdminInfo, AdminRequestPasswordResetRequest, AdminResetPasswordWithTokenRequest,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -172,7 +172,7 @@ async def admin_logout(
 )
 @inject
 async def request_password_reset(
-    model: RequestPasswordResetRequest,
+    model: AdminRequestPasswordResetRequest,
     admin_auth_handler: AdminAuthHandler = Depends(Provide[Container.admin_auth_handler])
 ):
     """
@@ -191,7 +191,7 @@ async def request_password_reset(
 )
 @inject
 async def confirm_password_reset(
-    model: ResetPasswordWithTokenRequest,
+    model: AdminResetPasswordWithTokenRequest,
     admin_auth_handler: AdminAuthHandler = Depends(Provide[Container.admin_auth_handler])
 ):
     """

@@ -12,7 +12,7 @@ from portal.libs.consts.enums import FileUploadSource
 from portal.libs.depends.file_validation import FileValidation
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.mixins.base import BulkAction
-from portal.serializers.v1.admin.file import FileUploadResponseModel, FilePages, FileQuery, BulkActionResponseModel
+from portal.serializers.v1.admin.file import AdminFileUploadResponseModel, AdminFilePages, AdminFileQuery, AdminBulkActionResponseModel
 
 router: AuthRouter = AuthRouter(is_admin=True)
 
@@ -30,11 +30,11 @@ ALLOWED_TYPES = [
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=FilePages
+    response_model=AdminFilePages
 )
 @inject
 async def get_file_pages(
-    query_model: Annotated[FileQuery, Query()],
+    query_model: Annotated[AdminFileQuery, Query()],
     admin_file_handler: AdminFileHandler = Depends(Provide[Container.admin_file_handler])
 ):
     """
@@ -49,7 +49,7 @@ async def get_file_pages(
 @router.post(
     path="/upload",
     status_code=status.HTTP_201_CREATED,
-    response_model=FileUploadResponseModel,
+    response_model=AdminFileUploadResponseModel,
     response_model_exclude_none=True,
 )
 @inject
@@ -88,7 +88,7 @@ async def upload_multiple_files(
     path="/bulk",
     status_code=status.HTTP_200_OK,
     description="For deleting files",
-    response_model=BulkActionResponseModel,
+    response_model=AdminBulkActionResponseModel,
 )
 @inject
 async def delete_files(
