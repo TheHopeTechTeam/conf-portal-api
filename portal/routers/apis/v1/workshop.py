@@ -29,7 +29,8 @@ router: AuthRouter = AuthRouter(
     response_model=WorkshopScheduleList,
     status_code=status.HTTP_200_OK,
     responses=workshop.WORKSHOP_LIST,
-    require_auth=False
+    require_auth=False,
+    operation_id="get_workshop_schedule_list",
 )
 @inject
 async def get_workshop_schedule_list(
@@ -55,6 +56,7 @@ async def get_workshop_schedule_list(
     path="/my_workshops",
     status_code=status.HTTP_200_OK,
     response_model=WorkshopRegisteredList,
+    operation_id="get_my_workshops",
 )
 @inject
 async def get_my_workshops(
@@ -91,7 +93,8 @@ async def get_my_workshops(
                 }
             }
         }
-    }
+    },
+    operation_id="get_registered_workshops",
 )
 @inject
 async def get_registered_workshops(
@@ -115,7 +118,8 @@ async def get_registered_workshops(
     path="/{workshop_id}",
     response_model=WorkshopDetail,
     status_code=status.HTTP_200_OK,
-    require_auth=False
+    require_auth=False,
+    operation_id="get_workshop_detail",
 )
 @inject
 async def get_workshop_detail(
@@ -140,7 +144,8 @@ async def get_workshop_detail(
 
 @router.post(
     path="/{workshop_id}/register",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="register_workshop",
 )
 @inject
 async def register_workshop(
@@ -164,7 +169,8 @@ async def register_workshop(
 
 @router.post(
     path="/{workshop_id}/unregister",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="unregister_workshop",
 )
 @inject
 async def unregister_workshop(

@@ -16,7 +16,8 @@ router.include_router(api_v1_router, prefix="/v1")
 
 
 @router.get(
-    path="/healthz"
+    path="/healthz",
+    operation_id="healthz"
 )
 async def healthz():
     """
@@ -79,6 +80,7 @@ def get_all_referenced_schemas(
 @router.get(
     path="/openapi.json",
     status_code=status.HTTP_200_OK,
+    operation_id="custom_openapi_schema",
 )
 async def custom_openapi(
     request: Request,

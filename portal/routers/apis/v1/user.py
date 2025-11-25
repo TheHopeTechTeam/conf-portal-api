@@ -24,17 +24,23 @@ router: AuthRouter = AuthRouter(
     path="/{user_id}",
     response_model=UserDetail,
     status_code=status.HTTP_200_OK,
-    description="For getting an account personal information"
+    description="For getting user personal information",
+    operation_id="get_user_by_id",
 )
 @inject
-async def get_account(
+async def get_user_by_id(
     request: Request,
     response: Response,
     user_id: uuid.UUID,
     user_handler: UserHandler = Depends(Provide[Container.user_handler]),
 ) -> UserDetail:
     """
-    Get an account
+    Get user by ID
+    :param request:
+    :param response:
+    :param user_id:
+    :param user_handler:
+    :return:
     """
     return await user_handler.get_user(user_id=user_id)
 
@@ -42,10 +48,11 @@ async def get_account(
 @router.put(
     path="/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    description="For updating an account personal information"
+    description="For updating user personal information",
+    operation_id="update_user_info",
 )
 @inject
-async def update_account(
+async def update_user_info(
     request: Request,
     response: Response,
     user_id: uuid.UUID,
@@ -53,7 +60,13 @@ async def update_account(
     user_handler: UserHandler = Depends(Provide[Container.user_handler]),
 ) -> None:
     """
-    Update an account
+    Update user info
+    :param request:
+    :param response:
+    :param user_id:
+    :param model:
+    :param user_handler:
+    :return:
     """
     await user_handler.update_user(user_id=user_id, model=model)
 
@@ -61,16 +74,22 @@ async def update_account(
 @router.delete(
     path="/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    description="For deleting an account"
+    description="For deleting user",
+    operation_id="delete_user",
 )
 @inject
-async def delete_account(
+async def delete_user(
     request: Request,
     response: Response,
     user_id: uuid.UUID,
     user_handler: UserHandler = Depends(Provide[Container.user_handler]),
 ) -> None:
     """
-    Delete an account
+    Delete user
+    :param request:
+    :param response:
+    :param user_id:
+    :param user_handler:
+    :return:
     """
     await user_handler.delete_user(user_id=user_id)

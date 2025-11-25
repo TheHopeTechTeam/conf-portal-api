@@ -24,6 +24,7 @@ router: AuthRouter = AuthRouter(
     path="/{conference_id}/schedule",
     response_model=EventScheduleList,
     status_code=status.HTTP_200_OK,
+    operation_id="get_event_schedule",
 )
 @inject
 async def get_event_schedule(

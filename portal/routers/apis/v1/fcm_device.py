@@ -22,6 +22,7 @@ router: AuthRouter = AuthRouter(
 @router.post(
     path="/register/{device_id}",
     status_code=status.HTTP_201_CREATED,
+    operation_id="register_device",
 )
 @inject
 async def register_device(

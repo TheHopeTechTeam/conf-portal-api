@@ -25,6 +25,7 @@ router: AuthRouter = AuthRouter(
     path="",
     response_model=UUIDBaseModel,
     status_code=status.HTTP_201_CREATED,
+    operation_id="create_feedback",
 )
 @inject
 async def create_feedback(

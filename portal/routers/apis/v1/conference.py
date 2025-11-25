@@ -28,6 +28,7 @@ router: AuthRouter = AuthRouter(
     path="/list",
     response_model=ConferenceList,
     status_code=status.HTTP_200_OK,
+    operation_id="get_conference_list",
 )
 @inject
 async def get_conferences(
@@ -52,6 +53,7 @@ async def get_conferences(
     path="/active",
     response_model=ConferenceDetail,
     status_code=status.HTTP_200_OK,
+    operation_id="get_active_conference",
 )
 @inject
 async def get_active_conference(
@@ -76,6 +78,7 @@ async def get_active_conference(
     path="/{conference_id}",
     response_model=ConferenceDetail,
     status_code=status.HTTP_200_OK,
+    operation_id="get_conference_detail",
 )
 @inject
 async def get_conference_detail(

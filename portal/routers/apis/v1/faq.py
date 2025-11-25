@@ -25,6 +25,7 @@ router: AuthRouter = AuthRouter(
     path="/categories",
     status_code=status.HTTP_200_OK,
     response_model=FaqCategoryList,
+    operation_id="get_faq_categories",
 )
 @inject
 async def get_faq_categories(
@@ -40,6 +41,7 @@ async def get_faq_categories(
     path="/category/{category_id}",
     status_code=status.HTTP_200_OK,
     response_model=FaqCategoryBase,
+    operation_id="get_faq_category_by_id",
 )
 @inject
 async def get_category_by_id(
@@ -56,6 +58,7 @@ async def get_category_by_id(
     path="/{faq_id}",
     status_code=status.HTTP_200_OK,
     response_model=FaqBase,
+    operation_id="get_faq_by_id",
 )
 @inject
 async def get_faq_by_id(
@@ -72,9 +75,10 @@ async def get_faq_by_id(
     path="/category/{category_id}/list",
     status_code=status.HTTP_200_OK,
     response_model=FaqList,
+    operation_id="get_faqs_by_category_id",
 )
 @inject
-async def get_faqs_by_category(
+async def get_faqs_by_category_id(
     category_id: uuid.UUID,
     faq_handler: FAQHandler = Depends(Provide[Container.faq_handler]),
 ) -> FaqList:

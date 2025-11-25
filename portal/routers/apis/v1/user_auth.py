@@ -25,6 +25,7 @@ router: AuthRouter = AuthRouter(
     response_model=UserLoginResponse,
     status_code=status.HTTP_200_OK,
     require_auth=False,
+    operation_id="user_auth_login",
 )
 @inject
 async def user_login(
@@ -44,7 +45,8 @@ async def user_login(
     path="/refresh",
     response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
-    require_auth=False
+    require_auth=False,
+    operation_id="user_auth_refresh_token",
 )
 @inject
 async def user_refresh_token(
@@ -64,6 +66,7 @@ async def user_refresh_token(
     response_model=LogoutResponse,
     status_code=status.HTTP_200_OK,
     require_auth=False,
+    operation_id="user_auth_logout",
 )
 @inject
 async def user_logout(
