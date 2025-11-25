@@ -31,11 +31,18 @@ class OrderByQueryBaseModel(PaginationQueryBaseModel):
     descending: bool = Field(False, description="Descending order")
 
 
-class GenericQueryBaseModel(OrderByQueryBaseModel, DeleteQueryBaseModel):
+class KeywordQueryBaseModel(BaseModel):
+    """
+    Base serializer mixin for all keyword query models.
+    """
+    keyword: Optional[str] = Field(None, description="Keyword filter")
+
+
+class GenericQueryBaseModel(OrderByQueryBaseModel, DeleteQueryBaseModel, KeywordQueryBaseModel):
     """
     Base serializer mixin for all generic query models.
     """
-    keyword: Optional[str] = Field(None, description="Keyword filter")
+    pass
 
 
 class PaginationBaseResponseModel(BaseModel):

@@ -44,6 +44,11 @@ class UserPages(PaginationBaseResponseModel):
     items: Optional[list[UserTableItem]] = Field(..., description="Items")
 
 
+class UserList(BaseModel):
+    """UserList"""
+    items: Optional[list[UserBase]] = Field(..., description="Items")
+
+
 class UserCreate(BaseModel):
     """UserCreate"""
     phone_number: str = Field(..., description="User's phone number")

@@ -12,7 +12,19 @@ from portal.handlers import AdminUserHandler
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
-from portal.serializers.v1.admin.user import UserQuery, UserPages, UserCreate, UserItem, UserUpdate, UserBulkAction, BindRole, ChangePassword, UserRoles
+from portal.serializers.mixins.base import KeywordQueryBaseModel
+from portal.serializers.v1.admin.user import (
+    UserQuery,
+    UserPages,
+    UserCreate,
+    UserItem,
+    UserUpdate,
+    UserBulkAction,
+    BindRole,
+    ChangePassword,
+    UserRoles,
+    UserList,
+)
 
 router: AuthRouter = AuthRouter(is_admin=True)
 
@@ -34,6 +46,25 @@ async def get_user_pages(
     :return:
     """
     return await admin_user_handler.get_user_pages(model=query_model)
+
+
+@router.get(
+    path="/list",
+    status_code=status.HTTP_200_OK,
+    response_model=UserList
+)
+@inject
+async def get_user_list(
+    query_model: Annotated[KeywordQueryBaseModel, Query()],
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+
+    :param query_model:
+    :param admin_user_handler:
+    :return:
+    """
+    return await admin_user_handler.get_user_list(keyword=query_model.keyword)
 
 
 @router.post(

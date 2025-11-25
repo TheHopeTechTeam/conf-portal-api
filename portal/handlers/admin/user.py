@@ -30,7 +30,7 @@ from portal.serializers.v1.admin.user import (
     UserBulkAction,
     ChangePassword,
     BindRole,
-    UserRoles,
+    UserRoles, UserBase, UserList,
 )
 
 
@@ -177,6 +177,36 @@ class AdminUserHandler:
         )
 
     @distributed_trace()
+    async def get_user_list(self, keyword: Optional[str] = None) -> UserList:
+        """
+        Get user list
+        :param keyword:
+        :return:
+        """
+        users: list[UserBase] = await (
+            self._session.select(
+                PortalUser.id,
+                PortalUser.phone_number,
+                PortalUser.email,
+                PortalUserProfile.display_name,
+            )
+            .join(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
+            .where(
+                keyword, lambda: sa.or_(
+                    PortalUser.phone_number.ilike(f"%{keyword}%"),
+                    PortalUser.email.ilike(f"%{keyword}%"),
+                    PortalUserProfile.display_name.ilike(f"%{keyword}%")
+                )
+            )
+            .where(PortalUser.is_deleted == False)
+            .where(PortalUser.is_active == True)
+            .order_by(PortalUser.created_at.asc())
+            .limit(100)
+            .fetch(as_model=UserBase)
+        )
+        return UserList(items=users)
+
+    @distributed_trace()
     async def get_user_by_id(self, user_id: UUID) -> Optional[UserItem]:
         """
         Get user by ID
@@ -319,8 +349,6 @@ class AdminUserHandler:
             raise ConflictErrorException(detail="User already exists", debug_detail=str(e))
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
-
-
 
     @distributed_trace()
     async def update_user(self, user_id: UUID, model: UserUpdate) -> None:
