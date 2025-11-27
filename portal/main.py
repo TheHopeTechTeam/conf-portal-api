@@ -15,6 +15,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.tracing import Span
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
@@ -23,6 +24,7 @@ from portal.container import Container
 from portal.exceptions.responses import ApiBaseException
 from portal.libs.consts.base import SECURITY_SCHEMES
 from portal.libs.contexts.request_session_context import get_request_session
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
 from portal.libs.utils.lifespan import lifespan
 from portal.middlewares import CoreRequestMiddleware, AuthMiddleware
@@ -175,25 +177,34 @@ async def root():
 
 
 @app.exception_handler(HTTPException)
-async def root_http_exception_handler(request, exc: HTTPException):
+@distributed_trace(inject_span=True)
+async def root_http_exception_handler(request, exc: HTTPException, _span: Span = None):
     """
 
     :param request:
     :param exc:
+    :param _span:
     :return:
     """
     session = get_request_session()
     if session is not None:
         await session.rollback()
+    try:
+        _span.set_data("error.detail", exc.detail)
+        _span.set_data("error.url", str(request.url))
+    except Exception:
+        pass
     return await http_exception_handler(request, exc)
 
 
 @app.exception_handler(ApiBaseException)
-async def root_api_exception_handler(request, exc: ApiBaseException):
+@distributed_trace(inject_span=True)
+async def root_api_exception_handler(request, exc: ApiBaseException, _span: Span = None):
     """
 
     :param request:
     :param exc:
+    :param _span:
     :return:
     """
     session = get_request_session()
@@ -204,6 +215,12 @@ async def root_api_exception_handler(request, exc: ApiBaseException):
     if settings.is_dev:
         content["debug_detail"] = exc.debug_detail
         content["url"] = str(request.url)
+    try:
+        _span.set_data("error.detail", exc.detail)
+        _span.set_data("error.debug_detail", exc.debug_detail)
+        _span.set_data("error.url", str(request.url))
+    except Exception:
+        pass
     return JSONResponse(
         content=content,
         status_code=exc.status_code
@@ -211,11 +228,13 @@ async def root_api_exception_handler(request, exc: ApiBaseException):
 
 
 @app.exception_handler(Exception)
-async def exception_handler(request: Request, exc):
+@distributed_trace(inject_span=True)
+async def exception_handler(request: Request, exc, _span: Span = None):
     """
 
     :param request:
     :param exc:
+    :param _span:
     :return:
     """
     content = defaultdict()
@@ -225,6 +244,12 @@ async def exception_handler(request: Request, exc):
     }
     if settings.is_dev:
         content["debug_detail"] = f"{exc.__class__.__name__}: {exc}"
+    try:
+        _span.set_data("error.detail", content["detail"])
+        _span.set_data("error.debug_detail", content["debug_detail"])
+        _span.set_data("error.url", str(request.url))
+    except Exception:
+        pass
     return JSONResponse(
         content=content,
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR

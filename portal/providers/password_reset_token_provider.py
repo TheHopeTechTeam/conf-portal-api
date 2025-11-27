@@ -46,13 +46,26 @@ class PasswordResetTokenProvider:
         :param user_agent: User agent
         :return: Reset token
         """
-        # Invalidate all existing tokens for this user
-        await self._invalidate_user_tokens(user_id)
+        now = datetime.now(timezone.utc)
+
+        # Reuse existing valid token within expiry window
+        existing_token: Optional[str] = await (
+            self._session.select(
+                PortalPasswordResetToken.token
+            )
+            .where(PortalPasswordResetToken.user_id == user_id)
+            .where(PortalPasswordResetToken.used_at.is_(None))
+            .where(PortalPasswordResetToken.expires_at > now)
+            .order_by(PortalPasswordResetToken.expires_at.desc())
+            .fetchval()
+        )
+
+        if existing_token:
+            return existing_token
 
         # Generate new token
         token = self._generate_token()
         token_hash = self._hash_token(token)
-        now = datetime.now(timezone.utc)
         expires_at = now + timedelta(minutes=self._token_expire_minutes)
 
         # Store token in database

@@ -1,6 +1,7 @@
 """
 LogRouting
 """
+import json
 import time
 from typing import Callable, Dict, Any
 
@@ -15,26 +16,75 @@ class LogRoute(APIRoute):
     """LogRouting"""
 
     @staticmethod
+    def _is_sensitive_key(key: str) -> bool:
+        """
+        Check if a key contains sensitive keywords.
+
+        :param key: Key name to check
+        :return: True if key is sensitive, False otherwise
+        """
+        key_lower = key.lower()
+        return any(
+            sensitive_keyword in key_lower
+            for sensitive_keyword in settings.SENSITIVE_PARAMS
+        )
+
+    @staticmethod
     def filter_sensitive_params(params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Filter sensitive parameters from query params to prevent logging sensitive information.
 
         :param params: Dictionary of query parameters
-        :return: Dictionary with sensitive values replaced by "***"
+        :return: Dictionary with sensitive values replaced by "********"
         """
         filtered_params = {}
         for key, value in params.items():
-            # Check if the parameter name (case-insensitive) contains sensitive keywords
-            key_lower = key.lower()
-            is_sensitive = any(
-                sensitive_keyword in key_lower
-                for sensitive_keyword in settings.SENSITIVE_PARAMS
-            )
-            if is_sensitive:
+            if LogRoute._is_sensitive_key(key):
                 filtered_params[key] = "********"
             else:
                 filtered_params[key] = value
         return filtered_params
+
+    @classmethod
+    def filter_sensitive_data(cls, data: Any) -> Any:
+        """
+        Recursively filter sensitive data from nested structures (dict, list).
+
+        :param data: Data structure to filter (dict, list, or primitive)
+        :return: Filtered data structure with sensitive values replaced by "********"
+        """
+        if isinstance(data, dict):
+            filtered_dict = {}
+            for key, value in data.items():
+                if cls._is_sensitive_key(key):
+                    filtered_dict[key] = "********"
+                else:
+                    filtered_dict[key] = cls.filter_sensitive_data(value)
+            return filtered_dict
+        elif isinstance(data, list):
+            return [cls.filter_sensitive_data(item) for item in data]
+        else:
+            return data
+
+    @staticmethod
+    def filter_request_body(body_str: str) -> str:
+        """
+        Filter sensitive information from request body string.
+
+        :param body_str: Request body as string
+        :return: Filtered request body as string
+        """
+        if not body_str or not body_str.strip():
+            return body_str
+
+        try:
+            # Try to parse as JSON
+            body_data = json.loads(body_str)
+            filtered_data = LogRoute.filter_sensitive_data(body_data)
+            return json.dumps(filtered_data, ensure_ascii=False)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            # If not JSON, return as is (could be form data, plain text, etc.)
+            return body_str
 
     def get_route_handler(self) -> Callable:
         """
@@ -58,9 +108,12 @@ class LogRoute(APIRoute):
                 "http.request.path": request.url.path,
                 "http.request.params": filtered_params
             }
-            if request.method in ("POST", "PUT"):
+            if request.method in ("POST", "PUT", "PATCH"):
                 try:
-                    request_message["http.request.body"] = request_body.decode()
+                    body_str = request_body.decode()
+                    # Filter sensitive information from request body
+                    filtered_body = self.filter_request_body(body_str)
+                    request_message["http.request.body"] = filtered_body
                 except Exception as exc:  # noqa
                     logger.warning(exc)
                     request_message["http.request.body"] = ""

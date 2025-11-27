@@ -1,6 +1,10 @@
 """
 Tests for portal.providers.password_provider.PasswordProvider
 """
+import base64
+
+import pytest
+
 from portal.providers.password_provider import PasswordProvider
 
 
@@ -61,5 +65,47 @@ def test_verify_password_failure_invalid_hash(password_provider: PasswordProvide
     password = "hello-world"
     invalid_hash = "invalid_format_hash"
     assert not password_provider.verify_password(password=password, password_hash=invalid_hash)
+
+
+def test_verify_password_failure_version_mismatch(password_provider: PasswordProvider) -> None:
+    """
+    Tampering with the embedded version byte should invalidate the hash.
+    """
+    password = "HelloWorld!123"
+    password_hash = password_provider.hash_password(password=password)
+
+    token = password_hash.split("$", 1)[1]
+    padded_token = token + ("=" * (-len(token) % 4))
+    payload = bytearray(base64.urlsafe_b64decode(padded_token.encode("utf-8")))
+    payload[0] = (payload[0] + 1) % 256
+    tampered_token = base64.urlsafe_b64encode(bytes(payload)).decode("utf-8").rstrip("=")
+    tampered_hash = f"pbkdf2_sha256${tampered_token}"
+
+    assert not password_provider.verify_password(password=password, password_hash=tampered_hash)
+
+
+def test_validate_password_success(password_provider: PasswordProvider) -> None:
+    """
+    Returns True when password meets all complexity requirements.
+    """
+    password = "Abc1234*"
+    assert password_provider.validate_password(password=password)
+
+
+@pytest.mark.parametrize(
+    "password",
+    [
+        "short1!",
+        "alllowercase1!",
+        "ALLUPPERCASE1!",
+        "NoDigitsHere!",
+        "NoSpecial123",
+    ],
+)
+def test_validate_password_failure(password_provider: PasswordProvider, password: str) -> None:
+    """
+    Returns False when password is missing any required character class or minimum length.
+    """
+    assert not password_provider.validate_password(password=password)
 
 
