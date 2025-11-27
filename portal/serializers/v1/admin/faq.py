@@ -54,7 +54,7 @@ class AdminFaqQuery(GenericQueryBaseModel):
     """
     FAQ query model
     """
-    category_id: Optional[UUID] = Field(None, serialization_alias="categoryId", description="Category ID")
+    category_id: Optional[UUID] = Field(None, description="Category ID")
 
 
 class AdminFaqBase(UUIDBaseModel):
