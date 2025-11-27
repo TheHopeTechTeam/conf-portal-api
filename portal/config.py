@@ -146,6 +146,9 @@ class Configuration(BaseSettings):
     GS_CREDENTIALS: Optional[service_account.Credentials] = None
     GOOGLE_FIREBASE_CERTIFICATE: dict = {}
 
+    # [Logging]
+    SENSITIVE_PARAMS: set[str] = set(os.getenv(key="SENSITIVE_PARAMS", default="password,secret,api_key").split(","))
+
 
     @model_validator(mode="after")
     def _load_google_cloud_credentials(self) -> "Configuration":

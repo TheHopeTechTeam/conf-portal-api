@@ -2,16 +2,39 @@
 LogRouting
 """
 import time
-from typing import Callable
+from typing import Callable, Dict, Any
 
 from fastapi import Request, Response
 from fastapi.routing import APIRoute
 
+from portal.config import settings
 from portal.libs.logger import logger
 
 
 class LogRoute(APIRoute):
     """LogRouting"""
+
+    @staticmethod
+    def filter_sensitive_params(params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Filter sensitive parameters from query params to prevent logging sensitive information.
+
+        :param params: Dictionary of query parameters
+        :return: Dictionary with sensitive values replaced by "***"
+        """
+        filtered_params = {}
+        for key, value in params.items():
+            # Check if the parameter name (case-insensitive) contains sensitive keywords
+            key_lower = key.lower()
+            is_sensitive = any(
+                sensitive_keyword in key_lower
+                for sensitive_keyword in settings.SENSITIVE_PARAMS
+            )
+            if is_sensitive:
+                filtered_params[key] = "********"
+            else:
+                filtered_params[key] = value
+        return filtered_params
 
     def get_route_handler(self) -> Callable:
         """
@@ -28,10 +51,12 @@ class LogRoute(APIRoute):
             # Before controller, get request body
             start = time.time()
             request_body = await request.body()
+            # Filter sensitive parameters from query params
+            filtered_params = self.filter_sensitive_params(dict(request.query_params))
             request_message = {
                 "http.request.method": request.method,
                 "http.request.path": request.url.path,
-                "http.request.params": dict(request.query_params)
+                "http.request.params": filtered_params
             }
             if request.method in ("POST", "PUT"):
                 try:

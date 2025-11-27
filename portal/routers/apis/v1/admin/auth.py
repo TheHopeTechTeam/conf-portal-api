@@ -201,3 +201,6 @@ async def confirm_password_reset(
     :return:
     """
     await admin_auth_handler.reset_password(model)
+    return {
+        "message": "Password reset successfully"
+    }
