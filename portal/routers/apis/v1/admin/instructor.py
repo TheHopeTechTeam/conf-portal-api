@@ -99,6 +99,24 @@ async def create_instructor(
 
 
 @router.put(
+    path="/restore",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def restore_instructors(
+    model: BulkAction,
+    admin_instructor_handler: AdminInstructorHandler = Depends(Provide[Container.admin_instructor_handler])
+):
+    """
+    Restore soft-deleted instructors
+    :param model:
+    :param admin_instructor_handler:
+    :return:
+    """
+    await admin_instructor_handler.restore_instructors(model=model)
+
+
+@router.put(
     path="/{instructor_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
@@ -136,21 +154,3 @@ async def delete_instructor(
     :return:
     """
     await admin_instructor_handler.delete_instructor(instructor_id=instructor_id, model=model)
-
-
-@router.put(
-    path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
-)
-@inject
-async def restore_instructors(
-    model: BulkAction,
-    admin_instructor_handler: AdminInstructorHandler = Depends(Provide[Container.admin_instructor_handler])
-):
-    """
-    Restore soft-deleted instructors
-    :param model:
-    :param admin_instructor_handler:
-    :return:
-    """
-    await admin_instructor_handler.restore_instructors(model=model)

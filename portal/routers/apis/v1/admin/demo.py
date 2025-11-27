@@ -13,6 +13,7 @@ from portal.handlers import DemoHandler
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, DeleteBaseModel
+from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.demo import DemoPages, DemoList, DemoCreate, DemoUpdate
 
 router: AuthRouter = AuthRouter(require_auth=False)
@@ -73,26 +74,6 @@ async def create_demo(
     return await demo_handler.create_demo(model=demo_data)
 
 
-@router.put(
-    path="/{demo_id}",
-    status_code=status.HTTP_204_NO_CONTENT
-)
-@inject
-async def update_demo(
-    demo_id: uuid.UUID,
-    demo_data: DemoUpdate,
-    demo_handler: DemoHandler = Depends(Provide[Container.demo_handler])
-) -> None:
-    """
-    Update a demo
-    :param demo_id:
-    :param demo_data:
-    :param demo_handler:
-    :return:
-    """
-    await demo_handler.update_demo(demo_id=demo_id, model=demo_data)
-
-
 @router.delete(
     path="/{demo_id}",
     status_code=status.HTTP_204_NO_CONTENT
@@ -111,3 +92,41 @@ async def delete_demo(
     :return:
     """
     await demo_handler.delete_demo(demo_id=demo_id, model=model)
+
+
+@router.put(
+    path="/restore",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def restore_demo(
+    model: BulkAction,
+    demo_handler: DemoHandler = Depends(Provide[Container.demo_handler])
+) -> None:
+    """
+
+    :param model:
+    :param demo_handler:
+    :return:
+    """
+    await demo_handler.restore_demo(model=model)
+
+
+@router.put(
+    path="/{demo_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def update_demo(
+    demo_id: uuid.UUID,
+    demo_data: DemoUpdate,
+    demo_handler: DemoHandler = Depends(Provide[Container.demo_handler])
+) -> None:
+    """
+    Update a demo
+    :param demo_id:
+    :param demo_data:
+    :param demo_handler:
+    :return:
+    """
+    await demo_handler.update_demo(demo_id=demo_id, model=demo_data)

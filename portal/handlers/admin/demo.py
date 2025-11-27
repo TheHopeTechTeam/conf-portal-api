@@ -7,6 +7,7 @@ from uuid import UUID
 
 import sqlalchemy as sa
 from asyncpg import UniqueViolationError
+from fastapi import status
 
 from portal.exceptions.responses import ConflictErrorException, ApiBaseException
 from portal.libs.database import Session
@@ -14,6 +15,7 @@ from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import Demo
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, DeleteBaseModel
+from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.demo import DemoDetail, DemoList, DemoPages, DemoUpdate, DemoCreate
 
 
@@ -65,7 +67,7 @@ class DemoHandler:
             .offset(model.page * model.page_size)
             .fetchpages(as_model=DemoDetail)
         )
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         return DemoPages(
             items=items,
             total=total,
@@ -189,3 +191,25 @@ class DemoHandler:
             .fetch(as_model=DemoDetail)
         )
         return DemoList(items=items)
+
+    @distributed_trace()
+    async def restore_demo(self, model: BulkAction) -> None:
+        """
+
+        :param model:
+        :return:
+        """
+        try:
+            await (
+                self._session.update(Demo)
+                .values(is_deleted=False, delete_reason=None)
+                .where(Demo.id.in_(model.ids))
+                .execute()
+            )
+
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )

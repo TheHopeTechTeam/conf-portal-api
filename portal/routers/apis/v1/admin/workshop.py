@@ -85,6 +85,25 @@ async def create_workshop(
 
 
 @router.put(
+    path="/restore",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+@inject
+async def restore_workshops(
+    model: BulkAction,
+    admin_workshop_handler: AdminWorkshopHandler = Depends(Provide[Container.admin_workshop_handler])
+):
+    """
+    Restore workshops
+    :param model:
+    :param admin_workshop_handler:
+    :return:
+    """
+    return await admin_workshop_handler.restore_workshops(model=model)
+
+
+@router.put(
     path="/{workshop_id}",
     status_code=status.HTTP_200_OK,
     response_model=None,
@@ -182,22 +201,3 @@ async def update_workshop_instructors(
     :return:
     """
     return await admin_workshop_handler.update_workshop_instructors(workshop_id=workshop_id, model=model)
-
-
-@router.put(
-    path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_model=None,
-)
-@inject
-async def restore_workshops(
-    model: BulkAction,
-    admin_workshop_handler: AdminWorkshopHandler = Depends(Provide[Container.admin_workshop_handler])
-):
-    """
-    Restore workshops
-    :param model:
-    :param admin_workshop_handler:
-    :return:
-    """
-    return await admin_workshop_handler.restore_workshops(model=model)

@@ -117,6 +117,24 @@ async def create_conference(
 
 
 @router.put(
+    path="/restore",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def restore_conferences(
+    model: BulkAction,
+    admin_conference_handler: AdminConferenceHandler = Depends(Provide[Container.admin_conference_handler])
+):
+    """
+    Restore soft-deleted conferences
+    :param model:
+    :param admin_conference_handler:
+    :return:
+    """
+    await admin_conference_handler.restore_conferences(model=model)
+
+
+@router.put(
     path="/{conference_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
@@ -193,21 +211,3 @@ async def delete_conference(
     :return:
     """
     await admin_conference_handler.delete_conference(conference_id=conference_id, model=model)
-
-
-@router.put(
-    path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
-)
-@inject
-async def restore_conferences(
-    model: BulkAction,
-    admin_conference_handler: AdminConferenceHandler = Depends(Provide[Container.admin_conference_handler])
-):
-    """
-    Restore soft-deleted conferences
-    :param model:
-    :param admin_conference_handler:
-    :return:
-    """
-    await admin_conference_handler.restore_conferences(model=model)

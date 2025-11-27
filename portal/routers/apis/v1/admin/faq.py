@@ -163,6 +163,24 @@ async def create_faq(
 
 
 @router.put(
+    path="/restore",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def restore_faqs(
+    model: BulkAction,
+    admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
+):
+    """
+    Restore soft-deleted FAQs
+    :param model:
+    :param admin_faq_handler:
+    :return:
+    """
+    await admin_faq_handler.restore_faqs(model=model)
+
+
+@router.put(
     path="/{faq_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
@@ -200,24 +218,6 @@ async def delete_faq(
     :return:
     """
     await admin_faq_handler.delete_faq(faq_id=faq_id, model=model)
-
-
-@router.put(
-    path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
-)
-@inject
-async def restore_faqs(
-    model: BulkAction,
-    admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
-):
-    """
-    Restore soft-deleted FAQs
-    :param model:
-    :param admin_faq_handler:
-    :return:
-    """
-    await admin_faq_handler.restore_faqs(model=model)
 
 
 @router.get(

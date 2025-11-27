@@ -99,6 +99,24 @@ async def create_location(
 
 
 @router.put(
+    path="/restore",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+@inject
+async def restore_locations(
+    model: BulkAction,
+    admin_location_handler: AdminLocationHandler = Depends(Provide[Container.admin_location_handler])
+):
+    """
+    Restore soft-deleted locations
+    :param model:
+    :param admin_location_handler:
+    :return:
+    """
+    await admin_location_handler.restore_locations(model=model)
+
+
+@router.put(
     path="/{location_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
@@ -136,21 +154,3 @@ async def delete_location(
     :return:
     """
     await admin_location_handler.delete_location(location_id=location_id, model=model)
-
-
-@router.put(
-    path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
-)
-@inject
-async def restore_locations(
-    model: BulkAction,
-    admin_location_handler: AdminLocationHandler = Depends(Provide[Container.admin_location_handler])
-):
-    """
-    Restore soft-deleted locations
-    :param model:
-    :param admin_location_handler:
-    :return:
-    """
-    await admin_location_handler.restore_locations(model=model)
