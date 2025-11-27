@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalEventSchedule
 from portal.serializers.v1.event_info import EventScheduleBase, EventScheduleItem, EventScheduleList
 
@@ -26,6 +27,7 @@ class EventInfoHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def get_event_schedule(self, conference_id: uuid.UUID) -> EventScheduleList:
         """
         Get event schedule

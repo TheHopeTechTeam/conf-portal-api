@@ -4,6 +4,7 @@ TestimonyHandler
 import uuid
 
 from portal.libs.database import Session
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalTestimony
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.testimony import TestimonyCreate
@@ -18,6 +19,7 @@ class TestimonyHandler:
     ):
         self._session = session
 
+    @distributed_trace()
     async def create_testimony(self, model: TestimonyCreate) -> UUIDBaseModel:
         """
         Create testimony

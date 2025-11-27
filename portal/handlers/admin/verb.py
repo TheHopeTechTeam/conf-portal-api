@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 from portal.config import settings
 from portal.libs.consts.cache_keys import CacheKeys, CacheExpiry
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalVerb
 from portal.serializers.v1.admin.verb import AdminVerbList, AdminVerbItem
 
@@ -22,6 +23,7 @@ class AdminVerbHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
 
+    @distributed_trace()
     async def get_verb_list(self) -> AdminVerbList:
         """
 

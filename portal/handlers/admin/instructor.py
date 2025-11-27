@@ -4,10 +4,10 @@ AdminInstructorHandler
 import uuid
 from typing import Optional
 
+import sqlalchemy as sa
 from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
-import sqlalchemy as sa
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.handlers import AdminFileHandler
@@ -40,6 +40,7 @@ class AdminInstructorHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
 
+    @distributed_trace()
     async def get_instructor_pages(self, model: AdminInstructorQuery) -> AdminInstructorPages:
         """
 
@@ -83,6 +84,7 @@ class AdminInstructorHandler:
             items=items
         )
 
+    @distributed_trace()
     async def get_instructor_list(self) -> AdminInstructorList:
         """
 
@@ -104,6 +106,7 @@ class AdminInstructorHandler:
         )
         return AdminInstructorList(items=items)
 
+    @distributed_trace()
     async def get_instructor_by_id(self, instructor_id: uuid.UUID) -> AdminInstructorDetail:
         """
 
@@ -130,6 +133,7 @@ class AdminInstructorHandler:
         item.files = await self._file_handler.get_files_by_resource_id(resource_id=item.id)
         return item
 
+    @distributed_trace()
     async def create_instructor(self, model: AdminInstructorCreate) -> UUIDBaseModel:
         """
 

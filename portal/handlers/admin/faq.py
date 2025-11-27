@@ -4,10 +4,10 @@ AdminFaqHandler
 import uuid
 from typing import Optional
 
+import sqlalchemy as sa
 from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
-import sqlalchemy as sa
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.libs.database import Session, RedisPool
@@ -18,7 +18,6 @@ from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction, DeleteQueryBaseModel
 from portal.serializers.v1.admin.faq import (
     AdminFaqQuery,
-    AdminFaqBase,
     AdminFaqPages,
     AdminFaqDetail,
     AdminFaqCreate,
@@ -28,7 +27,8 @@ from portal.serializers.v1.admin.faq import (
     AdminFaqCategoryList,
     AdminFaqCategoryDetail,
     AdminFaqCategoryCreate,
-    AdminFaqCategoryUpdate, AdminFaqItem,
+    AdminFaqCategoryUpdate,
+    AdminFaqItem,
 )
 
 
@@ -43,6 +43,7 @@ class AdminFaqHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def get_faq_pages(self, model: AdminFaqQuery) -> AdminFaqPages:
         """
 
@@ -87,6 +88,7 @@ class AdminFaqHandler:
             items=items
         )
 
+    @distributed_trace()
     async def get_faq_by_id(self, faq_id: uuid.UUID) -> AdminFaqDetail:
         """
 
@@ -118,6 +120,7 @@ class AdminFaqHandler:
 
         return item
 
+    @distributed_trace()
     async def create_faq(self, model: AdminFaqCreate) -> UUIDBaseModel:
         """
 
@@ -230,6 +233,7 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
 
+    @distributed_trace()
     async def get_category_list(self, model: DeleteQueryBaseModel) -> AdminFaqCategoryList:
         """
 
@@ -252,6 +256,7 @@ class AdminFaqHandler:
             return AdminFaqCategoryList(categories=[])
         return AdminFaqCategoryList(categories=items)
 
+    @distributed_trace()
     async def get_category_by_id(self, category_id: uuid.UUID) -> AdminFaqCategoryDetail:
         """
 
@@ -276,6 +281,7 @@ class AdminFaqHandler:
 
         return item
 
+    @distributed_trace()
     async def create_category(self, model: AdminFaqCategoryCreate) -> UUIDBaseModel:
         """
 
@@ -387,4 +393,3 @@ class AdminFaqHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
-

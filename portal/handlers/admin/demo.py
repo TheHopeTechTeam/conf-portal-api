@@ -10,6 +10,7 @@ from asyncpg import UniqueViolationError
 
 from portal.exceptions.responses import ConflictErrorException, ApiBaseException
 from portal.libs.database import Session
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import Demo
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import GenericQueryBaseModel, DeleteBaseModel
@@ -26,6 +27,7 @@ class DemoHandler:
         """initialize"""
         self._session = session
 
+    @distributed_trace()
     async def get_pages(
         self,
         model: GenericQueryBaseModel
@@ -71,6 +73,7 @@ class DemoHandler:
             page_size=model.page_size
         )
 
+    @distributed_trace()
     async def create_demo(self, model: DemoCreate) -> UUIDBaseModel:
         """
 
@@ -99,6 +102,7 @@ class DemoHandler:
         else:
             return UUIDBaseModel(id=demo_id)
 
+    @distributed_trace()
     async def update_demo(self, demo_id: uuid.UUID, model: DemoUpdate) -> None:
         """
 
@@ -139,6 +143,7 @@ class DemoHandler:
                 debug_detail=str(e),
             )
 
+    @distributed_trace()
     async def delete_demo(self, demo_id: UUID, model: DeleteBaseModel) -> None:
         """
 
@@ -167,6 +172,7 @@ class DemoHandler:
                 debug_detail=str(e),
             )
 
+    @distributed_trace()
     async def get_list(
         self
     ) -> DemoList:

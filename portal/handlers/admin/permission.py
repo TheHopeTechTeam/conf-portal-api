@@ -18,11 +18,17 @@ from portal.models import PortalPermission, PortalVerb, PortalResource, PortalRo
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.permission import PermissionBase
 from portal.schemas.user import SUserSensitive
-from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
+from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.v1.admin.permission import (
     AdminPermissionDetail,
     AdminPermissionCreate,
-    AdminPermissionUpdate, AdminPermissionQuery, AdminPermissionPageItem, AdminPermissionPage, AdminPermissionBulkAction, AdminPermissionList, AdminPermissionItem,
+    AdminPermissionUpdate,
+    AdminPermissionQuery,
+    AdminPermissionPageItem,
+    AdminPermissionPage,
+    AdminPermissionBulkAction,
+    AdminPermissionList,
+    AdminPermissionItem,
 )
 
 
@@ -37,6 +43,7 @@ class AdminPermissionHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def init_user_permissions_cache(self, user: SUserSensitive, expire: int) -> Optional[list[str]]:
         """
         Initialize user permissions cache
@@ -57,6 +64,7 @@ class AdminPermissionHandler:
         await self._redis.expire(key, expire)
         return permission_codes
 
+    @distributed_trace()
     async def clear_user_permissions_cache(self, user_id: UUID):
         """
         Clear user permissions cache
@@ -66,6 +74,7 @@ class AdminPermissionHandler:
         key = create_permission_key(str(user_id))
         await self._redis.delete(key)
 
+    @distributed_trace()
     async def _get_user_role_permissions(self, user: SUserSensitive) -> Optional[list[PermissionBase]]:
         """
         Get permissions by user role
@@ -115,6 +124,7 @@ class AdminPermissionHandler:
             .fetch(as_model=PermissionBase)
         )
 
+    @distributed_trace()
     async def _get_all_permissions(self) -> Optional[list[PermissionBase]]:
         """
         Get all permissions

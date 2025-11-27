@@ -5,7 +5,7 @@ from uuid import UUID
 
 from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session
-from portal.models.log import PortalLog
+from portal.libs.decorators.sentry_tracer import distributed_trace
 
 
 class AdminLogHandler:
@@ -17,6 +17,7 @@ class AdminLogHandler:
     ):
         self._session = session
 
+    @distributed_trace()
     async def create_log(
         self,
         operation_type: OperationType,
@@ -36,4 +37,3 @@ class AdminLogHandler:
         :param changed_fields:
         :return:
         """
-

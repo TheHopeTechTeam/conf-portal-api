@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalEventSchedule, PortalConference
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.admin.event_info import AdminEventInfoList, AdminEventInfoItem, AdminEventInfoDetail, AdminEventInfoCreate, AdminEventInfoUpdate
@@ -27,6 +28,7 @@ class AdminEventInfoHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def get_event_info_list(self, conference_id: uuid.UUID) -> AdminEventInfoList:
         """
 
@@ -58,6 +60,7 @@ class AdminEventInfoHandler:
 
         return AdminEventInfoList(items=items)
 
+    @distributed_trace()
     async def get_event_info_by_id(self, event_id: uuid.UUID) -> AdminEventInfoDetail:
         """
 
@@ -88,6 +91,7 @@ class AdminEventInfoHandler:
             raise NotFoundException(detail=f"Event info {event_id} not found")
         return item
 
+    @distributed_trace()
     async def create_event_info(self, model: AdminEventInfoCreate) -> UUIDBaseModel:
         """
 
@@ -118,6 +122,7 @@ class AdminEventInfoHandler:
         else:
             return UUIDBaseModel(id=event_id)
 
+    @distributed_trace()
     async def update_event_info(self, event_id: uuid.UUID, model: AdminEventInfoUpdate) -> None:
         """
 
@@ -153,6 +158,7 @@ class AdminEventInfoHandler:
                 debug_detail=str(e),
             )
 
+    @distributed_trace()
     async def delete_event_info(self, event_id: uuid.UUID) -> None:
         """
 

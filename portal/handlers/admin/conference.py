@@ -43,6 +43,7 @@ class AdminConferenceHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def get_conference_pages(self, model: AdminConferenceQuery) -> AdminConferencePages:
         """
 
@@ -90,6 +91,7 @@ class AdminConferenceHandler:
             items=items
         )
 
+    @distributed_trace()
     async def get_conference_list(self) -> AdminConferenceList:
         """
 
@@ -106,6 +108,7 @@ class AdminConferenceHandler:
         )
         return AdminConferenceList(items=items)
 
+    @distributed_trace()
     async def get_active_conference(self) -> AdminConferenceItem:
         """
 
@@ -133,6 +136,7 @@ class AdminConferenceHandler:
             raise NotFoundException(detail="No active conference found")
         return item
 
+    @distributed_trace()
     async def get_conference_by_id(self, conference_id: uuid.UUID) -> AdminConferenceDetail:
         """
 
@@ -164,6 +168,7 @@ class AdminConferenceHandler:
 
         return item
 
+    @distributed_trace()
     async def create_conference(self, model: AdminConferenceCreate) -> UUIDBaseModel:
         """
 

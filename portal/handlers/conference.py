@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 from portal.config import settings
 from portal.handlers import AdminFileHandler
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalConference, PortalConferenceInstructors, PortalInstructor, PortalLocation
 from portal.serializers.v1.conference import ConferenceBase, ConferenceDetail, ConferenceList
 
@@ -27,6 +28,7 @@ class ConferenceHandler:
         self._redis: Redis = redi_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
 
+    @distributed_trace()
     async def get_conferences(self) -> ConferenceList:
         """
         Get conference
@@ -45,6 +47,7 @@ class ConferenceHandler:
         )
         return ConferenceList(conferences=conferences)
 
+    @distributed_trace()
     async def get_active_conference(self) -> ConferenceDetail:
         """
         Get an active conference
@@ -61,6 +64,7 @@ class ConferenceHandler:
         active_obj = await self.get_conference_detail(conference_id=conference_id)
         return active_obj
 
+    @distributed_trace()
     async def get_conference_detail(self, conference_id: uuid.UUID) -> ConferenceDetail:
         """
         Get conference detail

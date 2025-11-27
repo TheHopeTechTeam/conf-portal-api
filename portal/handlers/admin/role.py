@@ -33,6 +33,7 @@ class AdminRoleHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def init_user_roles_cache(self, user: SUserSensitive, expire: int) -> Optional[list[str]]:
         """
         Initialize user roles cache
@@ -57,6 +58,7 @@ class AdminRoleHandler:
         await self._redis.expire(key, expire)
         return role_codes
 
+    @distributed_trace()
     async def clear_user_roles_cache(self, user_id: UUID):
         """
         Clear user roles cache
@@ -66,6 +68,7 @@ class AdminRoleHandler:
         key = create_user_role_key(str(user_id))
         await self._redis.delete(key)
 
+    @distributed_trace()
     async def get_role_pages(self, model: GenericQueryBaseModel) -> AdminRolePages:
         """
 

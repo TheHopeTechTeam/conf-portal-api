@@ -32,6 +32,7 @@ class AdminFeedbackHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def get_feedback_pages(self, model: AdminFeedbackQuery) -> AdminFeedbackPages:
         """
 

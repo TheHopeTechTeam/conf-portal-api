@@ -30,6 +30,7 @@ class AdminTestimonyHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def get_testimony_pages(self, model: AdminTestimonyQuery) -> AdminTestimonyPages:
         """
 

@@ -4,10 +4,10 @@ AdminLocationHandler
 import uuid
 from typing import Optional
 
+import sqlalchemy as sa
 from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
-import sqlalchemy as sa
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.handlers import AdminFileHandler
@@ -40,6 +40,7 @@ class AdminLocationHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
 
+    @distributed_trace()
     async def get_location_pages(self, model: AdminLocationQuery) -> AdminLocationPages:
         """
 
@@ -84,6 +85,7 @@ class AdminLocationHandler:
             items=items
         )
 
+    @distributed_trace()
     async def get_location_list(self) -> AdminLocationList:
         """
         Get location list
@@ -100,6 +102,7 @@ class AdminLocationHandler:
         )
         return AdminLocationList(items=items)
 
+    @distributed_trace()
     async def get_location_by_id(self, location_id: uuid.UUID) -> AdminLocationDetail:
         """
 
@@ -129,6 +132,7 @@ class AdminLocationHandler:
         item.files = await self._file_handler.get_files_by_resource_id(resource_id=item.id)
         return item
 
+    @distributed_trace()
     async def create_location(self, model: AdminLocationCreate) -> UUIDBaseModel:
         """
 

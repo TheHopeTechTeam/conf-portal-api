@@ -15,6 +15,7 @@ from portal.exceptions.responses import ApiBaseException, NotFoundException
 from portal.libs.consts.enums import Gender
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalUser, PortalUserProfile, PortalThirdPartyProvider, PortalUserThirdPartyAuth
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.user import SUserThirdParty, SAuthProvider, SUserDetail
@@ -34,6 +35,7 @@ class UserHandler:
         # contexts
         self._user_ctx: UserContext = get_user_context()
 
+    @distributed_trace()
     async def create_user(
         self,
         token_payload: FirebaseTokenPayload,
@@ -102,6 +104,7 @@ class UserHandler:
                 )
             )
 
+    @distributed_trace()
     async def get_provider_by_name(self, name: str) -> Optional[SAuthProvider]:
         """
 
@@ -118,6 +121,7 @@ class UserHandler:
         )
         return provider
 
+    @distributed_trace()
     async def get_user_detail_by_provider_info(self, provider_uid: str, email: str = None) -> Optional[SUserThirdParty]:
         """
         Get user detail by provider id
@@ -156,6 +160,7 @@ class UserHandler:
             return None
         return user
 
+    @distributed_trace()
     async def get_user_detail_by_id(self, user_id: uuid.UUID) -> Optional[SUserDetail]:
         """
 
@@ -186,6 +191,7 @@ class UserHandler:
             return None
         return user
 
+    @distributed_trace()
     async def update_last_login_at(self, user_id: uuid.UUID) -> None:
         await (
             self._session.update(PortalUser)
@@ -194,6 +200,7 @@ class UserHandler:
             .execute()
         )
 
+    @distributed_trace()
     async def get_user(self, user_id: uuid.UUID) -> UserDetail:
         """
         Get user detail
@@ -219,6 +226,7 @@ class UserHandler:
             raise NotFoundException(detail=f"User {user_id} not found")
         return user
 
+    @distributed_trace()
     async def update_user(self, user_id: uuid.UUID, model: UserUpdate) -> None:
         """
 
@@ -244,6 +252,7 @@ class UserHandler:
             .execute()
         )
 
+    @distributed_trace()
     async def delete_user(self, user_id: uuid.UUID) -> None:
         """
 

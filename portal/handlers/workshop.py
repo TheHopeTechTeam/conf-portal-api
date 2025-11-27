@@ -16,6 +16,7 @@ from portal.exceptions.responses import NotFoundException, ConflictErrorExceptio
 from portal.handlers import AdminFileHandler
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import (
     PortalWorkshop,
     PortalWorkshopInstructor,
@@ -50,6 +51,7 @@ class WorkshopHandler:
         except Exception:
             self._user_ctx = None
 
+    @distributed_trace()
     async def get_workshop_schedule_list(self) -> WorkshopScheduleList:
         """
         Get the workshop list
@@ -119,6 +121,7 @@ class WorkshopHandler:
 
         return WorkshopScheduleList(schedule=workshop_schedules)
 
+    @distributed_trace()
     async def get_workshop_detail(self, workshop_id: uuid.UUID) -> WorkshopDetail:
         """
         Get workshop detail
@@ -186,6 +189,7 @@ class WorkshopHandler:
         workshop.image_url = workshop_img[0] if workshop_img else None
         return workshop
 
+    @distributed_trace()
     async def check_has_registered_at_timeslot(self, workshop_id: uuid.UUID) -> bool:
         """
         Check the user has registered at timeslot
@@ -235,6 +239,7 @@ class WorkshopHandler:
         )
         return has_registered
 
+    @distributed_trace()
     async def register_workshop(self, workshop_id: uuid.UUID) -> None:
         """
         Register workshop
@@ -264,6 +269,7 @@ class WorkshopHandler:
         except UniqueViolationError:
             raise ConflictErrorException(detail="You have already registered for this workshop.")
 
+    @distributed_trace()
     async def unregister_workshop(self, workshop_id: uuid.UUID) -> None:
         """
         Unregister workshop
@@ -294,6 +300,7 @@ class WorkshopHandler:
         except Exception as e:
             raise BadRequestException(detail=f"Unregister workshop failed: {e}")
 
+    @distributed_trace()
     async def get_registered_workshops(self) -> dict[str, bool]:
         """
         Get registered workshops
@@ -318,6 +325,7 @@ class WorkshopHandler:
         )
         return registered_workshops
 
+    @distributed_trace()
     async def check_workshop_is_full(self, workshop_id: uuid.UUID) -> bool:
         """
         Check workshop is full
@@ -339,6 +347,7 @@ class WorkshopHandler:
         )
         return is_full
 
+    @distributed_trace()
     async def get_my_workshops(self) -> WorkshopRegisteredList:
         """
         Get my workshops

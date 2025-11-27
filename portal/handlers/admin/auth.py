@@ -31,7 +31,9 @@ from portal.serializers.mixins import TokenResponse, RefreshTokenRequest
 from portal.serializers.v1.admin.auth import (
     AdminLoginRequest,
     AdminInfo,
-    AdminLoginResponse, AdminRequestPasswordResetRequest, AdminResetPasswordWithTokenRequest,
+    AdminLoginResponse,
+    AdminRequestPasswordResetRequest,
+    AdminResetPasswordWithTokenRequest,
 )
 from .permission import AdminPermissionHandler
 from .role import AdminRoleHandler
@@ -191,6 +193,7 @@ class AdminAuthHandler(PasswordValidator):
             .execute()
         )
 
+    @distributed_trace()
     async def refresh_token(self, refresh_data: RefreshTokenRequest) -> TokenResponse:
         """
         Refresh admin access token
@@ -232,6 +235,7 @@ class AdminAuthHandler(PasswordValidator):
             expires_in=self._jwt_provider.access_token_expire_minutes * 60
         )
 
+    @distributed_trace()
     async def get_me(self) -> AdminInfo:
         """
 
@@ -261,6 +265,7 @@ class AdminAuthHandler(PasswordValidator):
             last_login_at=user.last_login_at
         )
 
+    @distributed_trace()
     async def logout(self, access_token: str, refresh_token: str = None) -> bool:
         """
         Logout admin user: blacklist AT and revoke RT family via provider

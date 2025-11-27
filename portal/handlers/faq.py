@@ -8,6 +8,7 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalFaqCategory, PortalFaq
 from portal.serializers.v1.faq import FaqCategoryBase, FaqCategoryList, FaqList, FaqBase
 
@@ -23,6 +24,7 @@ class FAQHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
+    @distributed_trace()
     async def get_faq_categories(self) -> FaqCategoryList:
         """
         Get FAQ categories
@@ -40,6 +42,7 @@ class FAQHandler:
             return FaqCategoryList(categories=[])
         return FaqCategoryList(categories=faq_categories)
 
+    @distributed_trace()
     async def get_category_by_id(self, category_id: uuid.UUID) -> Optional[FaqCategoryBase]:
         """
         Get category by ID
@@ -57,6 +60,7 @@ class FAQHandler:
             return None
         return category
 
+    @distributed_trace()
     async def get_faq_by_id(self, faq_id: uuid.UUID) -> Optional[FaqBase]:
         """
         Get FAQ by ID
@@ -76,6 +80,7 @@ class FAQHandler:
             return None
         return faq
 
+    @distributed_trace()
     async def get_faqs_by_category(self, category_id: uuid.UUID) -> FaqList:
         """
         Get FAQs by category

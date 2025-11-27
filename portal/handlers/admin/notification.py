@@ -3,6 +3,8 @@ AdminNotificationHandler
 """
 from firebase_admin import messaging
 
+from portal.libs.decorators.sentry_tracer import distributed_trace
+
 
 class AdminNotificationHandler:
     """AdminNotificationHandler"""
@@ -11,6 +13,7 @@ class AdminNotificationHandler:
         pass
 
 
+    @distributed_trace()
     async def send_message(self):
         """
 

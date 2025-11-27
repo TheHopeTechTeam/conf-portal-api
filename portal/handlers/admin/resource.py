@@ -13,6 +13,7 @@ from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, ConflictErrorException, UnauthorizedException, NotFoundException
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalResource, PortalPermission, PortalRole, PortalUser, PortalRolePermission
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -40,6 +41,7 @@ class AdminResourceHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._user_ctx: UserContext = get_user_context()
 
+    @distributed_trace()
     async def get_resource(self, resource_id: uuid.UUID) -> AdminResourceDetail:
         """
 
@@ -77,6 +79,7 @@ class AdminResourceHandler:
             raise NotFoundException(detail=f"Resource {resource_id} not found")
         return resource
 
+    @distributed_trace()
     async def create_resource(self, model: AdminResourceCreate) -> UUIDBaseModel:
         """
         Create a resource
@@ -108,6 +111,7 @@ class AdminResourceHandler:
         else:
             return UUIDBaseModel(id=rid)
 
+    @distributed_trace()
     async def change_parent(self, resource_id: uuid.UUID, model: AdminResourceChangeParent):
         """
 
@@ -129,6 +133,7 @@ class AdminResourceHandler:
                 debug_detail=str(e),
             )
 
+    @distributed_trace()
     async def update_resource(self, resource_id: uuid.UUID, model: AdminResourceUpdate):
         """
         Update a resource
@@ -161,6 +166,7 @@ class AdminResourceHandler:
                 debug_detail=str(e),
             )
 
+    @distributed_trace()
     async def change_sequence(self, model: AdminResourceChangeSequence):
         """
 
@@ -187,6 +193,7 @@ class AdminResourceHandler:
                 debug_detail=str(e),
             )
 
+    @distributed_trace()
     async def delete_resource(self, resource_id: uuid.UUID, model: DeleteBaseModel):
         """
         Delete a resource or soft delete. If permanent is True, then delete permanently.
@@ -213,6 +220,7 @@ class AdminResourceHandler:
                 debug_detail=str(e),
             )
 
+    @distributed_trace()
     async def restore_resource(self, resource_id: uuid.UUID):
         """
         Restore the resource by setting is_deleted to False and deleted_reason to None.
@@ -262,6 +270,7 @@ class AdminResourceHandler:
         sort_nodes(root_items)
         return root_items
 
+    @distributed_trace()
     async def get_admin_resource_tree(self) -> AdminResourceTree:
         """
 
@@ -274,6 +283,7 @@ class AdminResourceHandler:
         hierarchical_items = self.build_tree(resources)
         return AdminResourceTree(items=hierarchical_items)
 
+    @distributed_trace()
     async def get_resource_menus(self, is_deleted: bool = False) -> list[AdminResourceItem]:
         """
 
@@ -299,13 +309,14 @@ class AdminResourceHandler:
                     PortalResource.is_deleted == is_deleted,
                     sa.and_(PortalResource.pid.is_(None), PortalResource.is_deleted == False)
                 )
-                )
+            )
             .where(is_deleted == False, lambda: PortalResource.is_deleted == is_deleted)
             .order_by(PortalResource.sequence)
             .fetch(as_model=AdminResourceItem)
         )
         return resources
 
+    @distributed_trace()
     async def get_resource_by_user_id(self, user_id: uuid.UUID) -> list[AdminResourceItem]:
         """
 
@@ -366,6 +377,7 @@ class AdminResourceHandler:
         )
         return resources
 
+    @distributed_trace()
     async def get_resources(self, model: DeleteQueryBaseModel):
         """
         get resources
@@ -377,6 +389,7 @@ class AdminResourceHandler:
         resources = await self.get_resource_menus(is_deleted=model.deleted)
         return AdminResourceList(items=resources)
 
+    @distributed_trace()
     async def get_user_permission_menus(self) -> AdminResourceList:
         """
 

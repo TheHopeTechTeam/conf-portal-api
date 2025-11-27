@@ -4,6 +4,7 @@ FeedbackHandler
 import uuid
 
 from portal.libs.database import Session
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalFeedback
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.feedback import FeedbackCreate
@@ -18,6 +19,7 @@ class FeedbackHandler:
     ):
         self._session = session
 
+    @distributed_trace()
     async def creat_feedback(self, model: FeedbackCreate) -> UUIDBaseModel:
         """
         Create feedback

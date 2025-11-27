@@ -49,6 +49,7 @@ class UserAuthHandler:
         self.fcm_device_handler = fcm_device_handler
         self._third_party_provider = ThirdPartyAuthProvider()
 
+    @distributed_trace()
     async def login(self, model: UserLogin) -> UserLoginResponse:
         """
         Login
@@ -137,6 +138,7 @@ class UserAuthHandler:
                 raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
         return UserLoginResponse(user=user_info, token=token)
 
+    @distributed_trace()
     async def get_token_info(self, user: SUserThirdParty, device_id: uuid.UUID) -> TokenResponse:
         """
 
@@ -168,6 +170,7 @@ class UserAuthHandler:
                 expires_in=self._jwt_provider.access_token_expire_minutes * 60
             )
 
+    @distributed_trace()
     async def get_provider_by_name(self, name: str) -> Optional[SAuthProvider]:
         """
 
@@ -184,6 +187,7 @@ class UserAuthHandler:
         )
         return provider
 
+    @distributed_trace()
     async def refresh_token(self, refresh_data: RefreshTokenRequest) -> TokenResponse:
         """
         Refresh admin access token
@@ -220,6 +224,7 @@ class UserAuthHandler:
             expires_in=self._jwt_provider.access_token_expire_minutes * 60
         )
 
+    @distributed_trace()
     async def logout(self, access_token: str, refresh_token: str = None) -> bool:
         """
         Logout admin user: blacklist AT and revoke RT family via provider
