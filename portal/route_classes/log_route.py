@@ -29,8 +29,7 @@ class LogRoute(APIRoute):
             for sensitive_keyword in settings.SENSITIVE_PARAMS
         )
 
-    @staticmethod
-    def filter_sensitive_params(params: Dict[str, Any]) -> Dict[str, Any]:
+    def filter_sensitive_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Filter sensitive parameters from query params to prevent logging sensitive information.
 
@@ -39,14 +38,13 @@ class LogRoute(APIRoute):
         """
         filtered_params = {}
         for key, value in params.items():
-            if LogRoute._is_sensitive_key(key):
+            if self._is_sensitive_key(key):
                 filtered_params[key] = "********"
             else:
                 filtered_params[key] = value
         return filtered_params
 
-    @classmethod
-    def filter_sensitive_data(cls, data: Any) -> Any:
+    def filter_sensitive_data(self, data: Any) -> Any:
         """
         Recursively filter sensitive data from nested structures (dict, list).
 
@@ -56,18 +54,17 @@ class LogRoute(APIRoute):
         if isinstance(data, dict):
             filtered_dict = {}
             for key, value in data.items():
-                if cls._is_sensitive_key(key):
+                if self._is_sensitive_key(key):
                     filtered_dict[key] = "********"
                 else:
-                    filtered_dict[key] = cls.filter_sensitive_data(value)
+                    filtered_dict[key] = self.filter_sensitive_data(value)
             return filtered_dict
         elif isinstance(data, list):
-            return [cls.filter_sensitive_data(item) for item in data]
+            return [self.filter_sensitive_data(item) for item in data]
         else:
             return data
 
-    @staticmethod
-    def filter_request_body(body_str: str) -> str:
+    def filter_request_body(self, body_str: str) -> str:
         """
         Filter sensitive information from request body string.
 
@@ -80,7 +77,7 @@ class LogRoute(APIRoute):
         try:
             # Try to parse as JSON
             body_data = json.loads(body_str)
-            filtered_data = LogRoute.filter_sensitive_data(body_data)
+            filtered_data = self.filter_sensitive_data(body_data)
             return json.dumps(filtered_data, ensure_ascii=False)
         except (json.JSONDecodeError, ValueError, TypeError):
             # If not JSON, return as is (could be form data, plain text, etc.)
