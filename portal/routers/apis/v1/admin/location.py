@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminLocationHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -27,7 +28,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminLocationPages
+    response_model=AdminLocationPages,
+    permissions=[
+        Permission.CONTENT_LOCATION.read
+    ]
 )
 @inject
 async def get_location_pages(
@@ -46,7 +50,10 @@ async def get_location_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminLocationList
+    response_model=AdminLocationList,
+    permissions=[
+        Permission.CONTENT_LOCATION.read
+    ]
 )
 @inject
 async def get_location_list(
@@ -63,7 +70,10 @@ async def get_location_list(
 @router.get(
     path="/{location_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminLocationDetail
+    response_model=AdminLocationDetail,
+    permissions=[
+        Permission.CONTENT_LOCATION.read
+    ]
 )
 @inject
 async def get_location(
@@ -82,7 +92,10 @@ async def get_location(
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.CONTENT_LOCATION.create
+    ]
 )
 @inject
 async def create_location(
@@ -100,7 +113,10 @@ async def create_location(
 
 @router.put(
     path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONTENT_LOCATION.modify
+    ]
 )
 @inject
 async def restore_locations(
@@ -118,7 +134,10 @@ async def restore_locations(
 
 @router.put(
     path="/{location_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONTENT_LOCATION.modify
+    ]
 )
 @inject
 async def update_location(
@@ -138,7 +157,10 @@ async def update_location(
 
 @router.delete(
     path="/{location_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONTENT_LOCATION.delete
+    ]
 )
 @inject
 async def delete_location(

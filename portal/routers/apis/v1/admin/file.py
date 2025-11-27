@@ -9,6 +9,7 @@ from fastapi import UploadFile, Depends, status, Query
 from portal.container import Container
 from portal.handlers import AdminFileHandler
 from portal.libs.consts.enums import FileUploadSource
+from portal.libs.consts.permission import Permission
 from portal.libs.depends.file_validation import FileValidation
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.mixins.base import BulkAction
@@ -30,7 +31,10 @@ ALLOWED_TYPES = [
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminFilePages
+    response_model=AdminFilePages,
+    permissions=[
+        Permission.CONTENT_FILE.read
+    ]
 )
 @inject
 async def get_file_pages(
@@ -51,6 +55,9 @@ async def get_file_pages(
     status_code=status.HTTP_201_CREATED,
     response_model=AdminFileUploadResponseModel,
     response_model_exclude_none=True,
+    permissions=[
+        Permission.CONTENT_FILE.create
+    ]
 )
 @inject
 async def upload_file(
@@ -69,6 +76,9 @@ async def upload_file(
 @router.post(
     path="/batch_upload",
     status_code=status.HTTP_201_CREATED,
+    permissions=[
+        Permission.CONTENT_FILE.create
+    ]
 )
 @inject
 async def upload_multiple_files(
@@ -89,6 +99,9 @@ async def upload_multiple_files(
     status_code=status.HTTP_200_OK,
     description="For deleting files",
     response_model=AdminBulkActionResponseModel,
+    permissions=[
+        Permission.CONTENT_FILE.delete
+    ]
 )
 @inject
 async def delete_files(

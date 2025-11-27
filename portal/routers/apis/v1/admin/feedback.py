@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminFeedbackHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.admin.feedback import (
     AdminFeedbackQuery,
@@ -23,7 +24,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminFeedbackPages
+    response_model=AdminFeedbackPages,
+    permissions=[
+        Permission.SUPPORT_FEEDBACK.read
+    ]
 )
 @inject
 async def get_feedback_pages(
@@ -36,7 +40,10 @@ async def get_feedback_pages(
 @router.get(
     path="/{feedback_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminFeedbackDetail
+    response_model=AdminFeedbackDetail,
+    permissions=[
+        Permission.SUPPORT_FEEDBACK.read
+    ]
 )
 @inject
 async def get_feedback(
@@ -48,7 +55,10 @@ async def get_feedback(
 
 @router.put(
     path="/{feedback_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FEEDBACK.modify
+    ]
 )
 @inject
 async def update_feedback(

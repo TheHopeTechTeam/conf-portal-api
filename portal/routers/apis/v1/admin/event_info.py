@@ -8,6 +8,7 @@ from fastapi import Depends, status
 
 from portal.container import Container
 from portal.handlers import AdminEventInfoHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.admin.event_info import (
@@ -23,7 +24,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/{conference_id}/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminEventInfoList
+    response_model=AdminEventInfoList,
+    permissions=[
+        Permission.CONFERENCE_EVENT_SCHEDULE.read
+    ]
 )
 @inject
 async def get_event_info_list(
@@ -42,7 +46,10 @@ async def get_event_info_list(
 @router.get(
     path="/{event_info_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminEventInfoDetail
+    response_model=AdminEventInfoDetail,
+    permissions=[
+        Permission.CONFERENCE_EVENT_SCHEDULE.read
+    ]
 )
 @inject
 async def get_event_info_detail(
@@ -61,7 +68,10 @@ async def get_event_info_detail(
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.CONFERENCE_EVENT_SCHEDULE.create
+    ]
 )
 @inject
 async def create_event_info(
@@ -79,7 +89,10 @@ async def create_event_info(
 
 @router.put(
     path="/{event_info_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONFERENCE_EVENT_SCHEDULE.modify
+    ]
 )
 @inject
 async def update_event_info(
@@ -99,7 +112,10 @@ async def update_event_info(
 
 @router.delete(
     path="/{event_info_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONFERENCE_EVENT_SCHEDULE.delete
+    ]
 )
 @inject
 async def delete_event_info(

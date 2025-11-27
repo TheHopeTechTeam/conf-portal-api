@@ -9,6 +9,7 @@ from fastapi import Depends, status, Query
 
 from portal.container import Container
 from portal.handlers import AdminPermissionHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -26,7 +27,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminPermissionPage
+    response_model=AdminPermissionPage,
+    permissions=[
+        Permission.SYSTEM_PERMISSION.read
+    ]
 )
 @inject
 async def get_permission_pages(
@@ -45,7 +49,10 @@ async def get_permission_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminPermissionList
+    response_model=AdminPermissionList,
+    permissions=[
+        Permission.SYSTEM_PERMISSION.read
+    ]
 )
 @inject
 async def get_permission_list(
@@ -62,7 +69,10 @@ async def get_permission_list(
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.SYSTEM_PERMISSION.create
+    ]
 )
 @inject
 async def create_permission(
@@ -81,7 +91,10 @@ async def create_permission(
 @router.get(
     path="/{permission_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminPermissionDetail
+    response_model=AdminPermissionDetail,
+    permissions=[
+        Permission.SYSTEM_PERMISSION.read
+    ]
 )
 @inject
 async def get_permission(
@@ -99,7 +112,10 @@ async def get_permission(
 
 @router.put(
     path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_PERMISSION.modify
+    ]
 )
 @inject
 async def restore_permission(
@@ -117,7 +133,10 @@ async def restore_permission(
 
 @router.put(
     path="/{permission_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_PERMISSION.modify
+    ]
 )
 @inject
 async def update_permission(
@@ -137,7 +156,10 @@ async def update_permission(
 
 @router.delete(
     path="/{permission_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_PERMISSION.delete
+    ]
 )
 @inject
 async def delete_permission(

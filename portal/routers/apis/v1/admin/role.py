@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminRoleHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel, GenericQueryBaseModel
@@ -26,7 +27,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminRolePages
+    response_model=AdminRolePages,
+    permissions=[
+        Permission.SYSTEM_ROLE.read
+    ]
 )
 @inject
 async def get_role_pages(
@@ -45,7 +49,10 @@ async def get_role_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminRoleList
+    response_model=AdminRoleList,
+    permissions=[
+        Permission.SYSTEM_ROLE.read
+    ]
 )
 @inject
 async def get_role_list(
@@ -62,7 +69,10 @@ async def get_role_list(
 @router.get(
     path="/{role_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminRoleTableItem
+    response_model=AdminRoleTableItem,
+    permissions=[
+        Permission.SYSTEM_ROLE.read
+    ]
 )
 @inject
 async def get_role(
@@ -81,7 +91,10 @@ async def get_role(
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.SYSTEM_ROLE.create
+    ]
 )
 @inject
 async def create_role(
@@ -99,7 +112,10 @@ async def create_role(
 
 @router.put(
     path="/{role_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_ROLE.modify
+    ]
 )
 @inject
 async def update_role(
@@ -119,7 +135,10 @@ async def update_role(
 
 @router.delete(
     path="/{role_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_ROLE.delete
+    ]
 )
 @inject
 async def delete_role(
@@ -139,7 +158,10 @@ async def delete_role(
 
 @router.put(
     path="/restore/{role_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_ROLE.modify
+    ]
 )
 @inject
 async def restore_role(
@@ -157,7 +179,10 @@ async def restore_role(
 
 @router.post(
     path="/{role_id}/permissions",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_ROLE.modify
+    ]
 )
 @inject
 async def assign_role_permissions(

@@ -9,6 +9,7 @@ from fastapi import Depends, status, Query
 
 from portal.container import Container
 from portal.handlers import AdminResourceHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -26,7 +27,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.SYSTEM_RESOURCE.create
+    ]
 )
 @inject
 async def create_resource(
@@ -44,7 +48,10 @@ async def create_resource(
 
 @router.delete(
     path="/{resource_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_RESOURCE.delete
+    ]
 )
 @inject
 async def delete_resource(
@@ -64,7 +71,10 @@ async def delete_resource(
 
 @router.put(
     path="/restore/{resource_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_RESOURCE.modify
+    ]
 )
 @inject
 async def restore_resource(
@@ -82,7 +92,10 @@ async def restore_resource(
 
 @router.put(
     path="/change_parent/{resource_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_RESOURCE.modify
+    ]
 )
 @inject
 async def change_resource_parent(
@@ -102,7 +115,10 @@ async def change_resource_parent(
 
 @router.put(
     path="/{resource_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_RESOURCE.modify
+    ]
 )
 @inject
 async def update_resource(
@@ -122,7 +138,10 @@ async def update_resource(
 
 @router.post(
     path="/change_sequence",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_RESOURCE.modify
+    ]
 )
 @inject
 async def change_resource_sequence(
@@ -141,7 +160,10 @@ async def change_resource_sequence(
 @router.get(
     "/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminResourceList
+    response_model=AdminResourceList,
+    permissions=[
+        Permission.SYSTEM_RESOURCE.read
+    ]
 )
 @inject
 async def get_resources(
@@ -177,7 +199,10 @@ async def get_menus(
 @router.get(
     path="/{resource_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminResourceDetail
+    response_model=AdminResourceDetail,
+    permissions=[
+        Permission.SYSTEM_RESOURCE.read
+    ]
 )
 @inject
 async def get_resource(

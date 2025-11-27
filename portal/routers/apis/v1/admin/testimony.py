@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminTestimonyHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.v1.admin.testimony import (
     AdminTestimonyQuery,
@@ -22,7 +23,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminTestimonyPages
+    response_model=AdminTestimonyPages,
+    permissions=[
+        Permission.CONTENT_TESTIMONY.read
+    ]
 )
 @inject
 async def get_testimony_pages(
@@ -35,7 +39,10 @@ async def get_testimony_pages(
 @router.get(
     path="/{testimony_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminTestimonyDetail
+    response_model=AdminTestimonyDetail,
+    permissions=[
+        Permission.CONTENT_TESTIMONY.read
+    ]
 )
 @inject
 async def get_testimony(

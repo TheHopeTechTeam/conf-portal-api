@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminUserHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -32,7 +33,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminUserPages
+    response_model=AdminUserPages,
+    permissions=[
+        Permission.SYSTEM_USER.read
+    ]
 )
 @inject
 async def get_user_pages(
@@ -51,7 +55,10 @@ async def get_user_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminUserList
+    response_model=AdminUserList,
+    permissions=[
+        Permission.SYSTEM_USER.read
+    ]
 )
 @inject
 async def get_user_list(
@@ -70,7 +77,10 @@ async def get_user_list(
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.SYSTEM_USER.create
+    ]
 )
 @inject
 async def create_user(
@@ -89,7 +99,10 @@ async def create_user(
 @router.get(
     path="/me",
     status_code=status.HTTP_200_OK,
-    response_model=AdminUserItem
+    response_model=AdminUserItem,
+    permissions=[
+        Permission.SYSTEM_USER.read
+    ]
 )
 @inject
 async def get_current_user(
@@ -105,7 +118,10 @@ async def get_current_user(
 
 @router.put(
     path="/me",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_USER.modify
+    ]
 )
 @inject
 async def update_current_user(
@@ -125,7 +141,10 @@ async def update_current_user(
     path="/{user_id}/roles",
     status_code=status.HTTP_200_OK,
     description="Get user roles",
-    response_model=AdminUserRoles
+    response_model=AdminUserRoles,
+    permissions=[
+        Permission.SYSTEM_USER.read
+    ]
 )
 @inject
 async def get_user_roles(
@@ -144,7 +163,10 @@ async def get_user_roles(
 @router.get(
     path="/{user_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminUserItem
+    response_model=AdminUserItem,
+    permissions=[
+        Permission.SYSTEM_USER.read
+    ]
 )
 @inject
 async def get_user(
@@ -166,7 +188,10 @@ async def get_user(
 
 @router.put(
     path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_USER.modify
+    ]
 )
 @inject
 async def restore_users(
@@ -184,7 +209,10 @@ async def restore_users(
 
 @router.post(
     path="/{user_id}/bind_role",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_USER.modify
+    ]
 )
 @inject
 async def bind_roles_to_user(
@@ -204,7 +232,10 @@ async def bind_roles_to_user(
 
 @router.post(
     path="/{user_id}/change_password",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_USER.modify
+    ]
 )
 @inject
 async def change_user_password(
@@ -224,7 +255,10 @@ async def change_user_password(
 
 @router.put(
     path="/{user_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_USER.modify
+    ]
 )
 @inject
 async def update_user(
@@ -244,7 +278,10 @@ async def update_user(
 
 @router.delete(
     path="/{user_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_USER.delete
+    ]
 )
 @inject
 async def delete_user(

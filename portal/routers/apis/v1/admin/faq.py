@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminFaqHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -31,7 +32,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.post(
     path="/category",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.SUPPORT_FAQ.create
+    ]
 )
 @inject
 async def create_category(
@@ -49,7 +53,10 @@ async def create_category(
 
 @router.put(
     path="/category/{category_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FAQ.modify
+    ]
 )
 @inject
 async def update_category(
@@ -69,7 +76,10 @@ async def update_category(
 
 @router.delete(
     path="/category/{category_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FAQ.delete
+    ]
 )
 @inject
 async def delete_category(
@@ -89,7 +99,10 @@ async def delete_category(
 
 @router.put(
     path="/category/restore",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FAQ.modify
+    ]
 )
 @inject
 async def restore_categories(
@@ -108,7 +121,10 @@ async def restore_categories(
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminFaqPages
+    response_model=AdminFaqPages,
+    permissions=[
+        Permission.SUPPORT_FAQ.read
+    ]
 )
 @inject
 async def get_faq_pages(
@@ -127,7 +143,10 @@ async def get_faq_pages(
 @router.get(
     path="/{faq_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminFaqDetail
+    response_model=AdminFaqDetail,
+    permissions=[
+        Permission.SUPPORT_FAQ.read
+    ]
 )
 @inject
 async def get_faq(
@@ -146,7 +165,10 @@ async def get_faq(
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.SUPPORT_FAQ.create
+    ]
 )
 @inject
 async def create_faq(
@@ -164,7 +186,10 @@ async def create_faq(
 
 @router.put(
     path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FAQ.modify
+    ]
 )
 @inject
 async def restore_faqs(
@@ -182,7 +207,10 @@ async def restore_faqs(
 
 @router.put(
     path="/{faq_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FAQ.modify
+    ]
 )
 @inject
 async def update_faq(
@@ -202,7 +230,10 @@ async def update_faq(
 
 @router.delete(
     path="/{faq_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FAQ.delete
+    ]
 )
 @inject
 async def delete_faq(
@@ -223,7 +254,10 @@ async def delete_faq(
 @router.get(
     path="/category/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminFaqCategoryList
+    response_model=AdminFaqCategoryList,
+    permissions=[
+        Permission.SUPPORT_FAQ.read
+    ]
 )
 @inject
 async def get_category_list(
@@ -242,7 +276,10 @@ async def get_category_list(
 @router.get(
     path="/category/{category_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminFaqCategoryDetail
+    response_model=AdminFaqCategoryDetail,
+    permissions=[
+        Permission.SUPPORT_FAQ.read
+    ]
 )
 @inject
 async def get_category(

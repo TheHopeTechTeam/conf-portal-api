@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminWorkshopHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -31,6 +32,9 @@ router: AuthRouter = AuthRouter(is_admin=True)
     path="/pages",
     status_code=status.HTTP_200_OK,
     response_model=AdminWorkshopPages,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.read
+    ]
 )
 @inject
 async def get_workshop_pages(
@@ -50,6 +54,9 @@ async def get_workshop_pages(
     path="/{workshop_id}",
     status_code=status.HTTP_200_OK,
     response_model=AdminWorkshopDetail,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.read
+    ]
 )
 @inject
 async def get_workshop_by_id(
@@ -69,6 +76,9 @@ async def get_workshop_by_id(
     path="/",
     status_code=status.HTTP_201_CREATED,
     response_model=UUIDBaseModel,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.create
+    ]
 )
 @inject
 async def create_workshop(
@@ -88,6 +98,9 @@ async def create_workshop(
     path="/restore",
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.modify
+    ]
 )
 @inject
 async def restore_workshops(
@@ -107,6 +120,9 @@ async def restore_workshops(
     path="/{workshop_id}",
     status_code=status.HTTP_200_OK,
     response_model=None,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.modify
+    ]
 )
 @inject
 async def update_workshop(
@@ -128,6 +144,9 @@ async def update_workshop(
     path="/{workshop_id}",
     status_code=status.HTTP_200_OK,
     response_model=None,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.delete
+    ]
 )
 @inject
 async def delete_workshop(
@@ -149,6 +168,9 @@ async def delete_workshop(
     path="/{workshop_id}/sequence",
     status_code=status.HTTP_200_OK,
     response_model=None,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.modify
+    ]
 )
 @inject
 async def change_sequence(
@@ -168,6 +190,9 @@ async def change_sequence(
     path="/instructors/{workshop_id}",
     status_code=status.HTTP_200_OK,
     response_model=AdminWorkshopInstructors,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.read
+    ]
 )
 @inject
 async def get_workshop_instructors(
@@ -186,6 +211,9 @@ async def get_workshop_instructors(
 @router.put(
     path="/instructors/{workshop_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.modify
+    ]
 )
 @inject
 async def update_workshop_instructors(

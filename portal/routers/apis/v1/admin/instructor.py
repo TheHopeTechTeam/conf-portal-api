@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminInstructorHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -27,7 +28,10 @@ router: AuthRouter = AuthRouter(is_admin=True)
 @router.get(
     path="/pages",
     status_code=status.HTTP_200_OK,
-    response_model=AdminInstructorPages
+    response_model=AdminInstructorPages,
+    permissions=[
+        Permission.CONTENT_INSTRUCTOR.read
+    ]
 )
 @inject
 async def get_instructor_pages(
@@ -46,7 +50,10 @@ async def get_instructor_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminInstructorList
+    response_model=AdminInstructorList,
+    permissions=[
+        Permission.CONTENT_INSTRUCTOR.read
+    ]
 )
 @inject
 async def get_instructor_list(
@@ -63,7 +70,10 @@ async def get_instructor_list(
 @router.get(
     path="/{instructor_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminInstructorDetail
+    response_model=AdminInstructorDetail,
+    permissions=[
+        Permission.CONTENT_INSTRUCTOR.read
+    ]
 )
 @inject
 async def get_instructor(
@@ -82,7 +92,10 @@ async def get_instructor(
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.CONTENT_INSTRUCTOR.create
+    ]
 )
 @inject
 async def create_instructor(
@@ -100,7 +113,10 @@ async def create_instructor(
 
 @router.put(
     path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONTENT_INSTRUCTOR.modify
+    ]
 )
 @inject
 async def restore_instructors(
@@ -118,7 +134,10 @@ async def restore_instructors(
 
 @router.put(
     path="/{instructor_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONTENT_INSTRUCTOR.modify
+    ]
 )
 @inject
 async def update_instructor(
@@ -138,7 +157,10 @@ async def update_instructor(
 
 @router.delete(
     path="/{instructor_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONTENT_INSTRUCTOR.delete
+    ]
 )
 @inject
 async def delete_instructor(

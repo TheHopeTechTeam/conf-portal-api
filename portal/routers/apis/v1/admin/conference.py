@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminConferenceHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -19,7 +20,10 @@ from portal.serializers.v1.admin.conference import (
     AdminConferenceDetail,
     AdminConferenceCreate,
     AdminConferenceUpdate,
-    AdminConferenceInstructorsUpdate, AdminConferenceItem, AdminConferenceList, AdminConferenceInstructors,
+    AdminConferenceInstructorsUpdate,
+    AdminConferenceItem,
+    AdminConferenceList,
+    AdminConferenceInstructors,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -29,6 +33,9 @@ router: AuthRouter = AuthRouter(is_admin=True)
     path="/pages",
     status_code=status.HTTP_200_OK,
     response_model=AdminConferencePages,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.read
+    ]
 )
 @inject
 async def get_conference_pages(
@@ -47,7 +54,10 @@ async def get_conference_pages(
 @router.get(
     path="/list",
     status_code=status.HTTP_200_OK,
-    response_model=AdminConferenceList
+    response_model=AdminConferenceList,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.read
+    ]
 )
 @inject
 async def get_conference_list(
@@ -64,7 +74,10 @@ async def get_conference_list(
 @router.get(
     path="/active",
     status_code=status.HTTP_200_OK,
-    response_model=AdminConferenceItem
+    response_model=AdminConferenceItem,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.read
+    ]
 )
 @inject
 async def get_active_conference(
@@ -81,7 +94,10 @@ async def get_active_conference(
 @router.get(
     path="/{conference_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminConferenceDetail
+    response_model=AdminConferenceDetail,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.read
+    ]
 )
 @inject
 async def get_conference(
@@ -100,7 +116,10 @@ async def get_conference(
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,
-    response_model=UUIDBaseModel
+    response_model=UUIDBaseModel,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.create
+    ]
 )
 @inject
 async def create_conference(
@@ -118,7 +137,10 @@ async def create_conference(
 
 @router.put(
     path="/restore",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.modify
+    ]
 )
 @inject
 async def restore_conferences(
@@ -136,7 +158,10 @@ async def restore_conferences(
 
 @router.put(
     path="/{conference_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.modify
+    ]
 )
 @inject
 async def update_conference(
@@ -157,7 +182,10 @@ async def update_conference(
 @router.get(
     path="/instructors/{conference_id}",
     status_code=status.HTTP_200_OK,
-    response_model=AdminConferenceInstructors
+    response_model=AdminConferenceInstructors,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.read
+    ]
 )
 @inject
 async def get_conference_instructors(
@@ -175,7 +203,10 @@ async def get_conference_instructors(
 
 @router.put(
     path="/instructors/{conference_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.modify
+    ]
 )
 @inject
 async def update_conference_instructors(
@@ -195,7 +226,10 @@ async def update_conference_instructors(
 
 @router.delete(
     path="/{conference_id}",
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.CONFERENCE_CONFERENCES.delete
+    ]
 )
 @inject
 async def delete_conference(

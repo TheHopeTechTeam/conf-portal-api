@@ -9,6 +9,7 @@ from fastapi import Depends, Query, status
 
 from portal.container import Container
 from portal.handlers import AdminWorkshopRegistrationHandler
+from portal.libs.consts.permission import Permission
 from portal.routers.auth_router import AuthRouter
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -26,6 +27,9 @@ router: AuthRouter = AuthRouter(is_admin=True)
     path="/pages",
     status_code=status.HTTP_200_OK,
     response_model=AdminWorkshopRegistrationPages,
+    permissions=[
+        Permission.WORKSHOP_REGISTRATION.read
+    ]
 )
 @inject
 async def get_workshop_registration_pages(
@@ -45,6 +49,9 @@ async def get_workshop_registration_pages(
     path="/{registration_id}",
     status_code=status.HTTP_200_OK,
     response_model=AdminWorkshopRegistrationDetail,
+    permissions=[
+        Permission.WORKSHOP_REGISTRATION.read
+    ]
 )
 @inject
 async def get_workshop_registration_by_id(
@@ -64,6 +71,9 @@ async def get_workshop_registration_by_id(
     path="/",
     status_code=status.HTTP_201_CREATED,
     response_model=UUIDBaseModel,
+    permissions=[
+        Permission.WORKSHOP_REGISTRATION.create
+    ]
 )
 @inject
 async def create_workshop_registration(
@@ -82,6 +92,9 @@ async def create_workshop_registration(
 @router.post(
     path="/{registration_id}/unregister",
     status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.WORKSHOP_REGISTRATION.modify
+    ]
 )
 @inject
 async def unregister_workshop_registration(
@@ -100,6 +113,9 @@ async def unregister_workshop_registration(
 @router.delete(
     path="/{registration_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.WORKSHOP_REGISTRATION.delete
+    ]
 )
 @inject
 async def delete_workshop_registration(
