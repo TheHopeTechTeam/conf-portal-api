@@ -212,7 +212,8 @@ async def restore_users(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_USER.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def bind_roles_to_user(

@@ -11,6 +11,7 @@ from pydantic import EmailStr
 from redis.asyncio import Redis
 
 from portal.config import settings
+from portal.exceptions.responses import ForbiddenException, BadRequestException
 from portal.exceptions.responses.base import ApiBaseException, ConflictErrorException
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
@@ -256,14 +257,13 @@ class AdminUserHandler:
         :return:
         """
         if model.password != model.password_confirm:
-            raise ApiBaseException(status_code=400, detail="Passwords do not match")
+            raise BadRequestException(detail="Passwords do not match")
+        if model.is_superuser and self._user_ctx.is_superuser is False:
+            raise ForbiddenException()
         user_id = uuid.uuid4()
         try:
             if not self._password_provider.validate_password(model.password):
-                raise ApiBaseException(
-                    status_code=400,
-                    detail="Password is not valid."
-                )
+                raise BadRequestException(detail="Password is not valid")
             # Hash password
             password_hash = self._password_provider.hash_password(model.password)
             # Create PortalUser

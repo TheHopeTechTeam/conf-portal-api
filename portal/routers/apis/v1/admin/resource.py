@@ -30,7 +30,8 @@ router: AuthRouter = AuthRouter(is_admin=True)
     response_model=UUIDBaseModel,
     permissions=[
         Permission.SYSTEM_RESOURCE.create
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def create_resource(
@@ -51,7 +52,8 @@ async def create_resource(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_RESOURCE.delete
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def delete_resource(
@@ -74,7 +76,8 @@ async def delete_resource(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_RESOURCE.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def restore_resource(
@@ -95,7 +98,8 @@ async def restore_resource(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_RESOURCE.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def change_resource_parent(
@@ -118,7 +122,8 @@ async def change_resource_parent(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_RESOURCE.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def update_resource(
@@ -141,7 +146,8 @@ async def update_resource(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_RESOURCE.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def change_resource_sequence(

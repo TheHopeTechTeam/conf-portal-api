@@ -72,7 +72,8 @@ async def get_permission_list(
     response_model=UUIDBaseModel,
     permissions=[
         Permission.SYSTEM_PERMISSION.create
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def create_permission(
@@ -115,7 +116,8 @@ async def get_permission(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_PERMISSION.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def restore_permission(
@@ -136,7 +138,8 @@ async def restore_permission(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_PERMISSION.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def update_permission(
@@ -159,7 +162,8 @@ async def update_permission(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_PERMISSION.delete
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def delete_permission(

@@ -96,7 +96,7 @@ class AdminAuthHandler(PasswordValidator):
         # TODO: Implement GAC Authenticator
         if not self._password_provider.verify_password(login_data.password, user.password_hash):
             await self.record_login_fail(user)
-            raise UnauthorizedException()
+            raise UnauthorizedException(detail="Invalid password")
 
     @distributed_trace()
     async def record_login_fail(self, user: SUserSensitive):
@@ -132,6 +132,9 @@ class AdminAuthHandler(PasswordValidator):
         # Get admin roles and permissions
         roles = await self._admin_role_handler.init_user_roles_cache(user, self._expires_in)
         permissions = await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
+
+        if not roles or not permissions:
+            raise UnauthorizedException(detail="User does not have been assigned any roles.\nPlease contact system administrator.")
 
         # Update last login
         last_login_at = datetime.now(timezone.utc)

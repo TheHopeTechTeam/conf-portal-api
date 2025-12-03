@@ -94,7 +94,8 @@ async def get_role(
     response_model=UUIDBaseModel,
     permissions=[
         Permission.SYSTEM_ROLE.create
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def create_role(
@@ -115,7 +116,8 @@ async def create_role(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_ROLE.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def update_role(
@@ -138,7 +140,8 @@ async def update_role(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_ROLE.delete
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def delete_role(
@@ -161,7 +164,8 @@ async def delete_role(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_ROLE.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def restore_role(
@@ -182,7 +186,8 @@ async def restore_role(
     status_code=status.HTTP_204_NO_CONTENT,
     permissions=[
         Permission.SYSTEM_ROLE.modify
-    ]
+    ],
+    allow_superuser=True
 )
 @inject
 async def assign_role_permissions(
