@@ -35,7 +35,7 @@ class AccessTokenPayload(TokenPayload):
     email: str = Field(..., description="Email")
     display_name: str = Field(..., description="Display name")
     roles: Optional[list] = Field(None, description="Roles")
-    permissions: Optional[list] = Field(None, description="Permissions")
+    scope: str = Field(None, description="scope(permissions)")
     family_id: UUID = Field(..., description="Refresh token family id")
 
 

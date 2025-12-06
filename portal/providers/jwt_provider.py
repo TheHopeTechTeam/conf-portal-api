@@ -1,6 +1,7 @@
 """
 JWT Provider for DI
 """
+from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from uuid import UUID
@@ -9,10 +10,13 @@ import jwt
 
 from portal.config import settings
 from portal.libs.consts.enums import AccessTokenAudType
+from portal.libs.consts.permission import Verb
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.base import AccessTokenPayload
+
+VERB_SET = {Verb.READ.value, Verb.CREATE.value, Verb.MODIFY.value, Verb.DELETE.value}
 
 
 class JWTProvider:
@@ -25,6 +29,34 @@ class JWTProvider:
         self.access_token_expire_minutes = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
         self._issuer = settings.BASE_URL
         self._audience = settings.APP_NAME
+
+    @staticmethod
+    def _generate_scope(permissions: list[str] = None) -> str:
+        """
+        Generate scope from permissions
+        If the permission includes all verbs, return "resource:*"
+        If the permission includes specific verbs, return "resource:verb1,resource:verb2"
+        Example: ["system:user:read", "system:user:create", "system:user:modify", "system:user:delete", "system:role:read"]
+        scope: "system:user:* system:role:read"
+        :param permissions:
+        :return:
+        """
+        if not permissions:
+            return ""
+        resource_verb_map = defaultdict(set)
+        for permission in permissions:
+            # parse permission like "system:user:read"
+            resource, verb = permission.rsplit(":", 1)
+            if resource not in resource_verb_map:
+                resource_verb_map[resource] = set()
+            resource_verb_map[resource].add(verb)
+        scope = []
+        for resource, verbs in resource_verb_map.items():  # type: (str, set)
+            if verbs == VERB_SET:
+                scope.append(f"{resource}:*")
+            else:
+                scope.extend([f"{resource}:{verb}" for verb in verbs])
+        return " ".join(scope)
 
     @distributed_trace()
     def create_access_token(
@@ -69,7 +101,7 @@ class JWTProvider:
                     email=email,
                     display_name=display_name,
                     roles=roles,
-                    permissions=permissions,
+                    scope=self._generate_scope(permissions=permissions),
                     family_id=family_id
                 )
             case AccessTokenAudType.APP:

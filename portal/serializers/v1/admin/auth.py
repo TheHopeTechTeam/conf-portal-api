@@ -22,7 +22,6 @@ class AdminInfo(UUIDBaseModel):
     email: str = Field(..., description="Admin email")
     display_name: str = Field(..., description="Display name")
     roles: List[str] = Field(default=[], description="Admin roles")
-    permissions: List[str] = Field(default=[], description="Admin permissions")
     last_login_at: Optional[datetime] = Field(None, description="Last login time")
 
 

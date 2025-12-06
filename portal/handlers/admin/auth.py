@@ -134,7 +134,7 @@ class AdminAuthHandler(PasswordValidator):
         permissions = await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
 
         if not roles or not permissions:
-            raise UnauthorizedException(detail="User does not have been assigned any roles.\nPlease contact system administrator.")
+            raise UnauthorizedException(detail="User does not have been assigned any roles. Please contact system administrator.")
 
         # Update last login
         last_login_at = datetime.now(timezone.utc)
@@ -169,7 +169,6 @@ class AdminAuthHandler(PasswordValidator):
             email=user.email,
             display_name=user.display_name or user.email,
             roles=roles,
-            permissions=permissions,
             last_login_at=last_login_at
         )
 
@@ -257,14 +256,12 @@ class AdminAuthHandler(PasswordValidator):
             )
 
         roles = await self._admin_role_handler.init_user_roles_cache(user, self._expires_in)
-        permissions = await self._admin_permission_handler.init_user_permissions_cache(user, self._expires_in)
 
         return AdminInfo(
             id=user.id,
             email=user.email,
             display_name=user.display_name or user.email,
             roles=roles,
-            permissions=permissions,
             last_login_at=user.last_login_at
         )
 
