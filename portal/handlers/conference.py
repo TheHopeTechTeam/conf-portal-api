@@ -21,11 +21,11 @@ class ConferenceHandler:
     def __init__(
         self,
         session: Session,
-        redi_client: RedisPool,
+        redis_client: RedisPool,
         file_handler: AdminFileHandler,
     ):
         self._session = session
-        self._redis: Redis = redi_client.create(db=settings.REDIS_DB)
+        self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
 
     @distributed_trace()
