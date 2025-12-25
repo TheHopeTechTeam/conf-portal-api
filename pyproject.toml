@@ -1,8 +1,5 @@
 [tool.pytest.ini_options]
-testpaths = [
-    "portal",
-    "tests"
-]
+testpaths = ["portal", "tests"]
 
 [project]
 name = "conf-portal-api"
@@ -10,7 +7,6 @@ version = "0.1.0"
 description = ""
 authors = [{ name = "Jay Hsia", email = "jayhsia1997@gmail.com" }]
 readme = "README.md"
-package-mode = false
 requires-python = "^3.13"
 dependencies = [
     # base
@@ -52,6 +48,7 @@ dependencies = [
 ]
 
 [tool.poetry]
+package-mode = false
 
 [tool.poetry.group.dev.dependencies]
 alembic = "*"
