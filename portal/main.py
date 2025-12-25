@@ -1,6 +1,7 @@
 """
 main application
 """
+
 from collections import defaultdict
 
 import firebase_admin
@@ -88,7 +89,7 @@ def register_middleware(application: FastAPI) -> None:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        allow_origin_regex=settings.CORS_ALLOW_ORIGINS_REGEX
+        allow_origin_regex=settings.CORS_ALLOW_ORIGINS_REGEX,
     )
 
 
@@ -190,8 +191,8 @@ async def root_http_exception_handler(request, exc: HTTPException, _span: Span =
     if session is not None:
         await session.rollback()
     try:
-        _span.set_data("error.detail", exc.detail)
-        _span.set_data("error.url", str(request.url))
+        _span.set_data("internal.exc_detail", exc.detail)
+        _span.set_data("internal.endpoint", str(request.url))
     except Exception:
         pass
     return await http_exception_handler(request, exc)
@@ -199,7 +200,9 @@ async def root_http_exception_handler(request, exc: HTTPException, _span: Span =
 
 @app.exception_handler(ApiBaseException)
 @distributed_trace(inject_span=True)
-async def root_api_exception_handler(request, exc: ApiBaseException, _span: Span = None):
+async def root_api_exception_handler(
+    request, exc: ApiBaseException, _span: Span = None
+):
     """
 
     :param request:
@@ -216,15 +219,12 @@ async def root_api_exception_handler(request, exc: ApiBaseException, _span: Span
         content["debug_detail"] = exc.debug_detail
         content["url"] = str(request.url)
     try:
-        _span.set_data("error.detail", exc.detail)
-        _span.set_data("error.debug_detail", exc.debug_detail)
-        _span.set_data("error.url", str(request.url))
+        _span.set_data("internal.exc_detail", exc.detail)
+        _span.set_data("internal.exc_dev_info", exc.debug_detail)
+        _span.set_data("internal.endpoint", str(request.url))
     except Exception:
         pass
-    return JSONResponse(
-        content=content,
-        status_code=exc.status_code
-    )
+    return JSONResponse(content=content, status_code=exc.status_code)
 
 
 @app.exception_handler(Exception)
@@ -238,19 +238,15 @@ async def exception_handler(request: Request, exc, _span: Span = None):
     :return:
     """
     content = defaultdict()
-    content["detail"] = {
-        "message": "Internal Server Error",
-        "url": str(request.url)
-    }
+    content["detail"] = {"message": "Internal Server Error", "url": str(request.url)}
     if settings.is_dev:
         content["debug_detail"] = f"{exc.__class__.__name__}: {exc}"
     try:
-        _span.set_data("error.detail", content["detail"])
-        _span.set_data("error.debug_detail", content["debug_detail"])
-        _span.set_data("error.url", str(request.url))
+        _span.set_data("internal.exc_detail", content["detail"])
+        _span.set_data("internal.exc_dev_info", content["debug_detail"])
+        _span.set_data("internal.endpoint", str(request.url))
     except Exception:
         pass
     return JSONResponse(
-        content=content,
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        content=content, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
     )
