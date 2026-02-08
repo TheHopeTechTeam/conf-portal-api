@@ -1,0 +1,11 @@
+{
+  "python.defaultInterpreterPath": "/Users/jayhsia/.cache/pypoetry/virtualenvs/conf-portal-api-E3novGsk-py3.13/bin/python",
+  "python-envs.pythonProjects": [
+    {
+      "path": "",
+      "envManager": "ms-python.python:poetry",
+      "packageManager": "ms-python.python:poetry"
+    }
+  ],
+  "python.poetryPath": "poetry"
+}
