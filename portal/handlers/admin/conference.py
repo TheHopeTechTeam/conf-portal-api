@@ -109,12 +109,12 @@ class AdminConferenceHandler:
         return AdminConferenceList(items=items)
 
     @distributed_trace()
-    async def get_active_conference(self) -> AdminConferenceItem:
+    async def _get_active_conference(self) -> AdminConferenceItem:
         """
 
         :return:
         """
-        item: Optional[AdminConferenceItem] = await (
+        return await (
             self._session.select(
                 PortalConference.id,
                 PortalConference.title,
@@ -132,6 +132,15 @@ class AdminConferenceHandler:
             .order_by(PortalConference.start_date)
             .fetchrow(as_model=AdminConferenceItem)
         )
+
+
+    @distributed_trace()
+    async def get_active_conference(self) -> AdminConferenceItem:
+        """
+
+        :return:
+        """
+        item = await self._get_active_conference()
         if not item:
             raise NotFoundException(detail="No active conference found")
         return item
@@ -176,7 +185,7 @@ class AdminConferenceHandler:
         :return:
         """
         conference_id = uuid.uuid4()
-        active_conference = await self.get_active_conference()
+        active_conference = await self._get_active_conference()
         if model.is_active and active_conference:
             raise ConflictErrorException(detail="Only allowed one active conference at a time.")
         try:
@@ -210,8 +219,8 @@ class AdminConferenceHandler:
         :param model:
         :return:
         """
-        active_conference = await self.get_active_conference()
-        if conference_id != active_conference.id and model.is_active:
+        active_conference = await self._get_active_conference()
+        if active_conference and conference_id != active_conference.id and model.is_active:
             raise ConflictErrorException(detail="Only allowed one active conference at a time.")
         try:
             await (

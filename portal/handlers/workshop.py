@@ -75,8 +75,8 @@ class WorkshopHandler:
                 PortalWorkshop.slido_url,
                 PortalWorkshop.participants_limit,
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, "TRUE"),
-                    else_="FALSE"
+                    (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, sa.text("true")),
+                    else_=sa.text("false")
                 ).label("is_full"),
                 PortalWorkshop.timezone
             )
@@ -310,8 +310,8 @@ class WorkshopHandler:
             self._session.select(
                 PortalWorkshop.id,
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) > 0, True),
-                    else_=False
+                    (sa.func.count(PortalWorkshopRegistration.id) > 0, sa.text("true")),
+                    else_=sa.text("false")
                 ).label("is_registered")
             )
             .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
@@ -335,8 +335,8 @@ class WorkshopHandler:
         is_full: bool = await (
             self._session.select(
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, True),
-                    else_=False
+                    (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, sa.text("true")),
+                    else_=sa.text("false")
                 ).label("is_full")
             )
             .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
@@ -371,13 +371,13 @@ class WorkshopHandler:
                 PortalWorkshop.slido_url,
                 PortalWorkshop.participants_limit,
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, "TRUE"),
-                    else_="FALSE"
+                    (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, sa.text("true")),
+                    else_=sa.text("false")
                 ).label("is_full"),
                 PortalWorkshop.timezone,
                 sa.case(
-                    (PortalWorkshopRegistration.unregistered_at.is_(None), True),
-                    else_=False
+                    (PortalWorkshopRegistration.unregistered_at.is_(None), sa.text("true")),
+                    else_=sa.text("false")
                 ).label("is_registered"),
             )
             .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
@@ -390,7 +390,8 @@ class WorkshopHandler:
                 PortalWorkshop.id,
                 PortalLocation.id,
                 PortalWorkshop.participants_limit,
-                PortalWorkshop.start_datetime
+                PortalWorkshop.start_datetime,
+                PortalWorkshopRegistration.unregistered_at
             )
             .order_by(PortalWorkshop.start_datetime)
             .fetch(as_model=WorkshopRegistered)
