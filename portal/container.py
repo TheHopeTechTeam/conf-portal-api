@@ -21,6 +21,10 @@ from portal.providers.password_provider import PasswordProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.providers.password_reset_token_provider import PasswordResetTokenProvider
+from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
+from portal.services import (
+    TheHopeTicketService
+)
 
 
 # pylint: disable=too-few-public-methods,c-extension-no-member
@@ -51,6 +55,9 @@ class Container(containers.DeclarativeContainer):
     # [Redis]
     redis_client = providers.Singleton(RedisPool)
 
+    # [Services]
+    thehope_ticket_service = providers.Factory(TheHopeTicketService)
+
     # [Providers]
     token_blacklist_provider = providers.Factory(
         TokenBlacklistProvider,
@@ -69,6 +76,10 @@ class Container(containers.DeclarativeContainer):
     password_reset_token_provider = providers.Factory(
         PasswordResetTokenProvider,
         session=request_session,
+    )
+    thehope_ticket_provider = providers.Factory(
+        TheHopeTicketProvider,
+        thehope_ticket_service=thehope_ticket_service,
     )
 
     # File handlers
