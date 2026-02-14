@@ -1,3 +1,14 @@
+### Custom
+temp.py
+web
+local.py
+/static
+temp_files
+old_datas
+migration_log.json
+.vscode
+
+
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -166,7 +177,7 @@ cython_debug/
 
 ### VisualStudioCode template
 .vscode/*
-!.vscode/settings.json
+#!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
@@ -205,12 +216,3 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-
-### Custom
-temp.py
-web
-local.py
-/static
-temp_files
-old_datas
-migration_log.json
