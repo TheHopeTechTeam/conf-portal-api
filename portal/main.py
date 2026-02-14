@@ -27,6 +27,7 @@ from portal.libs.consts.base import SECURITY_SCHEMES
 from portal.libs.contexts.request_session_context import get_request_session
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
+from portal.libs.events.publisher import set_global_container
 from portal.libs.utils.lifespan import lifespan
 from portal.middlewares import CoreRequestMiddleware, AuthMiddleware
 from portal.routers import api_router
@@ -117,7 +118,10 @@ def get_application() -> FastAPI:
     )
 
     # set container
-    application.container = Container()
+    container = Container()
+    application.container = container
+    # Set global container for event publisher
+    set_global_container(container)
 
     # init firebase
     try:

@@ -85,31 +85,13 @@ class FeedbackStatus(IntEnum):
     REJECTED = 5
     ARCHIVED = 6
 
-    @classmethod
-    def choices(cls):
-        """
-
-        :return:
-        """
-        return [(key.value, key.name.title()) for key in cls]
-
 
 class NotificationMethod(IntEnum):
     """
     Notification method
     """
-    UNKNOWN = 0
-    PUSH = 1
-    EMAIL = 2
-    SMS = 3
-
-    @classmethod
-    def choices(cls):
-        """
-
-        :return:
-        """
-        return [(key.value, key.name.title()) for key in cls]
+    PUSH = 0
+    EMAIL = 1
 
 
 class NotificationType(IntEnum):
@@ -118,16 +100,7 @@ class NotificationType(IntEnum):
     """
     INDIVIDUAL = 0
     MULTIPLE = 1
-
-    # SYSTEM = 2
-
-    @classmethod
-    def choices(cls):
-        """
-
-        :return:
-        """
-        return [(key.value, key.name.title()) for key in cls]
+    SYSTEM = 2
 
 
 class NotificationStatus(IntEnum):
@@ -137,14 +110,7 @@ class NotificationStatus(IntEnum):
     PENDING = 0
     SENT = 1
     FAILED = 2
-
-    @classmethod
-    def choices(cls):
-        """
-
-        :return:
-        """
-        return [(key.value, key.name.title()) for key in cls]
+    DRY_RUN = 3
 
 
 class NotificationHistoryStatus(IntEnum):
@@ -154,14 +120,6 @@ class NotificationHistoryStatus(IntEnum):
     PENDING = 0
     SUCCESS = 1
     FAILED = 2
-
-    @classmethod
-    def choices(cls):
-        """
-
-        :return:
-        """
-        return [(key.value, key.name.title()) for key in cls]
 
 
 class Identity(Enum):

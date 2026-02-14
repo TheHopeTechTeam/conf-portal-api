@@ -1,6 +1,7 @@
 """
 Container
 """
+
 from dependency_injector import containers, providers
 
 from portal import handlers
@@ -8,6 +9,13 @@ from portal.config import settings
 from portal.libs.authorization.permission_checker import PermissionChecker
 from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.libs.database.session_proxy import SessionProxy
+from portal.libs.events.bus import EventBus
+from portal.libs.events.types import (
+    NotificationCreatedEvent
+)
+from portal.handlers.events import (
+    NotificationCreatedEventHandler
+)
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
@@ -214,9 +222,35 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
     )
+    admin_notification_handler = providers.Factory(
+        handlers.AdminNotificationHandler,
+        session=request_session,
+    )
 
     # [Authorization]
     permission_checker = providers.Factory(
         PermissionChecker,
         redis_client=redis_client,
     )
+
+    # [Event Bus]
+    event_bus = providers.Singleton(EventBus)
+
+    # [Event Handlers]
+    notification_created_event_handler = providers.Factory(
+        NotificationCreatedEventHandler,
+        session=request_session,
+    )
+
+    @staticmethod
+    def register_event_handlers(event_bus_instance: EventBus, container: "Container") -> None:
+        """
+        Register all event handlers to the event bus
+        :param event_bus_instance:
+        :param container: Container instance to use for creating handlers
+        :return:
+        """
+        # Register notification event handlers
+        event_bus_instance.subscribe(
+            NotificationCreatedEvent, container.notification_created_event_handler()
+        )

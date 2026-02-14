@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import UUID
 
-from portal.libs.consts.enums import NotificationStatus
+from portal.libs.consts.enums import NotificationMethod, NotificationStatus, NotificationHistoryStatus
 from portal.libs.database.orm import ModelBase
 from .mixins import BaseMixin
 
@@ -15,10 +15,15 @@ class PortalNotification(ModelBase, BaseMixin):
     title = Column(sa.String(255), nullable=False, comment="Notification title")
     message = Column(sa.Text, nullable=False, comment="Notification message")
     url = Column(sa.String(500), comment="Notification URL")
+    method = Column(
+        sa.Integer,
+        nullable=False,
+        comment="Notification method. Ref: NotificationMethod enum"
+    )
     type = Column(
         sa.Integer,
         nullable=False,
-        comment="Notification type"
+        comment="Notification type. Ref: NotificationType enum"
     )
     status = Column(
         sa.Integer,
@@ -53,5 +58,7 @@ class PortalNotificationHistory(ModelBase, BaseMixin):
     status = Column(
         sa.Integer,
         nullable=False,
-        comment="History status"
+        default=NotificationHistoryStatus.PENDING.value,
+        comment="History status. Ref: NotificationHistoryStatus enum",
     )
+    is_read = Column(sa.Boolean, default=False, comment="Is read")
