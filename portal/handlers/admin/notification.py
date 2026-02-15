@@ -2,8 +2,6 @@
 AdminNotificationHandler
 """
 import uuid
-from typing import Optional
-from uuid import UUID
 
 import sqlalchemy as sa
 

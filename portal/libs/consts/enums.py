@@ -98,9 +98,9 @@ class NotificationType(IntEnum):
     """
     Notification type
     """
-    INDIVIDUAL = 0
+    SYSTEM = 0
     MULTIPLE = 1
-    SYSTEM = 2
+    INDIVIDUAL = 2
 
 
 class NotificationStatus(IntEnum):
