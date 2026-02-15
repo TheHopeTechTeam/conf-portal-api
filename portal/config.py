@@ -149,6 +149,8 @@ class Configuration(BaseSettings):
     # [Logging]
     SENSITIVE_PARAMS: set[str] = set(os.getenv(key="SENSITIVE_PARAMS", default="password,secret,api_key").split(","))
 
+    # [Notification]
+    ENABLE_PUSH_NOTIFICATION: bool = os.getenv(key="ENABLE_PUSH_NOTIFICATION", default=True)
 
     @model_validator(mode="after")
     def _load_google_cloud_credentials(self) -> "Configuration":

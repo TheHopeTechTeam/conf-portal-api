@@ -22,6 +22,14 @@ def set_global_container(container) -> None:
     _global_container = container
 
 
+def get_container():
+    """
+    Get the global container (set at app init). Used by event bus to create
+    a dedicated session for event handler execution.
+    """
+    return _global_container
+
+
 def get_event_bus() -> Optional[EventBus]:
     """
     Get event bus from container

@@ -74,6 +74,26 @@ async def get_user_list(
     return await admin_user_handler.get_user_list(keyword=query_model.keyword)
 
 
+@router.get(
+    path="/list-with-device-token",
+    status_code=status.HTTP_200_OK,
+    response_model=AdminUserList,
+    permissions=[
+        Permission.SYSTEM_USER.read
+    ]
+)
+@inject
+async def get_user_list_with_device_token(
+    query_model: Annotated[KeywordQueryBaseModel, Query()],
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+    Get user list restricted to users who have at least one FCM device token.
+    Same query params and response as /list.
+    """
+    return await admin_user_handler.get_user_list_with_device_token(keyword=query_model.keyword)
+
+
 @router.post(
     path="",
     status_code=status.HTTP_201_CREATED,

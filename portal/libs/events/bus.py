@@ -3,6 +3,10 @@ Event Bus for event-driven architecture
 """
 from typing import Dict, List, Type
 
+from portal.libs.contexts.event_session_context import (
+    set_event_session,
+    reset_event_session,
+)
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.events.base import BaseEvent, EventHandler
 from portal.libs.logger import logger
@@ -94,21 +98,41 @@ class EventBus:
 
     async def _execute_handler(self, handler: EventHandler, event: BaseEvent) -> None:
         """
-        Execute a handler with error handling
-        :param handler:
-        :param event:
-        :return:
+        Execute a handler with error handling.         When a container is available,
+        creates an event-scoped session so handler DB operations are committed
+        or rolled back and closed here (works for both awaited and background publish).
         """
+        from portal.libs.events.publisher import get_container
+
+        container = get_container()
+        session = None
+        token = None
+        if container is not None:
+            session = container.db_session()
+            token = set_event_session(session)
         try:
             await handler.handle(event)
+            if session is not None:
+                await session.commit()
             logger.debug(f"Handler {handler.__class__.__name__} successfully processed event {event.event_type}")
         except Exception as e:
+            if session is not None:
+                try:
+                    await session.rollback()
+                except Exception as rollback_err:
+                    logger.warning("Event handler session rollback failed: %s", rollback_err)
             logger.error(
                 f"Error in handler {handler.__class__.__name__} for event {event.event_type}: {str(e)}",
                 exc_info=True
             )
-            # Re-raise to allow caller to handle if needed
             raise
+        finally:
+            if session is not None and token is not None:
+                try:
+                    await session.close()
+                except Exception as close_err:
+                    logger.warning("Event handler session close failed: %s", close_err)
+                reset_event_session(token)
 
     def get_handlers_count(self, event_type: Type[BaseEvent]) -> int:
         """

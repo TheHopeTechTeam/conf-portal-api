@@ -12,6 +12,12 @@ from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import PaginationBaseResponseModel, GenericQueryBaseModel
 
 
+class FcmDeviceTokenRow(BaseModel):
+    """Row shape for FCM device id + token query (e.g. _resolve_push_targets)."""
+    id: UUID = Field(..., description="FCM device ID")
+    token: str = Field(..., description="FCM device token")
+
+
 class AdminNotificationCreate(BaseModel):
     """Create notification request"""
     title: str = Field(..., description="Notification title")

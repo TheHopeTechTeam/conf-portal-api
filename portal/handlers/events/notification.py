@@ -25,7 +25,7 @@ from portal.models import (
     PortalFcmDevice,
     PortalFcmUserDevice,
 )
-from portal.serializers.v1.admin.notification import AdminNotificationCreate
+from portal.serializers.v1.admin.notification import AdminNotificationCreate, FcmDeviceTokenRow
 
 
 class NotificationCreatedEventHandler(EventHandler):
@@ -114,6 +114,7 @@ class NotificationCreatedEventHandler(EventHandler):
     async def _handle_dry_run(self, notification_id: UUID, model: AdminNotificationCreate) -> None:
         """
         Resolve targets and mark notification as dry run without sending.
+        History records are written for each target (same as actual send) with status DRY_RUN.
         """
         if model.method == NotificationMethod.PUSH:
             tokens, device_ids = await self._resolve_push_targets(model)
@@ -123,6 +124,21 @@ class NotificationCreatedEventHandler(EventHandler):
                 notification_id,
                 target_count,
             )
+            # Record history for each device (dry run) so it appears in history list
+            if device_ids:
+                history_records = [
+                    {
+                        "notification_id": notification_id,
+                        "device_id": device_id,
+                        "status": NotificationHistoryStatus.DRY_RUN.value,
+                    }
+                    for device_id in device_ids
+                ]
+                await (
+                    self._session.insert(PortalNotificationHistory)
+                    .values(history_records)
+                    .execute()
+                )
         else:
             target_count = 0
             logger.info(
@@ -152,13 +168,13 @@ class NotificationCreatedEventHandler(EventHandler):
         - INDIVIDUAL/MULTIPLE: devices linked to the given user_ids.
         """
         if model.type == NotificationType.SYSTEM:
-            device_tokens = await (
+            device_tokens: list[FcmDeviceTokenRow] = await (
                 self._session.select(
                     PortalFcmDevice.id,
                     PortalFcmDevice.token,
                 )
                 .select_from(PortalFcmDevice)
-                .fetch()
+                .fetch(as_model=FcmDeviceTokenRow)
             )
             tokens = [row.token for row in device_tokens if row.token]
             device_ids = [row.id for row in device_tokens]
@@ -168,14 +184,14 @@ class NotificationCreatedEventHandler(EventHandler):
             logger.warning("No user IDs specified for push notification")
             return [], []
 
-        device_tokens = await (
+        device_tokens: list[FcmDeviceTokenRow] = await (
             self._session.select(
                 PortalFcmDevice.id,
                 PortalFcmDevice.token,
             )
             .join(PortalFcmUserDevice, PortalFcmDevice.id == PortalFcmUserDevice.device_id)
             .where(PortalFcmUserDevice.user_id.in_(model.user_ids))
-            .fetch()
+            .fetch(as_model=FcmDeviceTokenRow)
         )
         tokens = [row.token for row in device_tokens if row.token]
         device_ids = [row.id for row in device_tokens]

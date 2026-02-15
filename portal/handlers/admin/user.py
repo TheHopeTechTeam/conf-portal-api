@@ -16,7 +16,7 @@ from portal.exceptions.responses.base import ApiBaseException, ConflictErrorExce
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models import PortalUser, PortalUserProfile, PortalUserRole
+from portal.models import PortalUser, PortalUserProfile, PortalUserRole, PortalFcmDevice, PortalFcmUserDevice
 from portal.providers.password_provider import PasswordProvider
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
@@ -203,6 +203,39 @@ class AdminUserHandler:
             .where(PortalUser.is_active == True)
             .order_by(PortalUser.created_at.asc())
             .limit(100)
+            .fetch(as_model=AdminUserBase)
+        )
+        return AdminUserList(items=users)
+
+    @distributed_trace()
+    async def get_user_list_with_device_token(self, keyword: Optional[str] = None) -> AdminUserList:
+        """
+        Get user list restricted to users who have at least one FCM device token.
+        Same query logic as get_user_list (keyword, is_deleted, is_active, limit 100).
+        """
+        users: list[AdminUserBase] = await (
+            self._session.select(
+                PortalUser.id,
+                PortalUser.phone_number,
+                PortalUser.email,
+                PortalUserProfile.display_name,
+                PortalUser.created_at,
+            )
+            .join(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
+            .join(PortalFcmUserDevice, PortalUser.id == PortalFcmUserDevice.user_id)
+            .join(PortalFcmDevice, PortalFcmUserDevice.device_id == PortalFcmDevice.id)
+            .where(
+                keyword, lambda: sa.or_(
+                    PortalUser.phone_number.ilike(f"%{keyword}%"),
+                    PortalUser.email.ilike(f"%{keyword}%"),
+                    PortalUserProfile.display_name.ilike(f"%{keyword}%")
+                )
+            )
+            .where(PortalUser.is_deleted == False)
+            .where(PortalUser.is_active == True)
+            .order_by(PortalUser.created_at.asc())
+            .limit(100)
+            .distinct()
             .fetch(as_model=AdminUserBase)
         )
         return AdminUserList(items=users)

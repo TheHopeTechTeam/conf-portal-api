@@ -120,6 +120,7 @@ class NotificationHistoryStatus(IntEnum):
     PENDING = 0
     SUCCESS = 1
     FAILED = 2
+    DRY_RUN = 3
 
 
 class Identity(Enum):
