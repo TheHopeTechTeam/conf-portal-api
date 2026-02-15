@@ -691,7 +691,7 @@ class Session(ISession):
             echo = settings.SQL_ECHO
         self._echo = echo
         self._is_closed = False
-        self._loop = loop or asyncio.get_running_loop()
+        self._loop = loop or asyncio.get_event_loop()
         self._locker = asyncio.Lock()
         self._retry_count = 0
         self._isolation = "read_committed"
