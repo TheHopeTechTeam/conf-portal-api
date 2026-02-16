@@ -81,7 +81,7 @@ async def test_get_tickets_by_email_returns_objectified_response(
     raw = _raw_tickets_list_response(docs=[_raw_ticket()], total_docs=1)
     mock_thehope_ticket_service.get_ticket_by_email = AsyncMock(return_value=raw)
 
-    result = await thehope_ticket_provider.get_tickets_by_email("user@example.com")
+    result = await thehope_ticket_provider.get_ticket_by_email("user@example.com")
 
     assert result is not None
     assert isinstance(result, TheHopeTicketsListResponse)
@@ -98,7 +98,7 @@ async def test_get_tickets_by_email_returns_none_when_service_returns_none(
     """get_tickets_by_email should return None when service returns None."""
     mock_thehope_ticket_service.get_ticket_by_email = AsyncMock(return_value=None)
 
-    result = await thehope_ticket_provider.get_tickets_by_email("user@example.com")
+    result = await thehope_ticket_provider.get_ticket_by_email("user@example.com")
 
     assert result is None
 
@@ -113,7 +113,7 @@ async def test_get_ticket_list_by_email_returns_first_ticket(
     raw = _raw_tickets_list_response(docs=[_raw_ticket(id_=ticket_id)], total_docs=1)
     mock_thehope_ticket_service.get_ticket_by_email = AsyncMock(return_value=raw)
 
-    result = await thehope_ticket_provider.get_ticket_list_by_email("user@example.com")
+    result = await thehope_ticket_provider.get_ticket_by_email("user@example.com")
 
     assert result is not None
     assert isinstance(result, TheHopeTicket)
@@ -128,7 +128,7 @@ async def test_get_ticket_list_by_email_returns_none_when_no_tickets(
     """get_ticket_list_by_email should return None when get_tickets_by_email returns None."""
     mock_thehope_ticket_service.get_ticket_by_email = AsyncMock(return_value=None)
 
-    result = await thehope_ticket_provider.get_ticket_list_by_email("user@example.com")
+    result = await thehope_ticket_provider.get_ticket_by_email("user@example.com")
 
     assert result is None
 

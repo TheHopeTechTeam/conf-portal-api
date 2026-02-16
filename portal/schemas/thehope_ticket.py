@@ -4,6 +4,7 @@ The Hope Ticket API response schemas.
 Implements BaseModels for GET /api/v1/tickets response (TicketsListResponse)
 and nested Tickets structure from the external OpenAPI spec.
 """
+from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
@@ -124,3 +125,23 @@ class TheHopeTicketsListResponse(TheHopeBaseResponse):
     Response schema for GET /api/v1/tickets (TicketsListResponse).
     """
     docs: list[TheHopeTicket] = Field(default_factory=list, description="Ticket documents")
+
+
+class TheHopeTicketCheckInDoc(TheHopeTicket):
+    """
+    Ticket doc from check-in API response; extends TheHopeTicket with timestamps.
+    """
+
+    updated_at: Optional[datetime] = Field(None, alias="updatedAt")
+    created_at: Optional[datetime] = Field(None, alias="createdAt")
+
+
+class TheHopeTicketCheckInResponse(BaseModel):
+    """
+    Response schema for POST /api/v1/tickets/{id} check-in.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    doc: TheHopeTicketCheckInDoc = Field(..., description="Updated ticket document")
+    message: Optional[str] = Field(None, description="API message")

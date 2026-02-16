@@ -45,7 +45,7 @@ async def test_get_ticket_by_email_returns_json_response(thehope_ticket_service:
     )
     mocker.patch("portal.services.thehope_ticket.http_client", mock_client)
 
-    result = await thehope_ticket_service.get_ticket_by_email("user@example.com")
+    result = await thehope_ticket_service.get_ticket_list_by_email("user@example.com")
 
     assert result == {"docs": [], "totalDocs": 0, "page": 1, "totalPages": 0}
     mock_client.create.assert_called_once()
@@ -68,4 +68,4 @@ async def test_get_ticket_by_email_propagates_exception(thehope_ticket_service: 
     mocker.patch("portal.services.thehope_ticket.http_client", mock_client)
 
     with pytest.raises(ConnectionError, match="connection failed"):
-        await thehope_ticket_service.get_ticket_by_email("user@example.com")
+        await thehope_ticket_service.get_ticket_list_by_email("user@example.com")
