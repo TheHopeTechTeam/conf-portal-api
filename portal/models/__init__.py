@@ -28,6 +28,7 @@ from .rbac import (
     PortalRolePermission,
 )
 from .testimony import PortalTestimony
+from .ticket import PortalTicketType, PortalUserTicket
 from .workshop import PortalWorkshop, PortalWorkshopInstructor, PortalWorkshopRegistration
 
 __all__ = [
@@ -77,6 +78,9 @@ __all__ = [
     "PortalRolePermission",
     # testimony
     "PortalTestimony",
+    # ticket
+    "PortalTicketType",
+    "PortalUserTicket",
     # workshop
     "PortalWorkshop",
     "PortalWorkshopInstructor",
