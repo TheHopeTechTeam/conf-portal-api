@@ -133,6 +133,10 @@ class Container(containers.DeclarativeContainer):
         thehope_ticket_provider=thehope_ticket_provider,
         check_in_token_provider=check_in_token_provider,
     )
+    notification_handler = providers.Factory(
+        handlers.NotificationHandler,
+        session=request_session,
+    )
     user_handler = providers.Factory(
         handlers.UserHandler,
         session=request_session,

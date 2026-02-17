@@ -26,6 +26,7 @@ from .fcm_device import FCMDeviceHandler
 from .feedback import FeedbackHandler
 from .testimony import TestimonyHandler
 from .ticket import TicketHandler
+from .notification import NotificationHandler
 from .user import UserHandler
 from .user_auth import UserAuthHandler
 from .workshop import WorkshopHandler
@@ -59,6 +60,7 @@ __all__ = [
     "FeedbackHandler",
     "TestimonyHandler",
     "TicketHandler",
+    "NotificationHandler",
     "UserHandler",
     "UserAuthHandler",
     "WorkshopHandler"
