@@ -15,6 +15,7 @@ from .testimony import router as testimony_router
 from .ticket import router as ticket_router
 from .user import router as user_router
 from .user_auth import router as user_auth_router
+from .notification import router as notification_router
 from .workshop import router as workshop_router
 
 router = APIRouter(
@@ -28,6 +29,7 @@ router.include_router(admin_router, prefix="/admin", tags=["Admin"])
 router.include_router(user_auth_router, prefix="/auth", tags=["User Auth"])
 router.include_router(ticket_router, prefix="/ticket", tags=["Ticket"])
 router.include_router(user_router, prefix="/user", tags=["User"])
+router.include_router(notification_router, prefix="/notification", tags=["Notification"])
 router.include_router(conference_router, prefix="/conference", tags=["Conference"])
 router.include_router(event_info_router, prefix="/event_info", tags=["Event Info"])
 router.include_router(faq_router, prefix="/faq", tags=["FAQ"])
