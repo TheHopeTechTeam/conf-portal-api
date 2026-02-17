@@ -69,7 +69,7 @@ class UserDetail(UserBase):
     """
     User detail
     """
-    ticket: Optional[TicketBase] = Field(default=None, serialization_alias="ticketDetail", description="Ticket Detail")
+    ticket: Optional[TicketBase] = Field(default=None, serialization_alias="ticket", description="Ticket")
 
 
 class UserUpdate(BaseModel):
