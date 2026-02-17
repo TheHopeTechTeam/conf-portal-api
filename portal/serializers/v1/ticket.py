@@ -30,15 +30,9 @@ class TicketBase(UUIDBaseModel, JSONStringMixinModel):
     belong_church: Optional[str] = Field(None, serialization_alias="belongChurch", description="Belong church")
 
 
-class CheckInTokenRequest(BaseModel):
-    """Request body for check-in (scanner sends token from QR)"""
-    token: str = Field(..., description="One-time check-in token from QR code")
-
-
-class CheckInTokenResponse(BaseModel):
-    """Response for check-in token (for QR code)"""
-    token: str = Field(..., description="One-time check-in token")
-    expires_at: datetime = Field(..., description="Token expiration time", serialization_alias="expiresAt")
+class CheckInRequest(BaseModel):
+    """Request body for check-in (scanner sends ticket_id from QR)"""
+    ticket_id: UUID = Field(..., description="Ticket ID from QR code", serialization_alias="ticketId")
 
 
 class CheckInResponse(BaseModel):

@@ -25,7 +25,6 @@ from portal.providers.password_provider import PasswordProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.providers.password_reset_token_provider import PasswordResetTokenProvider
-from portal.providers.check_in_token_provider import CheckInTokenProvider
 from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
 from portal.services import (
     TheHopeTicketService
@@ -86,10 +85,6 @@ class Container(containers.DeclarativeContainer):
         TheHopeTicketProvider,
         thehope_ticket_service=thehope_ticket_service,
     )
-    check_in_token_provider = providers.Factory(
-        CheckInTokenProvider,
-        redis_client=redis_client,
-    )
 
     # File handlers
     admin_file_handler = providers.Factory(
@@ -131,7 +126,6 @@ class Container(containers.DeclarativeContainer):
         handlers.TicketHandler,
         session=request_session,
         thehope_ticket_provider=thehope_ticket_provider,
-        check_in_token_provider=check_in_token_provider,
     )
     notification_handler = providers.Factory(
         handlers.NotificationHandler,

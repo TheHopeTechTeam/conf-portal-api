@@ -18,7 +18,6 @@ from portal.models import (
     PortalWorkshop,
     PortalWorkshopRegistration,
 )
-from portal.providers.check_in_token_provider import CheckInTokenProvider
 from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
 from portal.schemas.thehope_ticket import (
     TheHopeTicketMember,
@@ -35,11 +34,9 @@ class TicketHandler:
         self,
         session: Session,
         thehope_ticket_provider: TheHopeTicketProvider,
-        check_in_token_provider: CheckInTokenProvider,
     ):
         self._session = session
         self._thehope_ticket_provider = thehope_ticket_provider
-        self._check_in_token_provider = check_in_token_provider
 
     @distributed_trace()
     async def sync_user_ticket(self, user_id: UUID, email: str) -> None:
@@ -133,29 +130,6 @@ class TicketHandler:
                 .execute()
             )
 
-    @distributed_trace()
-    async def create_check_in_token(self, ticket_id: UUID) -> tuple[str, datetime]:
-        """
-        Create a one-time check-in token for QR code. User must own the ticket.
-        :param ticket_id: PortalUserTicket id
-        :return: (token, expires_at)
-        """
-        user_ctx = get_user_context()
-        if not user_ctx or not user_ctx.user_id:
-            raise ForbiddenException(detail="Authentication required")
-
-        user_id = await (
-            self._session.select(PortalUserTicket.user_id)
-            .where(PortalUserTicket.id == ticket_id)
-            .fetchval()
-        )
-        if not user_id:
-            raise NotFoundException(detail="Ticket not found")
-        if user_id != user_ctx.user_id:
-            raise ForbiddenException(detail="Ticket does not belong to user")
-
-        return self._check_in_token_provider.create_token(ticket_id)
-
     def _time_ranges_overlap(
         self,
         a_start: datetime,
@@ -221,10 +195,10 @@ class TicketHandler:
         return "已全部報名"
 
     @distributed_trace()
-    async def check_in_ticket(self, token: str) -> CheckInResponse:
+    async def check_in_ticket(self, ticket_id: UUID) -> CheckInResponse:
         """
-        Check in a ticket using one-time token. Only ministry users may use.
-        :param token:
+        Check in a ticket using ticket ID. Only ministry users may use.
+        :param ticket_id:
         :return:
         """
         user_ctx = get_user_context()
@@ -232,16 +206,6 @@ class TicketHandler:
             raise ForbiddenException(detail="Authentication required")
         if not user_ctx.is_ministry:
             raise ForbiddenException(detail="Only ministry partners can perform check-in")
-
-        ticket_id, already_used = await self._check_in_token_provider.verify_and_consume_token(token)
-        if ticket_id is None and not already_used:
-            return CheckInResponse(success=False, message="系統查無此票券資訊")
-        if already_used and ticket_id:
-            return await self._build_check_in_response(
-                ticket_id=ticket_id,
-                success=False,
-                message="此票券已完成報到"
-            )
 
         ticket = await self._thehope_ticket_provider.get_ticket_by_id(ticket_id)
         if ticket is None:
@@ -302,6 +266,8 @@ class TicketHandler:
             .where(PortalUserTicket.id == ticket_id)
             .fetchrow()
         )
+        if not row:
+            return CheckInResponse(success=success, message=message)
 
         ticket_base = await (
             self._session.select(
