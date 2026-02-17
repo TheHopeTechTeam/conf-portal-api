@@ -39,6 +39,16 @@ class AccessTokenPayload(TokenPayload):
     family_id: UUID = Field(..., description="Refresh token family id")
 
 
+class CheckInTokenPayload(BaseModel):
+    """Check-in token payload for QR code (single-use, time-limited)."""
+
+    ticket_id: UUID = Field(..., description="Ticket ID")
+    exp: int = Field(..., description="Expiration timestamp")
+    iat: int = Field(..., description="Issued at timestamp")
+    iss: str = Field(..., description="Issuer")
+    jti: str = Field(..., description="JWT ID for one-time use")
+
+
 class RefreshTokenData(UUIDBaseModel):
     """Opaque Refresh Token Data for provider operations"""
     user_id: UUID = Field(..., description="User ID")

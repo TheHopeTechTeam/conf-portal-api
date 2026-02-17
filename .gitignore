@@ -7,6 +7,7 @@ temp_files
 old_datas
 migration_log.json
 .vscode
+docs
 
 
 ### Python template

@@ -16,9 +16,10 @@ from portal.libs.consts.enums import Gender
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models import PortalUser, PortalUserProfile, PortalThirdPartyProvider, PortalUserThirdPartyAuth
+from portal.models import PortalUser, PortalUserProfile, PortalThirdPartyProvider, PortalUserThirdPartyAuth, PortalUserTicket, PortalTicketType
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.user import SUserThirdParty, SAuthProvider, SUserDetail
+from portal.serializers.v1.ticket import TicketBase
 from portal.serializers.v1.user import UserUpdate, UserDetail
 
 
@@ -224,12 +225,33 @@ class UserHandler:
         )
         if not user:
             raise NotFoundException(detail=f"User {user_id} not found")
+        ticket = await (
+            self._session.select(
+                PortalUserTicket.id,
+                sa.func.json_build_object(
+                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalTicketType.id, sa.String),
+                    sa.cast("name", sa.VARCHAR(255)), PortalTicketType.name,
+                ).label("type"),
+                PortalUserTicket.order_id,
+                PortalUserTicket.is_redeemed,
+                PortalUserTicket.is_checked_in,
+                PortalUserTicket.checked_in_at,
+                PortalUserTicket.identity,
+                PortalUserTicket.belong_church
+            )
+            .select_from(PortalUser)
+            .join(PortalUserTicket, PortalUserTicket.user_id == PortalUser.id)
+            .where(PortalUserTicket.user_id == user_id)
+            .fetchrow(as_model=TicketBase)
+        )
+        if ticket:
+            user.ticket = ticket
         return user
 
     @distributed_trace()
     async def update_user(self, user_id: uuid.UUID, model: UserUpdate) -> None:
         """
-
+        Update user profile
         :param user_id:
         :param model:
         :return:

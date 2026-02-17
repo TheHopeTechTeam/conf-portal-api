@@ -11,16 +11,25 @@ from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.libs.database.session_proxy import SessionProxy
 from portal.libs.events.bus import EventBus
 from portal.libs.events.types import (
-    NotificationCreatedEvent
+    NotificationCreatedEvent,
+    TicketTypeSyncEvent,
+    UserTicketSyncEvent,
 )
 from portal.handlers.events import (
-    NotificationCreatedEventHandler
+    NotificationCreatedEventHandler,
+    TicketTypeSyncEventHandler,
+    UserTicketSyncEventHandler,
 )
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.password_provider import PasswordProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.providers.password_reset_token_provider import PasswordResetTokenProvider
+from portal.providers.check_in_token_provider import CheckInTokenProvider
+from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
+from portal.services import (
+    TheHopeTicketService
+)
 
 
 # pylint: disable=too-few-public-methods,c-extension-no-member
@@ -51,6 +60,9 @@ class Container(containers.DeclarativeContainer):
     # [Redis]
     redis_client = providers.Singleton(RedisPool)
 
+    # [Services]
+    thehope_ticket_service = providers.Factory(TheHopeTicketService)
+
     # [Providers]
     token_blacklist_provider = providers.Factory(
         TokenBlacklistProvider,
@@ -69,6 +81,14 @@ class Container(containers.DeclarativeContainer):
     password_reset_token_provider = providers.Factory(
         PasswordResetTokenProvider,
         session=request_session,
+    )
+    thehope_ticket_provider = providers.Factory(
+        TheHopeTicketProvider,
+        thehope_ticket_service=thehope_ticket_service,
+    )
+    check_in_token_provider = providers.Factory(
+        CheckInTokenProvider,
+        redis_client=redis_client,
     )
 
     # File handlers
@@ -106,6 +126,12 @@ class Container(containers.DeclarativeContainer):
     testimony_handler = providers.Factory(
         handlers.TestimonyHandler,
         session=request_session,
+    )
+    ticket_handler = providers.Factory(
+        handlers.TicketHandler,
+        session=request_session,
+        thehope_ticket_provider=thehope_ticket_provider,
+        check_in_token_provider=check_in_token_provider,
     )
     user_handler = providers.Factory(
         handlers.UserHandler,
@@ -193,6 +219,7 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
         password_provider=password_provider,
+        ticket_handler=ticket_handler,
     )
     admin_auth_handler = providers.Factory(
         handlers.AdminAuthHandler,
@@ -241,6 +268,16 @@ class Container(containers.DeclarativeContainer):
         NotificationCreatedEventHandler,
         session=request_session,
     )
+    user_ticket_sync_event_handler = providers.Factory(
+        UserTicketSyncEventHandler,
+        ticket_handler=ticket_handler,
+    )
+    ticket_type_sync_event_handler = providers.Factory(
+        TicketTypeSyncEventHandler,
+        session=request_session,
+        thehope_ticket_provider=thehope_ticket_provider,
+        redis_client=redis_client,
+    )
 
     @staticmethod
     def register_event_handlers(event_bus_instance: EventBus, container: "Container") -> None:
@@ -253,4 +290,12 @@ class Container(containers.DeclarativeContainer):
         # Register notification event handlers
         event_bus_instance.subscribe(
             NotificationCreatedEvent, container.notification_created_event_handler()
+        )
+        # Register user ticket sync event handler
+        event_bus_instance.subscribe(
+            UserTicketSyncEvent, container.user_ticket_sync_event_handler()
+        )
+        # Register ticket type sync event handler
+        event_bus_instance.subscribe(
+            TicketTypeSyncEvent, container.ticket_type_sync_event_handler()
         )
