@@ -12,6 +12,7 @@ from .faq import router as faq_router
 from .fcm_device import router as fcm_device_router
 from .feedback import router as feedback_router
 from .testimony import router as testimony_router
+from .ticket import router as ticket_router
 from .user import router as user_router
 from .user_auth import router as user_auth_router
 from .workshop import router as workshop_router
@@ -25,6 +26,7 @@ router = APIRouter(
 router.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
 router.include_router(user_auth_router, prefix="/auth", tags=["User Auth"])
+router.include_router(ticket_router, prefix="/ticket", tags=["Ticket"])
 router.include_router(user_router, prefix="/user", tags=["User"])
 router.include_router(conference_router, prefix="/conference", tags=["Conference"])
 router.include_router(event_info_router, prefix="/event_info", tags=["Event Info"])

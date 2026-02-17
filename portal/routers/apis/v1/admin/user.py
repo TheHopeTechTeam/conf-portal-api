@@ -25,6 +25,7 @@ from portal.serializers.v1.admin.user import (
     AdminChangePassword,
     AdminUserRoles,
     AdminUserList,
+    SyncUserTicket,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -295,6 +296,27 @@ async def update_user(
     :return:
     """
     await admin_user_handler.update_user(user_id=user_id, model=user_data)
+
+
+@router.post(
+    path="/sync-ticket",
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SYSTEM_USER.modify
+    ]
+)
+@inject
+async def sync_user_ticket(
+    model: SyncUserTicket,
+    admin_user_handler: AdminUserHandler = Depends(Provide[Container.admin_user_handler])
+):
+    """
+    Manually sync user ticket from ticket system to Portal (admin only).
+    :param model: user_id and email to identify the user and fetch ticket
+    :param admin_user_handler:
+    :return:
+    """
+    await admin_user_handler.sync_user_ticket(model=model)
 
 
 @router.delete(

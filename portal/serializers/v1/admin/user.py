@@ -91,3 +91,9 @@ class AdminUserRoles(BaseModel):
 class AdminBindRole(BaseModel):
     """BindRole"""
     role_ids: list[UUID] = Field(..., description="Role IDs to assign to the user")
+
+
+class SyncUserTicket(BaseModel):
+    """SyncUserTicket"""
+    user_id: UUID = Field(..., description="User ID")
+    email: str = Field(..., description="User email")

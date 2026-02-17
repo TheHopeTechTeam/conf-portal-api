@@ -118,6 +118,9 @@ class Configuration(BaseSettings):
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv(key="PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", default="60"))
     PASSWORD_RESET_TOKEN_SALT: str = os.getenv(key="PASSWORD_RESET_TOKEN_SALT", default="")
 
+    # [Check-in Token]
+    CHECK_IN_TOKEN_EXPIRE_SECONDS: int = int(os.getenv(key="CHECK_IN_TOKEN_EXPIRE_SECONDS", default="15"))
+
     # [Token Blacklist]
     TOKEN_BLACKLIST_REDIS_DB: int = int(os.getenv(key="TOKEN_BLACKLIST_REDIS_DB", default="1"))
     TOKEN_BLACKLIST_CLEANUP_INTERVAL: int = int(os.getenv(key="TOKEN_BLACKLIST_CLEANUP_INTERVAL", default="3600"))

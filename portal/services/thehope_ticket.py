@@ -51,6 +51,34 @@ class TheHopeTicketService:
             raise e
 
     @distributed_trace(inject_span=True)
+    async def get_ticket_by_id(self, ticket_id: UUID, _span: Span) -> Optional[dict]:
+        """
+        Get ticket by id.
+        :param ticket_id:
+        :param _span:
+        :return:
+        """
+        url = self._build_url(path=f"/tickets/{ticket_id}")
+        try:
+            resp = await (
+                http_client.create(url)
+                .add_headers(self._headers)
+                .aget()
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return (data.get("doc") if isinstance(data, dict) and "doc" in data else data)
+        except HTTPStatusError as e:
+            _span.set_data("error.status_code", e.response.status_code)
+            _span.set_data("error.message", e.response.text)
+            if e.response.status_code == 404:
+                return None
+            raise e
+        except Exception as e:
+            _span.set_data("error.message", str(e))
+            return None
+
+    @distributed_trace(inject_span=True)
     async def get_ticket_list_by_email(self, user_email: str, _span: Span) -> Optional[dict]:
         """
         Get ticket by user email
@@ -96,7 +124,7 @@ class TheHopeTicketService:
                 .add_headers(self._headers)
                 .add_json(data)
                 .retry(3)
-                .apost()
+                .apatch()
             )
             resp.raise_for_status()
             return resp.json()

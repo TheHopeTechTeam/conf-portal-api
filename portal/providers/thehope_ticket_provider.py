@@ -46,6 +46,18 @@ class TheHopeTicketProvider:
         return TheHopeTicketsListResponse.model_validate(raw)
 
     @distributed_trace()
+    async def get_ticket_by_id(self, ticket_id: UUID) -> Optional[TheHopeTicket]:
+        """
+        Get ticket by id from ticket system API.
+        :param ticket_id:
+        :return:
+        """
+        raw = await self._service.get_ticket_by_id(ticket_id)
+        if raw is None:
+            return None
+        return TheHopeTicket.model_validate(raw)
+
+    @distributed_trace()
     async def get_ticket_by_email(self, user_email: str) -> Optional[TheHopeTicket]:
         """
         Get tickets by email and return only the list of ticket objects (processed for convenience).

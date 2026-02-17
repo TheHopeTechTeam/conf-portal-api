@@ -23,6 +23,8 @@ from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.base import RefreshTokenData
 from portal.schemas.user import SUserThirdParty, SAuthProvider, SUserDetail
+from portal.libs.events.publisher import publish_event_in_background
+from portal.libs.events.types import UserTicketSyncEvent
 from portal.serializers.mixins import TokenResponse, RefreshTokenRequest
 from portal.serializers.v1.user import UserLogin, UserLoginResponse, UserInfo
 
@@ -96,18 +98,6 @@ class UserAuthHandler:
                 )
                 .execute()
             )
-            # await (
-            #     self._session.update(PortalUserThirdPartyAuth)
-            #     .values(
-            #         additional_data=token_payload.model_dump(
-            #             exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
-            #         )
-            #     )
-            #     .where(PortalUserThirdPartyAuth.user_id == user.id)
-            #     .where(PortalUserThirdPartyAuth.provider_id == provider.id)
-            #     .where(PortalUserThirdPartyAuth.provider_uid == token_payload.user_id)
-            #     .execute()
-            # )
             await self._user_handler.update_last_login_at(user_id=user.id)
             device_id = await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=model.device_id)
             user_info = UserInfo(
@@ -119,6 +109,7 @@ class UserAuthHandler:
                 verified=user.verified,
             )
             token = await self.get_token_info(user=user, device_id=device_id)
+            publish_event_in_background(UserTicketSyncEvent(user_id=user.id, email=user.email))
         else:
             try:
                 user = await self._user_handler.create_user(token_payload=token_payload, provider=provider)
@@ -133,6 +124,7 @@ class UserAuthHandler:
                     first_login=True,
                 )
                 token = await self.get_token_info(user=user, device_id=device_id)
+                publish_event_in_background(UserTicketSyncEvent(user_id=user.id, email=user.email))
             except Exception as e:
                 logger.error(f"Error creating user: {e}")
                 raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
@@ -198,7 +190,6 @@ class UserAuthHandler:
             refresh_token, rt_data = await self._refresh_token_provider.rotate(refresh_token=refresh_data.refresh_token)  # type: str, RefreshTokenData
         except Exception as exc:
             raise UnauthorizedException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token",
                 debug_detail=str(exc)
             )
@@ -206,7 +197,6 @@ class UserAuthHandler:
         user: Optional[SUserDetail] = await self._user_handler.get_user_detail_by_id(rt_data.user_id)
         if not user:
             raise UnauthorizedException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
                 debug_detail=f"User not found for id: {rt_data.user_id}"
             )

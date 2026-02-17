@@ -2,8 +2,11 @@
 AdminUserHandler
 """
 import uuid
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from portal.handlers.ticket import TicketHandler
 
 import sqlalchemy as sa
 from asyncpg import UniqueViolationError
@@ -16,7 +19,13 @@ from portal.exceptions.responses.base import ApiBaseException, ConflictErrorExce
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models import PortalUser, PortalUserProfile, PortalUserRole, PortalFcmDevice, PortalFcmUserDevice
+from portal.models import (
+    PortalUser,
+    PortalUserProfile,
+    PortalUserRole,
+    PortalFcmDevice,
+    PortalFcmUserDevice,
+)
 from portal.providers.password_provider import PasswordProvider
 from portal.schemas.mixins import UUIDBaseModel
 from portal.schemas.user import SUserSensitive
@@ -31,7 +40,10 @@ from portal.serializers.v1.admin.user import (
     AdminUserBulkAction,
     AdminChangePassword,
     AdminBindRole,
-    AdminUserRoles, AdminUserBase, AdminUserList,
+    AdminUserRoles,
+    AdminUserBase,
+    AdminUserList,
+    SyncUserTicket,
 )
 
 
@@ -43,10 +55,12 @@ class AdminUserHandler:
         session: Session,
         redis_client: RedisPool,
         password_provider: PasswordProvider,
+        ticket_handler: "TicketHandler",
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._password_provider = password_provider
+        self._ticket_handler = ticket_handler
         self._user_ctx: Optional[UserContext] = get_user_context()
 
     @distributed_trace()
@@ -560,7 +574,7 @@ class AdminUserHandler:
     @distributed_trace()
     async def reset_password(self, user_id: UUID, new_password: str) -> None:
         """
-
+        Reset password without old password verification, for admin use.
         :param user_id:
         :param new_password:
         :return:
@@ -575,4 +589,16 @@ class AdminUserHandler:
             )
             .where(PortalUser.id == user_id)
             .execute()
+        )
+
+    @distributed_trace()
+    async def sync_user_ticket(self, model: SyncUserTicket) -> None:
+        """
+        Sync user ticket (admin manual sync). Delegates to TicketHandler.
+        :param model: SyncUserTicket with user_id and email
+        :return:
+        """
+        await self._ticket_handler.sync_user_ticket(
+            user_id=model.user_id,
+            email=model.email,
         )

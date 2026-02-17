@@ -20,6 +20,7 @@ from .verb import router as verb_router
 from .workshop import router as workshop_router
 from .workshop_registration import router as workshop_registration_router
 from .notification import router as notification_router
+from .ticket_type import router as ticket_type_router
 
 router: AuthRouter = AuthRouter(is_admin=True)
 
@@ -40,6 +41,7 @@ router.include_router(verb_router, prefix="/verb", tags=["Admin - Verb"])
 router.include_router(workshop_router, prefix="/workshop", tags=["Admin - Workshop"])
 router.include_router(workshop_registration_router, prefix="/workshop_registration", tags=["Admin - Workshop Registration"])
 router.include_router(notification_router, prefix="/notification", tags=["Admin - Notification"])
+router.include_router(ticket_type_router, prefix="/ticket-type", tags=["Admin - Ticket Type"])
 
 if settings.is_dev:
     from .demo import router as demo_router

@@ -1,5 +1,5 @@
 """
-Account serializers
+User serializers
 """
 from typing import Optional
 
@@ -45,7 +45,6 @@ class UserBase(UUIDBaseModel):
     volunteer: Optional[bool] = Field(default=False, description="Volunteer")
 
 
-
 class UserInfo(UserBase):
     """User info"""
     verified: bool = Field(
@@ -68,14 +67,14 @@ class UserLoginResponse(LoginResponse):
 
 class UserDetail(UserBase):
     """
-    Account detail
+    User detail
     """
-    ticket_detail: Optional[TicketBase] = Field(default=None, serialization_alias="ticketDetail", description="Ticket Detail")
+    ticket: Optional[TicketBase] = Field(default=None, serialization_alias="ticketDetail", description="Ticket Detail")
 
 
 class UserUpdate(BaseModel):
     """
-    Account update
+    User update
     """
     display_name: str = Field(..., serialization_alias="displayName", description="Display Name")
     gender: Optional[Gender] = Field(None, description="Gender")

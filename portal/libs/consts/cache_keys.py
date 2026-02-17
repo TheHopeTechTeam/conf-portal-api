@@ -48,6 +48,15 @@ def get_token_blacklist_pattern() -> str:
     return get_cache_key("token_blacklist:*")
 
 
+def get_check_in_token_used_key(jti: str) -> str:
+    """
+    Get Redis key for used check-in token jti.
+    :param jti: JWT ID
+    :return: Redis key
+    """
+    return get_cache_key(f"ticket_check_in_used:{jti}")
+
+
 def get_refresh_token_blacklist_pattern() -> str:
     """
     Get refresh token blacklist pattern for scanning

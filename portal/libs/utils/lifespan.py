@@ -10,6 +10,8 @@ from fastapi_limiter import FastAPILimiter
 from portal.config import settings
 from portal.container import Container
 from portal.libs.database import RedisPool
+from portal.libs.events.publisher import publish_event_in_background
+from portal.libs.events.types import TicketTypeSyncEvent
 from portal.libs.logger import logger
 
 
@@ -30,6 +32,9 @@ async def lifespan(app: FastAPI):
             Container.register_event_handlers(event_bus, container)
             logger.info("Event handlers registered")
             logger.info("-" * 100)
+            # Sync ticket types from ticket system on startup (fire-and-forget)
+            publish_event_in_background(TicketTypeSyncEvent())
+            logger.info("Ticket type sync event published on startup")
         except Exception as e:
             logger.warning("Failed to register event handlers: %s", e)
 
