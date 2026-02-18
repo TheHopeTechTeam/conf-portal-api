@@ -19,11 +19,9 @@ from portal.libs.authorization.permission_checker import PermissionChecker
 from portal.libs.contexts.user_context import UserContext, set_user_context, get_user_context
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
-from portal.providers.firebase import FirebaseProvider
 from portal.providers.jwt_provider import JWTProvider
-from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.base import AccessTokenPayload
-from portal.schemas.user import SUserSensitive, SUserThirdParty, SUserDetail
+from portal.schemas.user import SUserSensitive, SUserDetail
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -98,7 +96,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Match route by path and method from app routes
         # This is necessary because routes are matched after middleware in FastAPI
         app = request.app
-        path = request.url.path
+        # Get the path relative to the app (remove mount prefix if mounted)
+        root_path = request.scope.get("root_path", "")
+        full_path = request.url.path
+        # Remove root_path prefix to get the path relative to the current app
+        if root_path and full_path.startswith(root_path):
+            path = full_path[len(root_path):]
+        else:
+            path = full_path
         method = request.method
 
         # Search through all routes to find matching route

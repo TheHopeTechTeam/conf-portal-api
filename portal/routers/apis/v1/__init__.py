@@ -5,17 +5,16 @@ from fastapi import APIRouter
 
 from portal.libs.depends import DEFAULT_RATE_LIMITERS
 from portal.route_classes import LogRoute
-from .admin import router as admin_router
 from .conference import router as conference_router
 from .event_info import router as event_info_router
 from .faq import router as faq_router
 from .fcm_device import router as fcm_device_router
 from .feedback import router as feedback_router
+from .notification import router as notification_router
 from .testimony import router as testimony_router
 from .ticket import router as ticket_router
 from .user import router as user_router
 from .user_auth import router as user_auth_router
-from .notification import router as notification_router
 from .workshop import router as workshop_router
 
 router = APIRouter(
@@ -24,7 +23,6 @@ router = APIRouter(
     ],
     route_class=LogRoute
 )
-router.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
 router.include_router(user_auth_router, prefix="/auth", tags=["User Auth"])
 router.include_router(ticket_router, prefix="/ticket", tags=["Ticket"])

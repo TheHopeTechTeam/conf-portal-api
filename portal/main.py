@@ -30,7 +30,7 @@ from portal.libs.logger import logger
 from portal.libs.events.publisher import set_global_container
 from portal.libs.utils.lifespan import lifespan
 from portal.middlewares import CoreRequestMiddleware, AuthMiddleware
-from portal.routers import api_router
+from portal.routers import admin_router, api_router
 
 __all__ = ["app"]
 
@@ -102,10 +102,24 @@ def init_firebase():
     credential = credentials.Certificate(settings.GOOGLE_FIREBASE_CERTIFICATE)
     firebase_admin.initialize_app(
         credential=credential,
-        # options={
-        #     "storageBucket": settings.FIREBASE_STORAGE_BUCKET
-        # }
     )
+
+
+def get_admin_application(container: Container) -> FastAPI:
+    """
+    get admin application
+    :param container: Container instance from main application
+    """
+    admin_application = FastAPI(
+        lifespan=lifespan,
+        openapi_url="/api/openapi.json" if settings.is_dev else None,
+        docs_url="/docs" if settings.is_dev else None,
+        redoc_url="/redoc" if settings.is_dev else None,
+    )
+    admin_application.container = container
+    register_middleware(application=admin_application)
+    admin_application.include_router(admin_router, prefix="/api/v1")
+    return admin_application
 
 
 def get_application() -> FastAPI:
@@ -115,6 +129,7 @@ def get_application() -> FastAPI:
     setup_tracing()
     application = FastAPI(
         lifespan=lifespan,
+        openapi_url="/api/openapi.json",
     )
 
     # set container
@@ -130,6 +145,9 @@ def get_application() -> FastAPI:
         logger.error(f"Error initializing firebase: {e}")
     register_middleware(application=application)
     register_router(application=application)
+
+    admin_app = get_admin_application(container=container)
+    application.mount("/admin", admin_app)
 
     def custom_openapi():
         if not application.openapi_schema:
