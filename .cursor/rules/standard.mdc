@@ -17,6 +17,7 @@ alwaysApply: true
 - Use FastAPI for API development.
 - Project is using Poetry for dependency management.
 - If you need to check any python code, you should use Poetry to run the code.
+- Do not use non-ascii characters in the comments.
 
 ## Alembic
 
