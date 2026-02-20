@@ -18,14 +18,6 @@ class AuthProvider(Enum):
     """
     FIREBASE = "firebase"
 
-    @classmethod
-    def choices(cls):
-        """
-
-        :return:
-        """
-        return [(key.value, key.name.title()) for key in cls]
-
 
 class Gender(IntEnum):
     """
@@ -35,14 +27,6 @@ class Gender(IntEnum):
     MALE = 1
     FEMALE = 2
     OTHER = 3
-
-    @classmethod
-    def choices(cls):
-        """
-
-        :return:
-        """
-        return [(key.value, key.name.title()) for key in cls]
 
 
 class ResourceType(IntEnum):

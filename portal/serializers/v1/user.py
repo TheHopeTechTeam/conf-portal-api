@@ -77,5 +77,5 @@ class UserUpdate(BaseModel):
     User update
     """
     display_name: str = Field(..., serialization_alias="displayName", description="Display Name")
-    gender: Optional[Gender] = Field(None, description="Gender")
-    # phone_number: Optional[str] = Field(None, serialization_alias="phoneNumber", description="Phone Number")
+    # gender: Optional[Gender] = Field(None, description="Gender")
+    phone_number: Optional[str] = Field(None, serialization_alias="phoneNumber", description="Phone Number")

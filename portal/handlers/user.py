@@ -258,13 +258,13 @@ class UserHandler:
         """
         if user_id != self._user_ctx.user_id:
             raise ApiBaseException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        # if model.phone_number:
-        #     await (
-        #         self._session.update(PortalUser)
-        #         .values(phone_number=model.phone_number)
-        #         .where(PortalUser.id == user_id)
-        #         .execute()
-        #     )
+        if model.phone_number:
+            await (
+                self._session.update(PortalUser)
+                .values(phone_number=model.phone_number)
+                .where(PortalUser.id == user_id)
+                .execute()
+            )
         await (
             self._session.update(PortalUserProfile)
             .values(
