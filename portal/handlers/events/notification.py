@@ -1,6 +1,7 @@
 """
 Notification event handlers
 """
+from typing import Optional
 from uuid import UUID
 
 from firebase_admin import messaging
@@ -14,6 +15,7 @@ from portal.libs.consts.enums import (
     NotificationStatus,
     NotificationHistoryStatus,
 )
+from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.events.base import EventHandler
@@ -25,6 +27,7 @@ from portal.models import (
     PortalFcmDevice,
     PortalFcmUserDevice,
 )
+from portal.models.mixins.context import SYSTEM_USER_ID
 from portal.serializers.v1.admin.notification import AdminNotificationCreate, FcmDeviceTokenRow
 
 
@@ -39,6 +42,7 @@ class NotificationCreatedEventHandler(EventHandler):
         :param session:
         """
         self._session = session
+        self._user_ctx: Optional[UserContext] = get_user_context()
 
     @property
     def event_type(self) -> type[NotificationCreatedEvent]:
@@ -126,11 +130,27 @@ class NotificationCreatedEventHandler(EventHandler):
             )
             # Record history for each device (dry run) so it appears in history list
             if device_ids:
+                created_by = (
+                    self._user_ctx.username
+                    if self._user_ctx and self._user_ctx.username
+                    else "system"
+                )
+                created_by_id = (
+                    self._user_ctx.user_id
+                    if self._user_ctx and self._user_ctx.user_id
+                    else SYSTEM_USER_ID
+                )
                 history_records = [
                     {
                         "notification_id": notification_id,
                         "device_id": device_id,
                         "status": NotificationHistoryStatus.DRY_RUN.value,
+                        "created_by": created_by,
+                        "created_by_id": created_by_id,
+                        "updated_by": created_by,
+                        "updated_by_id": created_by_id,
+                        "is_read": False,
+                        "is_deleted": False,
                     }
                     for device_id in device_ids
                 ]
@@ -236,6 +256,16 @@ class NotificationCreatedEventHandler(EventHandler):
             failure_count = result.failure_count
 
             # Create history records
+            created_by = (
+                self._user_ctx.username
+                if self._user_ctx and self._user_ctx.username
+                else "system"
+            )
+            created_by_id = (
+                self._user_ctx.user_id
+                if self._user_ctx and self._user_ctx.user_id
+                else SYSTEM_USER_ID
+            )
             history_records = []
             for i, device_id in enumerate(device_ids):
                 if i < len(result.responses):
@@ -259,6 +289,12 @@ class NotificationCreatedEventHandler(EventHandler):
                     "message_id": message_id,
                     "exception": exception,
                     "status": status,
+                    "created_by": created_by,
+                    "created_by_id": created_by_id,
+                    "updated_by": created_by,
+                    "updated_by_id": created_by_id,
+                    "is_read": False,
+                    "is_deleted": False,
                 })
 
             if history_records:
@@ -284,6 +320,16 @@ class NotificationCreatedEventHandler(EventHandler):
         except FirebaseError as e:
             logger.error("Firebase error: %s", str(e))
             # Create failed history records
+            created_by = (
+                self._user_ctx.username
+                if self._user_ctx and self._user_ctx.username
+                else "system"
+            )
+            created_by_id = (
+                self._user_ctx.user_id
+                if self._user_ctx and self._user_ctx.user_id
+                else SYSTEM_USER_ID
+            )
             history_records = []
             for device_id in device_ids:
                 history_records.append({
@@ -291,6 +337,12 @@ class NotificationCreatedEventHandler(EventHandler):
                     "device_id": device_id,
                     "status": NotificationHistoryStatus.FAILED.value,
                     "exception": str(e),
+                    "created_by": created_by,
+                    "created_by_id": created_by_id,
+                    "updated_by": created_by,
+                    "updated_by_id": created_by_id,
+                    "is_read": False,
+                    "is_deleted": False,
                 })
 
             if history_records:
