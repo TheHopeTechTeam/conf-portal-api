@@ -306,7 +306,7 @@ class WorkshopHandler:
         Get registered workshops
         :return:
         """
-        registered_workshops: dict[str, bool] = await (
+        raw_workshops: dict = await (
             self._session.select(
                 PortalWorkshop.id,
                 sa.case(
@@ -321,8 +321,11 @@ class WorkshopHandler:
             .group_by(
                 PortalWorkshop.id
             )
-            .fetchdict(key="id")
+            .fetchdict(key="id", value="is_registered")
         )
+        registered_workshops: dict[str, bool] = {
+            str(workshop_id): bool(is_reg) for workshop_id, is_reg in raw_workshops.items()
+        }
         return registered_workshops
 
     @distributed_trace()
