@@ -10,8 +10,21 @@ from .mixins import AuditCreatedMixin, BaseMixin
 
 
 class PortalTicketType(ModelBase, AuditCreatedMixin):
-    """Ticket Type Model"""
+    """
+    Ticket Type Model
+    code mapping:
+        CREATIVE_PASS_SINGLE
+        CREATIVE_PASS_DOUBLE
+        INTERPRETATION_RECEIVER
+        LEADERSHIP_PASS_SINGLE
+        LEADERSHIP_PASS_DOUBLE
+        ONLINE_PASS_SINGLE
+        REGULAR_PASS_SEVEN
+        REGULAR_PASS_SINGLE
+        REGULAR_PASS_DOUBLE
+    """
     name = Column(sa.String(64), nullable=False, unique=True, comment="Ticket type name")
+    code = Column(sa.String(32), unique=True, comment="Ticket type code")
 
 
 class PortalUserTicket(ModelBase, BaseMixin):

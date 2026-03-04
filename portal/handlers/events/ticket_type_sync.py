@@ -14,6 +14,7 @@ from portal.libs.events.types import TicketTypeSyncEvent
 from portal.libs.logger import logger
 from portal.models import PortalTicketType
 from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
+from portal.schemas.thehope_ticket import TheHopeTicketType
 
 
 class TicketTypeSyncEventHandler(EventHandler):
@@ -44,21 +45,25 @@ class TicketTypeSyncEventHandler(EventHandler):
         """
         logger.info("Processing ticket type sync event")
         try:
-            types_list = await self._thehope_ticket_provider.get_ticket_types()
+            types_list: list[TheHopeTicketType] = await self._thehope_ticket_provider.get_ticket_types()
         except Exception as e:
             logger.error("Failed to fetch ticket types: %s", e, exc_info=True)
             raise
 
         for item in types_list or []:
             name = (item.name or "").strip()
-            if not name:
+            code = (item.meta.get("conf_code") or "").strip()  # NOTE: Config code in ticket system
+            if not name or not code:
                 continue
             await (
                 self._session.insert(PortalTicketType)
-                .values(id=item.id, name=name)
+                .values(id=item.id, name=name, code=code)
                 .on_conflict_do_update(
                     index_elements=["id"],
-                    set_={"name": name},
+                    set_={
+                        "name": name,
+                        "code": code,
+                    },
                 )
                 .execute()
             )

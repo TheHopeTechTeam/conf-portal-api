@@ -41,6 +41,7 @@ class TheHopeTicketService:
             resp = await (
                 http_client.create(url)
                 .add_headers(self._headers)
+                .verbose(False)
                 .aget()
             )
             resp.raise_for_status()
