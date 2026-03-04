@@ -11,6 +11,12 @@ from portal.serializers.mixins import LoginResponse
 from portal.serializers.v1.ticket import TicketBase
 
 
+class UserLocalLogin(BaseModel):
+    """User local login"""
+    email: str = Field(..., description="Email")
+    device_id: str = Field(..., description="Device ID", frozen=True)
+
+
 class UserLogin(BaseModel):
     """
     User login

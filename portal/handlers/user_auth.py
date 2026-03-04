@@ -8,12 +8,14 @@ from redis.asyncio import Redis
 from starlette import status
 
 from portal.config import settings
-from portal.exceptions.responses import ApiBaseException, UnauthorizedException
+from portal.exceptions.responses import ApiBaseException, UnauthorizedException, NotFoundException
 from portal.handlers.fcm_device import FCMDeviceHandler
 from portal.handlers.user import UserHandler
 from portal.libs.consts.enums import AuthProvider
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.events.publisher import publish_event_in_background
+from portal.libs.events.types import UserTicketSyncEvent
 from portal.libs.logger import logger
 from portal.models import PortalThirdPartyProvider, PortalUserThirdPartyAuth
 from portal.providers.jwt_provider import JWTProvider
@@ -23,10 +25,8 @@ from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.base import RefreshTokenData
 from portal.schemas.user import SUserThirdParty, SAuthProvider, SUserDetail
-from portal.libs.events.publisher import publish_event_in_background
-from portal.libs.events.types import UserTicketSyncEvent
 from portal.serializers.mixins import TokenResponse, RefreshTokenRequest
-from portal.serializers.v1.user import UserLogin, UserLoginResponse, UserInfo
+from portal.serializers.v1.user import UserLogin, UserLoginResponse, UserInfo, UserLocalLogin
 
 
 class UserAuthHandler:
@@ -50,6 +50,28 @@ class UserAuthHandler:
         self._user_handler = user_handler
         self.fcm_device_handler = fcm_device_handler
         self._third_party_provider = ThirdPartyAuthProvider()
+
+    async def local_login(self, model: UserLocalLogin) -> UserLoginResponse:
+        """
+        Simulate login
+        :param model:
+        :return:
+        """
+        user: Optional[SUserThirdParty] = await self._user_handler.get_user_tp_detail_by_email(email=model.email)
+        if not user:
+            raise NotFoundException(detail="User not found")
+        device_id = await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=model.device_id)
+        user_info = UserInfo(
+            id=user.id,
+            phone_number=user.phone_number,
+            email=user.email,
+            display_name=user.display_name,
+            volunteer=user.is_ministry,
+            verified=user.verified,
+        )
+        token = await self.get_token_info(user=user, device_id=device_id)
+        publish_event_in_background(UserTicketSyncEvent(user_id=user.id, email=user.email))
+        return UserLoginResponse(user=user_info, token=token)
 
     @distributed_trace()
     async def login(self, model: UserLogin) -> UserLoginResponse:
@@ -236,4 +258,3 @@ class UserAuthHandler:
         except Exception as e:
             logger.error(f"Error logging out: {e}")
             return False
-

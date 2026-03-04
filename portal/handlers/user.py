@@ -162,6 +162,43 @@ class UserHandler:
         return user
 
     @distributed_trace()
+    async def get_user_tp_detail_by_email(self, email: str) -> Optional[SUserThirdParty]:
+        """
+        Get user third party detail by email
+        :param email:
+        :return:
+        """
+        user: Optional[SUserThirdParty] = await (
+            self._session.select(
+                PortalUser.id,
+                PortalUser.phone_number,
+                PortalUser.email,
+                PortalUser.verified,
+                PortalUser.is_active,
+                PortalUser.is_superuser,
+                PortalUser.is_admin,
+                PortalUser.last_login_at,
+                PortalUserProfile.display_name,
+                PortalUserProfile.gender,
+                PortalUserProfile.is_ministry,
+                PortalThirdPartyProvider.id.label("provider_id"),
+                PortalThirdPartyProvider.name.label("provider"),
+                PortalUserThirdPartyAuth.provider_uid,
+                PortalUserThirdPartyAuth.additional_data
+            )
+            .outerjoin(PortalUserProfile, PortalUser.id == PortalUserProfile.user_id)
+            .outerjoin(PortalUserThirdPartyAuth, PortalUser.id == PortalUserThirdPartyAuth.user_id)
+            .outerjoin(PortalThirdPartyProvider, PortalUserThirdPartyAuth.provider_id == PortalThirdPartyProvider.id)
+            .where(PortalUser.email == email)
+            .where(PortalUser.is_deleted == False)
+            .where(PortalUser.is_active == True)
+            .fetchrow(as_model=SUserThirdParty)
+        )
+        if not user:
+            return None
+        return user
+
+    @distributed_trace()
     async def get_user_detail_by_id(self, user_id: uuid.UUID) -> Optional[SUserDetail]:
         """
 

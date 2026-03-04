@@ -5,19 +5,40 @@ from dependency_injector.wiring import inject, Provide
 from fastapi import Depends
 from starlette import status
 
+from portal.config import settings
 from portal.container import Container
 from portal.exceptions.responses import ApiBaseException
 from portal.handlers import UserAuthHandler
 from portal.libs.depends import DEFAULT_RATE_LIMITERS
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.mixins import LogoutResponse, TokenResponse, RefreshTokenRequest, LogoutRequest
-from portal.serializers.v1.user import UserLogin, UserLoginResponse
+from portal.serializers.v1.user import UserLogin, UserLoginResponse, UserLocalLogin
 
 router: AuthRouter = AuthRouter(
     dependencies=[
         *DEFAULT_RATE_LIMITERS
     ]
 )
+
+if settings.is_dev:
+    @router.post(
+        path="/local/login",
+        status_code=status.HTTP_200_OK,
+        include_in_schema=False,
+        require_auth=False
+    )
+    @inject
+    async def user_local_login(
+        model: UserLocalLogin,
+        user_auth_handler: UserAuthHandler = Depends(Provide[Container.user_auth_handler])
+    ) -> UserLoginResponse:
+        """
+
+        :param model:
+        :param user_auth_handler:
+        :return:
+        """
+        return await user_auth_handler.local_login(model=model)
 
 
 @router.post(
