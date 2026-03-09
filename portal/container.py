@@ -20,9 +20,13 @@ from portal.handlers.events import (
     TicketTypeSyncEventHandler,
     UserTicketSyncEventHandler,
 )
+from portal.libs.smtp_client.smtp_client import SmtpClient
+from portal.providers.firebase.base import FirebaseProvider
 from portal.providers.jwt_provider import JWTProvider
+from portal.providers.login_verification_email_provider import LoginVerificationEmailProvider
 from portal.providers.password_provider import PasswordProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
+from portal.providers.template_render_provider import TemplateRenderProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.providers.password_reset_token_provider import PasswordResetTokenProvider
 from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
@@ -85,6 +89,14 @@ class Container(containers.DeclarativeContainer):
         TheHopeTicketProvider,
         thehope_ticket_service=thehope_ticket_service,
     )
+    firebase_provider = providers.Factory(FirebaseProvider)
+    template_render_provider = providers.Singleton(TemplateRenderProvider)
+    smtp_client = providers.Singleton(SmtpClient)
+    login_verification_email_provider = providers.Factory(
+        LoginVerificationEmailProvider,
+        template_render_provider=template_render_provider,
+        smtp_client=smtp_client,
+    )
 
     # File handlers
     admin_file_handler = providers.Factory(
@@ -145,6 +157,8 @@ class Container(containers.DeclarativeContainer):
         refresh_token_provider=refresh_token_provider,
         user_handler=user_handler,
         fcm_device_handler=fcm_device_handler,
+        firebase_provider=firebase_provider,
+        login_verification_email_provider=login_verification_email_provider,
     )
     workshop_handler = providers.Factory(
         handlers.WorkshopHandler,

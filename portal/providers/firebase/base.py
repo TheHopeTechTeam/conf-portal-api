@@ -2,7 +2,7 @@
 FirebaseProvider
 """
 from firebase_admin import auth, App
-from firebase_admin.auth import UserRecord
+from firebase_admin.auth import ActionCodeSettings, UserRecord
 
 from portal.schemas.auth import FirebaseTokenPayload
 from .authentication import FirebaseAuthentication
@@ -48,4 +48,28 @@ class FirebaseProvider:
         Get user
         """
         return auth.get_user(uid=uid, app=self.app)
+
+    def generate_sign_in_with_email_link(
+        self,
+        email: str,
+        continue_url: str,
+        handle_code_in_app: bool = True
+    ) -> str:
+        """
+        Generate sign-in link for email link authentication.
+        Used for custom email templates; send the returned link via your own email.
+        :param email: Recipient email address.
+        :param continue_url: URL to redirect after user clicks the link (must be in Authorized domains).
+        :param handle_code_in_app: Whether the link is opened in app or web first.
+        :return: The sign-in link URL to embed in your email.
+        """
+        action_code_settings = ActionCodeSettings(
+            url=continue_url,
+            handle_code_in_app=handle_code_in_app,
+        )
+        return auth.generate_sign_in_with_email_link(
+            email=email,
+            action_code_settings=action_code_settings,
+            app=self.app,
+        )
 

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Hope 特會 2026 《PRESENCE》購票成功通知</title>
+    <style>
+      body {
+        font-family: Arial, "Microsoft JhengHei", sans-serif;
+        line-height: 1.7;
+        color: #000007;
+        margin: 0;
+        padding: 24px;
+        background-color: #ede6da;
+      }
+      .card {
+        background-color: #ffffff;
+        border-radius: 16px;
+        max-width: 680px;
+        margin: 0 auto;
+        overflow: hidden;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+      }
+      .header {
+        text-align: center;
+        padding: 0;
+        background-color: transparent;
+      }
+      .logo {
+        display: block;
+        width: 100%;
+        height: auto;
+        margin: 0;
+        border-radius: 16px 16px 0 0;
+      }
+      .title {
+        font-size: 28px;
+        margin: 32px 0 24px;
+        letter-spacing: 1px;
+        text-align: center;
+      }
+      .content {
+        padding: 32px 32px 40px;
+        background-color: #ffffff;
+      }
+      .greeting {
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 0;
+      }
+      .intro-heading {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 16px 0 8px;
+      }
+      .highlight {
+        background-color: #ede6da;
+        border-left: 4px solid #e63c23;
+        padding: 16px;
+        margin: 24px 0;
+        font-weight: 700;
+        font-size: 18px;
+        text-align: center;
+      }
+      .summary {
+        background-color: #ede6da;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin: 32px 0 24px;
+      }
+      .summary-row {
+        margin-bottom: 8px;
+        overflow: hidden;
+      }
+      .summary-label {
+        float: left;
+        font-weight: bold;
+      }
+      .summary-value {
+        float: right;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      th {
+        text-align: left;
+        background-color: #e63c23;
+        color: #ffffff;
+        padding: 12px 10px;
+        font-weight: 600;
+      }
+      td {
+        font-size: 15px;
+        color: #000007;
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .section-title {
+        font-size: 18px;
+        margin: 32px 0 12px;
+        color: #000007;
+        border-bottom: 2px solid #ede6da;
+        padding-bottom: 4px;
+      }
+      .list {
+        margin: 12px 0 24px;
+        padding-left: 20px;
+      }
+      .list li {
+        margin-bottom: 8px;
+      }
+      .footer {
+        margin-top: 32px;
+        font-size: 14px;
+        color: #000007;
+        text-align: center;
+      }
+      a {
+        color: #000007;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="header">
+        <img src="https://thehope.app/TheHopeLogoForEmail.png" alt="The Hope Logo" class="logo" width="680" />
+      </div>
+
+      <div class="content">
+        <h1 class="title">The Hope 特會 App 登入連結</h1>
+
+        <p class="greeting">Hey {{ member_name }},</p>
+        <p>我們真心歡迎你成為這場特會的一份子，期待與你一起來到神的面前，經歷祂真實又榮耀的同在，見證祂美麗而可畏的作為！</p>
+
+        <div class="highlight">🚀 現在 <a href="{{ sign_in_link }}" target="_blank">點擊連結</a> 完成登入</div>
+
+        <p>此連結僅供你本人使用，請勿轉傳。若你沒有申請登入連結，可忽略此信。</p>
+
+        <h2 class="section-title">活動地點</h2>
+        <p>台灣台北市大安區羅斯福路四段1號<br />台大體育館1F</p>
+
+        <h3 class="section-title">入場提醒</h3>
+        <ul class="list">
+          <li>每張票券限本人使用，入場時請出示 Conference App 內的 QR Code。</li>
+          <li>QR Code 為唯一入場憑證，且只能使用一次，請勿轉傳或截圖分享。</li>
+          <li>票券有效狀態以 The Hope 售票平台系統驗證為準。</li>
+          <li>尚未取票將無法取得入場 QR Code，請先至<a href="https://thehope.app/conf-ticket/tickets" target="_blank">售票系統</a>進行取票或分票作業</li>
+        </ul>
+
+        <h3 class="section-title">注意事項</h3>
+        <ul class="list">
+          <li>報名與繳、退費規定請遵照 The Hope 售票平台規範。如需退費請於售票平台完成程序，系統將酌收 10% 手續費。</li>
+          <li>接下來請記得「取票」才能完成報名程序。若需分票給他人，請確實填寫出席人資訊。</li>
+          <li>已分票/取票的各類票種、翻譯機恕不接受退訂。</li>
+          <li>報名參加即同意主辦單位進行攝、錄影，並無償授權作為活動紀錄及行銷宣傳之使用。</li>
+          <li>主辦單位保有最終修改、變更、活動解釋及取消本活動之權利。</li>
+        </ul>
+
+        <div class="footer">
+          <p>如有任何活動問題，請與主辦單位聯絡。</p>
+          <p>主辦單位：好故事設計有限公司｜協辦單位：The Hope</p>
+          <p>客服聯絡：<a href="https://lin.ee/zVP7wI8">LINE@</a> ｜ <a href="mailto:conference@thehope.co">conference＠thehope.co</a></p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

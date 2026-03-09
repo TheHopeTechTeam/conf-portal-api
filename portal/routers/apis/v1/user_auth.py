@@ -12,13 +12,40 @@ from portal.handlers import UserAuthHandler
 from portal.libs.depends import DEFAULT_RATE_LIMITERS
 from portal.routers.auth_router import AuthRouter
 from portal.serializers.mixins import LogoutResponse, TokenResponse, RefreshTokenRequest, LogoutRequest
-from portal.serializers.v1.user import UserLogin, UserLoginResponse, UserLocalLogin
+from portal.serializers.v1.user import (
+    UserLogin,
+    UserLoginResponse,
+    UserLocalLogin,
+    SendSignInLinkRequest,
+    SendSignInLinkResponse,
+)
 
 router: AuthRouter = AuthRouter(
     dependencies=[
         *DEFAULT_RATE_LIMITERS
     ]
 )
+
+
+@router.post(
+    path="/send-signin-link",
+    response_model=SendSignInLinkResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    require_auth=False,
+    operation_id="user_auth_send_sign_in_link",
+)
+@inject
+async def send_signin_link(
+    model: SendSignInLinkRequest,
+    user_auth_handler: UserAuthHandler = Depends(Provide[Container.user_auth_handler])
+) -> SendSignInLinkResponse:
+    """
+    Request a login verification email. A sign-in link will be sent to the given email if the service is configured.
+    Response is always the same to avoid leaking whether the email exists.
+    """
+    await user_auth_handler.send_signin_link(email=model.email)
+    return SendSignInLinkResponse()
+
 
 if settings.is_dev:
     @router.post(
@@ -81,6 +108,7 @@ async def user_refresh_token(
     :return:
     """
     return await user_auth_handler.refresh_token(refresh_data)
+
 
 @router.post(
     path="/logout",

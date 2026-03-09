@@ -18,7 +18,9 @@ from portal.libs.events.publisher import publish_event_in_background
 from portal.libs.events.types import UserTicketSyncEvent
 from portal.libs.logger import logger
 from portal.models import PortalThirdPartyProvider, PortalUserThirdPartyAuth
+from portal.providers.firebase.base import FirebaseProvider
 from portal.providers.jwt_provider import JWTProvider
+from portal.providers.login_verification_email_provider import LoginVerificationEmailProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.third_party_provider import ThirdPartyAuthProvider
 from portal.providers.token_blacklist_provider import TokenBlacklistProvider
@@ -41,6 +43,8 @@ class UserAuthHandler:
         refresh_token_provider: RefreshTokenProvider,
         user_handler: UserHandler,
         fcm_device_handler: FCMDeviceHandler,
+        firebase_provider: FirebaseProvider,
+        login_verification_email_provider: LoginVerificationEmailProvider,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
@@ -50,6 +54,8 @@ class UserAuthHandler:
         self._user_handler = user_handler
         self.fcm_device_handler = fcm_device_handler
         self._third_party_provider = ThirdPartyAuthProvider()
+        self._firebase_provider = firebase_provider
+        self._login_verification_email_provider = login_verification_email_provider
 
     async def local_login(self, model: UserLocalLogin) -> UserLoginResponse:
         """
@@ -235,6 +241,42 @@ class UserAuthHandler:
             token_type="bearer",
             expires_in=self._jwt_provider.access_token_expire_minutes * 60
         )
+
+    @distributed_trace()
+    async def send_signin_link(
+        self,
+        email: str,
+    ) -> None:
+        """
+        Generate Firebase sign-in link and send login verification email.
+        Always returns without leaking whether the email exists (same response for all).
+        member_name for the email greeting is resolved from DB (display_name) by email, else email local part.
+        :param email: Recipient email address.
+        """
+        continue_url = f"{settings.CONFERENCE_FRONTEND_URL.rstrip('/')}/finishSignIn"
+        user = await self._user_handler.get_user_tp_detail_by_email(email=email)
+        if user and user.display_name and user.display_name.strip():
+            member_name = user.display_name.strip()
+        else:
+            member_name = email.split("@")[0] if "@" in email else "there"
+        if self._firebase_provider is None or self._login_verification_email_provider is None:
+            raise ApiBaseException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Login verification email is not configured",
+            )
+        try:
+            sign_in_link = self._firebase_provider.generate_sign_in_with_email_link(
+                email=email,
+                continue_url=continue_url,
+            )
+            await self._login_verification_email_provider.send_login_verification_email(
+                to_email=email,
+                sign_in_link=sign_in_link,
+                member_name=member_name,
+            )
+        except Exception as e:
+            logger.error("Failed to send login verification email to %s: %s", email, e, exc_info=True)
+            # Do not re-raise: return same response to avoid leaking email existence
 
     @distributed_trace()
     async def logout(self, access_token: str, refresh_token: str = None) -> bool:

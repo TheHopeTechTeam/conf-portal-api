@@ -70,6 +70,7 @@ class Configuration(BaseSettings):
     APP_FQDN: str = os.getenv(key="APP_FQDN", default="localhost")
     BASE_URL: str = f"https://{APP_FQDN}" if not IS_DEV else f"http://{APP_FQDN}"  # noqa
     ADMIN_PORTAL_URL: str = os.getenv(key="ADMIN_PORTAL_URL", default="http://localhost:5173")
+    CONFERENCE_FRONTEND_URL: str = os.getenv(key="CONFERENCE_FRONTEND_URL")
 
     # [FastAPI]
     HOST: str = os.getenv(key="HOST", default="127.0.0.1")
@@ -129,9 +130,6 @@ class Configuration(BaseSettings):
     # [Sentry]
     SENTRY_URL: Optional[str] = os.getenv(key="SENTRY_URL")
 
-    # [Firebase]
-    FIREBASE_TEST_PHONE_NUMBER: str = os.getenv(key="FIREBASE_TEST_PHONE_NUMBER")
-
     # [Gmail SMTP]
     SMTP_HOST: str = os.getenv(key="SMTP_HOST")
     SMTP_PORT: int = int(os.getenv(key="SMTP_PORT", default="587"))
@@ -140,9 +138,7 @@ class Configuration(BaseSettings):
     SMTP_FROM_EMAIL: str = os.getenv(key="SMTP_FROM_EMAIL")
 
     # [Google Cloud]
-    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = os.getenv(
-        key="GOOGLE_APPLICATION_CREDENTIALS"
-    )
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = os.getenv(key="GOOGLE_APPLICATION_CREDENTIALS")
     GS_CREDENTIALS: Optional[service_account.Credentials] = None
     GOOGLE_FIREBASE_CERTIFICATE: dict = {}
 

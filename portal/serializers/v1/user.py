@@ -3,12 +3,25 @@ User serializers
 """
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from portal.libs.consts.enums import AuthProvider, Gender
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import LoginResponse
 from portal.serializers.v1.ticket import TicketBase
+
+
+class SendSignInLinkRequest(BaseModel):
+    """Request to send login verification (sign-in link) email."""
+    email: EmailStr = Field(..., description="Recipient email address")
+
+
+class SendSignInLinkResponse(BaseModel):
+    """Response for send sign-in link (202 Accepted)."""
+    message: str = Field(
+        default="Sign-in link sent. Please check your email.",
+        description="Generic message to avoid leaking email existence",
+    )
 
 
 class UserLocalLogin(BaseModel):
