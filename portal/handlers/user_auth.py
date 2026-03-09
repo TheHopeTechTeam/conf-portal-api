@@ -3,6 +3,7 @@ Handler for authentication
 """
 import uuid
 from typing import Optional
+from urllib.parse import quote
 
 from redis.asyncio import Redis
 from starlette import status
@@ -265,10 +266,14 @@ class UserAuthHandler:
                 detail="Login verification email is not configured",
             )
         try:
-            sign_in_link = self._firebase_provider.generate_sign_in_with_email_link(
+            raw_link = self._firebase_provider.generate_sign_in_with_email_link(
                 email=email,
                 continue_url=continue_url,
             )
+            # Wrap with custom domain so the link opens on conference.thehope.app first;
+            # then OS can hand off to the app (Universal Links / App Links) instead of browser.
+            base_url = settings.CONFERENCE_FRONTEND_URL.rstrip("/")
+            sign_in_link = f"{base_url}/__/auth/links?link={quote(raw_link, safe='')}"
             await self._login_verification_email_provider.send_login_verification_email(
                 to_email=email,
                 sign_in_link=sign_in_link,
