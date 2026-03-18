@@ -39,6 +39,8 @@ class AdminWorkshopItem(AdminWorkshopBase):
     participants_limit: Optional[int] = Field(None, serialization_alias="participantsLimit", description="Participants Limit")
     remark: Optional[str] = Field(None, description="Remark")
     sequence: float = Field(..., description="Display order (small to large)")
+    is_creative: bool = Field(..., serialization_alias="isCreative", description="Is creative workshop")
+    is_leadership: bool = Field(..., serialization_alias="isLeadership", description="Is leadership workshop")
 
 
 class AdminWorkshopSequenceItem(UUIDBaseModel):
@@ -78,6 +80,8 @@ class AdminWorkshopCreate(BaseModel):
     participants_limit: Optional[int] = Field(None, description="Participants Limit")
     remark: Optional[str] = Field(None, description="Remark")
     description: Optional[str] = Field(None, description="Description")
+    is_creative: bool = Field(default=False, description="Is creative workshop")
+    is_leadership: bool = Field(default=False, description="Is leadership workshop")
 
 
 class AdminWorkshopUpdate(AdminWorkshopCreate):

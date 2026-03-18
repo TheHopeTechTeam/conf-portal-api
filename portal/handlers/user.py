@@ -3,7 +3,7 @@ UserHandler
 """
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import pytz
 import sqlalchemy as sa
@@ -13,15 +13,29 @@ from starlette import status
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, NotFoundException
 from portal.libs.consts.enums import Gender
-from portal.libs.consts.ticket_type_codes import TICKET_TYPE_CODE_INTERPRETATION_RECEIVER
+from portal.libs.consts.ticket_type_codes import (
+    TICKET_TYPE_CODE_INTERPRETATION_RECEIVER,
+    TICKET_TYPE_CODE_SUBSTRING_CREATIVE,
+    TICKET_TYPE_CODE_SUBSTRING_LEADERSHIP,
+)
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.models import PortalUser, PortalUserProfile, PortalThirdPartyProvider, PortalUserThirdPartyAuth, PortalUserTicket, PortalTicketType
+from portal.models import (
+    PortalUser,
+    PortalUserProfile,
+    PortalThirdPartyProvider,
+    PortalUserThirdPartyAuth,
+    PortalUserTicket,
+    PortalTicketType,
+)
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.user import SUserThirdParty, SAuthProvider, SUserDetail
 from portal.serializers.v1.ticket import TicketBase
 from portal.serializers.v1.user import UserUpdate, UserDetail
+
+if TYPE_CHECKING:
+    from portal.handlers.workshop import WorkshopHandler
 
 
 class UserHandler:
@@ -30,10 +44,12 @@ class UserHandler:
     def __init__(
         self,
         session: Session,
-        redis_client: RedisPool
+        redis_client: RedisPool,
+        workshop_handler: "WorkshopHandler",
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._workshop_handler = workshop_handler
         # contexts
         self._user_ctx: UserContext = get_user_context()
 
@@ -284,6 +300,7 @@ class UserHandler:
                 sa.func.json_build_object(
                     sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalTicketType.id, sa.String),
                     sa.cast("name", sa.VARCHAR(255)), PortalTicketType.name,
+                    sa.cast("code", sa.VARCHAR(32)), PortalTicketType.code,
                 ).label("type"),
                 PortalUserTicket.order_id,
                 PortalUserTicket.is_redeemed,
@@ -295,18 +312,7 @@ class UserHandler:
             .select_from(PortalUserTicket)
             .join(PortalTicketType, PortalTicketType.id == PortalUserTicket.ticket_type_id)
             .where(PortalUserTicket.user_id == user_id)
-            .where(
-                sa.or_(
-                    PortalTicketType.code.is_(None),
-                    PortalTicketType.code != TICKET_TYPE_CODE_INTERPRETATION_RECEIVER,
-                )
-            )
-            .order_by(
-                [
-                    PortalUserTicket.created_at.asc(),
-                    PortalUserTicket.id.asc(),
-                ]
-            )
+            .where(PortalTicketType.code != TICKET_TYPE_CODE_INTERPRETATION_RECEIVER)
             .fetchrow(as_model=TicketBase)
         )
         if ticket:
@@ -320,6 +326,19 @@ class UserHandler:
                     ),
                 }
             )
+            ticket_code_upper = (ticket.type.code or "").upper()
+            if TICKET_TYPE_CODE_SUBSTRING_CREATIVE in ticket_code_upper:
+                user.creative_session = (
+                    await self._workshop_handler.get_pass_session_workshops_for_user(
+                        user_id, is_creative=True, is_leadership=False
+                    )
+                )
+            if TICKET_TYPE_CODE_SUBSTRING_LEADERSHIP in ticket_code_upper:
+                user.leadership_session = (
+                    await self._workshop_handler.get_pass_session_workshops_for_user(
+                        user_id, is_creative=False, is_leadership=True
+                    )
+                )
         return user
 
     @distributed_trace()

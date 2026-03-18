@@ -71,6 +71,8 @@ class AdminWorkshopHandler:
                 PortalWorkshop.participants_limit,
                 PortalWorkshop.remark,
                 PortalWorkshop.sequence,
+                PortalWorkshop.is_creative,
+                PortalWorkshop.is_leadership,
                 PortalConference.title.label("conference_title"),
                 PortalLocation.name.label("location_name"),
                 sa.case(
@@ -175,6 +177,8 @@ class AdminWorkshopHandler:
                 PortalWorkshop.participants_limit,
                 PortalWorkshop.remark,
                 PortalWorkshop.sequence,
+                PortalWorkshop.is_creative,
+                PortalWorkshop.is_leadership,
                 sa.func.json_build_object(
                     sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
                     sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,

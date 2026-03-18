@@ -5,6 +5,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import sqlalchemy as sa
@@ -18,12 +19,15 @@ from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import (
+    PortalConference,
     PortalWorkshop,
     PortalWorkshopInstructor,
     PortalWorkshopRegistration,
     PortalInstructor,
     PortalLocation,
 )
+from portal.serializers.v1.location import LocationBase
+from portal.serializers.v1.user import UserSessionWorkshop
 from portal.serializers.v1.workshop import (
     WorkshopBase,
     WorkshopDetail,
@@ -50,6 +54,80 @@ class WorkshopHandler:
             self._user_ctx: UserContext = get_user_context()
         except Exception:
             self._user_ctx = None
+
+    @distributed_trace()
+    async def get_pass_session_workshops_for_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        is_creative: bool,
+        is_leadership: bool,
+    ) -> list[UserSessionWorkshop]:
+        """
+        Registered workshops for the active conference matching is_creative / is_leadership flags.
+        Used when building user detail for pass types (e.g. creative-only vs leadership-only rows).
+        """
+        rows = await (
+            self._session.select(
+                PortalWorkshop.id,
+                PortalWorkshop.title,
+                PortalWorkshop.start_datetime,
+                PortalWorkshop.end_datetime,
+                PortalWorkshop.description,
+                PortalWorkshop.slido_url,
+                PortalWorkshop.timezone,
+                sa.func.json_build_object(
+                    sa.cast("id", sa.VARCHAR(40)),
+                    sa.cast(PortalLocation.id, sa.String),
+                    sa.cast("name", sa.VARCHAR(255)),
+                    PortalLocation.name,
+                    sa.cast("address", sa.Text),
+                    PortalLocation.address,
+                    sa.cast("floor", sa.VARCHAR(10)),
+                    PortalLocation.floor,
+                    sa.cast("room_number", sa.VARCHAR(10)),
+                    PortalLocation.room_number,
+                ).label("location"),
+            )
+            .select_from(PortalWorkshopRegistration)
+            .join(PortalWorkshop, PortalWorkshopRegistration.workshop_id == PortalWorkshop.id)
+            .join(PortalConference, PortalWorkshop.conference_id == PortalConference.id)
+            .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
+            .where(PortalWorkshopRegistration.user_id == user_id)
+            .where(PortalWorkshopRegistration.unregistered_at.is_(None))
+            .where(PortalWorkshop.is_deleted == sa.false())
+            .where(PortalConference.is_active == sa.true())
+            .where(PortalWorkshop.is_creative == is_creative)
+            .where(PortalWorkshop.is_leadership == is_leadership)
+            .order_by(PortalWorkshop.start_datetime)
+            .fetch()
+        )
+        out: list[UserSessionWorkshop] = []
+        for row in rows:
+            loc_data = row["location"]
+            location = None
+            if loc_data and loc_data.get("id"):
+                location = LocationBase(
+                    id=UUID(loc_data["id"]),
+                    name=loc_data["name"] or "",
+                    address=loc_data.get("address"),
+                    floor=loc_data.get("floor"),
+                    room_number=loc_data.get("room_number"),
+                    image_url=None,
+                )
+            tz = ZoneInfo(row["timezone"])
+            out.append(
+                UserSessionWorkshop(
+                    id=row["id"],
+                    title=row["title"],
+                    start_datetime=row["start_datetime"].astimezone(tz=tz),
+                    end_datetime=row["end_datetime"].astimezone(tz=tz),
+                    description=row["description"] or "",
+                    location=location,
+                    slido_url=row["slido_url"],
+                )
+            )
+        return out
 
     @distributed_trace()
     async def get_workshop_schedule_list(self) -> WorkshopScheduleList:
@@ -82,8 +160,10 @@ class WorkshopHandler:
             )
             .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
             .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
-            .where(PortalWorkshop.is_deleted == False)
-            .where(PortalLocation.is_deleted == False)
+            .where(PortalWorkshop.is_deleted == sa.false())
+            .where(PortalLocation.is_deleted == sa.false())
+            .where(PortalWorkshop.is_creative == sa.false())
+            .where(PortalWorkshop.is_leadership == sa.false())
             .where(PortalWorkshopRegistration.unregistered_at.is_(None))
             .group_by(
                 PortalWorkshop.id,

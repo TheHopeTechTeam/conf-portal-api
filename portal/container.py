@@ -143,10 +143,17 @@ class Container(containers.DeclarativeContainer):
         handlers.NotificationHandler,
         session=request_session,
     )
+    workshop_handler = providers.Factory(
+        handlers.WorkshopHandler,
+        session=request_session,
+        redis_client=redis_client,
+        file_handler=admin_file_handler,
+    )
     user_handler = providers.Factory(
         handlers.UserHandler,
         session=request_session,
-        redis_client=redis_client
+        redis_client=redis_client,
+        workshop_handler=workshop_handler,
     )
     user_auth_handler = providers.Factory(
         handlers.UserAuthHandler,
@@ -159,12 +166,6 @@ class Container(containers.DeclarativeContainer):
         fcm_device_handler=fcm_device_handler,
         firebase_provider=firebase_provider,
         login_verification_email_provider=login_verification_email_provider,
-    )
-    workshop_handler = providers.Factory(
-        handlers.WorkshopHandler,
-        session=request_session,
-        redis_client=redis_client,
-        file_handler=admin_file_handler,
     )
 
     # [Handlers]

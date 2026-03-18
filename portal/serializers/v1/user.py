@@ -1,6 +1,7 @@
 """
 User serializers
 """
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
@@ -8,6 +9,7 @@ from pydantic import BaseModel, EmailStr, Field
 from portal.libs.consts.enums import AuthProvider, Gender
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import LoginResponse
+from portal.serializers.v1.location import LocationBase
 from portal.serializers.v1.ticket import TicketBase
 
 
@@ -84,6 +86,33 @@ class UserLoginResponse(LoginResponse):
     user: UserInfo = Field(..., description="User info")
 
 
+class UserSessionWorkshop(UUIDBaseModel):
+    """
+    Registered workshop for a pass-specific session (creative / leadership).
+    """
+    title: str = Field(..., description="Workshop title")
+    start_datetime: datetime = Field(
+        ...,
+        serialization_alias="startDatetime",
+        description="Start datetime (workshop timezone)",
+    )
+    end_datetime: datetime = Field(
+        ...,
+        serialization_alias="endDatetime",
+        description="End datetime (workshop timezone)",
+    )
+    description: str = Field(default="", description="Description")
+    location: Optional[LocationBase] = Field(
+        default=None,
+        description="Venue; null if no location",
+    )
+    slido_url: Optional[str] = Field(
+        default=None,
+        serialization_alias="slidoUrl",
+        description="Slido URL",
+    )
+
+
 class UserDetail(UserBase):
     """
     User detail
@@ -92,6 +121,22 @@ class UserDetail(UserBase):
         default=None,
         serialization_alias="ticket",
         description="Primary conference ticket (excludes interpretation receiver add-on)",
+    )
+    creative_session: Optional[list[UserSessionWorkshop]] = Field(
+        default=None,
+        serialization_alias="creativeSession",
+        description=(
+            "Registered creative workshops (is_creative); present only when ticket type "
+            "code contains CREATIVE; empty list if none registered"
+        ),
+    )
+    leadership_session: Optional[list[UserSessionWorkshop]] = Field(
+        default=None,
+        serialization_alias="leadershipSession",
+        description=(
+            "Registered leadership workshops (is_leadership); present only when ticket type "
+            "code contains LEADERSHIP; empty list if none registered"
+        ),
     )
 
 

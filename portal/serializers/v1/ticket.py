@@ -15,6 +15,7 @@ class TicketType(UUIDBaseModel, JSONStringMixinModel):
     Ticket type
     """
     name: str = Field(..., description="Ticket type name")
+    code: str = Field(..., description="Ticket type code")
 
 
 class TicketBase(UUIDBaseModel, JSONStringMixinModel):
