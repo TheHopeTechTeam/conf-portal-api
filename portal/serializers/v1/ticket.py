@@ -15,7 +15,19 @@ class TicketType(UUIDBaseModel, JSONStringMixinModel):
     Ticket type
     """
     name: str = Field(..., description="Ticket type name")
-    code: str = Field(..., description="Ticket type code")
+    code: str = Field(
+        ..., description="Ticket type code", examples=[
+            "CREATIVE_PASS_SINGLE",
+            "CREATIVE_PASS_DOUBLE",
+            "LEADERSHIP_PASS_SINGLE",
+            "LEADERSHIP_PASS_DOUBLE",
+            "ONLINE_PASS_SINGLE",
+            "REGULAR_PASS_SEVEN",
+            "REGULAR_PASS_SINGLE",
+            "REGULAR_PASS_DOUBLE",
+            "GUEST_PASS",
+        ]
+    )
 
 
 class TicketBase(UUIDBaseModel, JSONStringMixinModel):
@@ -67,4 +79,3 @@ class CheckInResponse(BaseModel):
         description="Workshop status: 已全部報名 / 尚未報名工作坊",
         serialization_alias="workshopRegistrationStatus",
     )
-

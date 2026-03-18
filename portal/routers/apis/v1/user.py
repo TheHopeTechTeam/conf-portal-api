@@ -26,6 +26,19 @@ router: AuthRouter = AuthRouter(
     status_code=status.HTTP_200_OK,
     description="For getting user personal information",
     operation_id="get_user_by_id",
+    openapi_extra={
+        "TicketTypeCode": [
+            "CREATIVE_PASS_SINGLE",
+            "CREATIVE_PASS_DOUBLE",
+            "LEADERSHIP_PASS_SINGLE",
+            "LEADERSHIP_PASS_DOUBLE",
+            "ONLINE_PASS_SINGLE",
+            "REGULAR_PASS_SEVEN",
+            "REGULAR_PASS_SINGLE",
+            "REGULAR_PASS_DOUBLE",
+            "GUEST_PASS",
+        ]
+    }
 )
 @inject
 async def get_user_by_id(
