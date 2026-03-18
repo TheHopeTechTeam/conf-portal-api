@@ -58,16 +58,16 @@ class TheHopeTicketProvider:
         return TheHopeTicket.model_validate(raw)
 
     @distributed_trace()
-    async def get_ticket_by_email(self, user_email: str) -> Optional[TheHopeTicket]:
+    async def get_ticket_by_email(self, user_email: str) -> list[TheHopeTicket]:
         """
-        Get tickets by email and return only the list of ticket objects (processed for convenience).
+        Get tickets by email and return all ticket objects (including add-ons e.g. interpretation receiver).
         :param user_email:
-        :return:
+        :return: List of TheHopeTicket; empty list when no tickets or API returns None.
         """
         response = await self.get_ticket_list_by_email(user_email)
         if response is None:
-            return None
-        return response.docs[0]
+            return []
+        return list(response.docs)
 
     @distributed_trace()
     async def check_in_ticket(self, ticket_id: UUID) -> TheHopeTicketCheckInResponse:

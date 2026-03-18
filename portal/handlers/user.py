@@ -13,6 +13,7 @@ from starlette import status
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, NotFoundException
 from portal.libs.consts.enums import Gender
+from portal.libs.consts.ticket_type_codes import TICKET_TYPE_CODE_INTERPRETATION_RECEIVER
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -241,8 +242,8 @@ class UserHandler:
     @distributed_trace()
     async def get_user(self, user_id: uuid.UUID) -> UserDetail:
         """
-        Get user detail
-        Ticket detail has been removed (maybe integrated in the future with different logic)
+        Get user detail. Ticket is the primary pass (non-INTERPRETATION_RECEIVER).
+        ticket.has_interpretation_receiver / interpretation_receiver_checked_in describe the 口譯機 add-on.
         :param user_id:
         :return:
         """
@@ -262,6 +263,21 @@ class UserHandler:
         )
         if not user:
             raise NotFoundException(detail=f"User {user_id} not found")
+        ir_row = await (
+            self._session.select(PortalUserTicket.is_checked_in)
+            .select_from(PortalUserTicket)
+            .join(
+                PortalTicketType,
+                PortalTicketType.id == PortalUserTicket.ticket_type_id,
+            )
+            .where(PortalUserTicket.user_id == user_id)
+            .where(PortalTicketType.code == TICKET_TYPE_CODE_INTERPRETATION_RECEIVER)
+            .fetchrow()
+        )
+        has_interpretation_receiver = ir_row is not None
+        interpretation_receiver_checked_in = (
+            bool(ir_row["is_checked_in"]) if ir_row else None
+        )
         ticket = await (
             self._session.select(
                 PortalUserTicket.id,
@@ -276,13 +292,34 @@ class UserHandler:
                 PortalUserTicket.identity,
                 PortalUserTicket.belong_church
             )
-            .select_from(PortalUser)
-            .join(PortalUserTicket, PortalUserTicket.user_id == PortalUser.id)
+            .select_from(PortalUserTicket)
+            .join(PortalTicketType, PortalTicketType.id == PortalUserTicket.ticket_type_id)
             .where(PortalUserTicket.user_id == user_id)
+            .where(
+                sa.or_(
+                    PortalTicketType.code.is_(None),
+                    PortalTicketType.code != TICKET_TYPE_CODE_INTERPRETATION_RECEIVER,
+                )
+            )
+            .order_by(
+                [
+                    PortalUserTicket.created_at.asc(),
+                    PortalUserTicket.id.asc(),
+                ]
+            )
             .fetchrow(as_model=TicketBase)
         )
         if ticket:
-            user.ticket = ticket
+            user.ticket = ticket.model_copy(
+                update={
+                    "has_interpretation_receiver": has_interpretation_receiver,
+                    "interpretation_receiver_checked_in": (
+                        interpretation_receiver_checked_in
+                        if has_interpretation_receiver
+                        else None
+                    ),
+                }
+            )
         return user
 
     @distributed_trace()

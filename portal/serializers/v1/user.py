@@ -88,7 +88,11 @@ class UserDetail(UserBase):
     """
     User detail
     """
-    ticket: Optional[TicketBase] = Field(default=None, serialization_alias="ticket", description="Ticket")
+    ticket: Optional[TicketBase] = Field(
+        default=None,
+        serialization_alias="ticket",
+        description="Primary conference ticket (excludes interpretation receiver add-on)",
+    )
 
 
 class UserUpdate(BaseModel):

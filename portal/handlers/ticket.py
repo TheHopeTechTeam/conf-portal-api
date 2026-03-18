@@ -3,9 +3,11 @@ TicketHandler: sync user ticket from ticket system to PortalUserTicket.
 """
 import sqlalchemy as sa
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import UUID
 
 from portal.exceptions.responses import BadRequestException, ForbiddenException, NotFoundException
+from portal.libs.consts.ticket_type_codes import TICKET_TYPE_CODE_INTERPRETATION_RECEIVER
 from portal.libs.contexts.user_context import get_user_context
 from portal.libs.database import Session
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -41,39 +43,18 @@ class TicketHandler:
     @distributed_trace()
     async def sync_user_ticket(self, user_id: UUID, email: str) -> None:
         """
-        Sync user ticket from ticket system to PortalUserTicket.
-        Fetches ticket by user email and upserts into PortalUserTicket.
+        Sync user tickets from ticket system to PortalUserTicket.
+        Fetches all tickets by user email (including add-ons e.g. interpretation receiver) and upserts each into PortalUserTicket.
         :param user_id: Portal user id to associate with the ticket
         :param email: User email to fetch ticket from ticket system
         :return:
         """
-        ticket = await self._thehope_ticket_provider.get_ticket_by_email(
+        tickets = await self._thehope_ticket_provider.get_ticket_by_email(
             user_email=email
         )
-        if ticket is None:
+        if not tickets:
             return
 
-        if isinstance(ticket.ticket_type, TheHopeTicketType):
-            ticket_type_id = ticket.ticket_type.id
-        elif isinstance(ticket.ticket_type, (UUID, str)):
-            ticket_type_id = (
-                UUID(ticket.ticket_type)
-                if isinstance(ticket.ticket_type, str)
-                else ticket.ticket_type
-            )
-        else:
-            return
-        if isinstance(ticket.order, TheHopeTicketOrder):
-            order_id = ticket.order.id
-        elif isinstance(ticket.order, (UUID, str)):
-            order_id = (
-                UUID(ticket.order) if isinstance(ticket.order, str) else ticket.order
-            )
-        else:
-            return
-
-        is_redeemed = bool(ticket.is_redeemed) if ticket.is_redeemed is not None else False
-        is_checked_in = bool(ticket.is_checked_in) if ticket.is_checked_in is not None else False
         roles = {
             "senior-pastor": "主任牧師",
             "pastor": "牧師",
@@ -83,49 +64,77 @@ class TicketHandler:
             "staff": "全職同工",
             "default": "會眾",
         }
-        identity = roles.get(ticket.user.role, "會眾")
-        belong_church = ticket.user.location
+        first_ticket_user_name: str = ""
+        for ticket in tickets:
+            if isinstance(ticket.ticket_type, TheHopeTicketType):
+                ticket_type_id = ticket.ticket_type.id
+            elif isinstance(ticket.ticket_type, (UUID, str)):
+                ticket_type_id = (
+                    UUID(ticket.ticket_type)
+                    if isinstance(ticket.ticket_type, str)
+                    else ticket.ticket_type
+                )
+            else:
+                continue
+            if isinstance(ticket.order, TheHopeTicketOrder):
+                order_id = ticket.order.id
+            elif isinstance(ticket.order, (UUID, str)):
+                order_id = (
+                    UUID(ticket.order) if isinstance(ticket.order, str) else ticket.order
+                )
+            else:
+                continue
 
-        data = {
-            "id": ticket.id,
-            "ticket_type_id": ticket_type_id,
-            "order_id": order_id,
-            "user_id": user_id,
-            "is_redeemed": is_redeemed,
-            "is_checked_in": is_checked_in,
-            "checked_in_at": None,
-            "identity": identity,
-            "belong_church": belong_church,
-        }
-        await (
-            self._session.insert(PortalUserTicket)
-            .values(data)
-            .on_conflict_do_update(
-                index_elements=["id"],
-                set_={
-                    "ticket_type_id": ticket_type_id,
-                    "order_id": order_id,
-                    "user_id": user_id,
-                    "is_redeemed": is_redeemed,
-                    "is_checked_in": is_checked_in,
-                    "checked_in_at": None,
-                    "identity": identity,
-                    "belong_church": belong_church,
-                },
+            is_redeemed = bool(ticket.is_redeemed) if ticket.is_redeemed is not None else False
+            is_checked_in = bool(ticket.is_checked_in) if ticket.is_checked_in is not None else False
+            identity = (
+                roles.get(ticket.user.role, "會眾")
+                if ticket.user
+                else "會眾"
             )
-            .execute()
-        )
+            belong_church = ticket.user.location if ticket.user else None
+            if ticket.user and not first_ticket_user_name:
+                first_ticket_user_name = ticket.user.name or ""
+
+            data = {
+                "id": ticket.id,
+                "ticket_type_id": ticket_type_id,
+                "order_id": order_id,
+                "user_id": user_id,
+                "is_redeemed": is_redeemed,
+                "is_checked_in": is_checked_in,
+                "checked_in_at": None,
+                "identity": identity,
+                "belong_church": belong_church,
+            }
+            await (
+                self._session.insert(PortalUserTicket)
+                .values(data)
+                .on_conflict_do_update(
+                    index_elements=["id"],
+                    set_={
+                        "ticket_type_id": ticket_type_id,
+                        "order_id": order_id,
+                        "user_id": user_id,
+                        "is_redeemed": is_redeemed,
+                        "is_checked_in": is_checked_in,
+                        "checked_in_at": None,
+                        "identity": identity,
+                        "belong_church": belong_church,
+                    },
+                )
+                .execute()
+            )
         display_name = await (
             self._session.select(PortalUserProfile.display_name)
             .select_from(PortalUserProfile)
             .where(PortalUserProfile.user_id == user_id)
             .fetchval()
         )
-        name = ticket.user.name or ""
-        if not display_name:
+        if not display_name and first_ticket_user_name:
             await (
                 self._session.update(PortalUserProfile)
-                .values(display_name=name[:64])
+                .values(display_name=first_ticket_user_name[:64])
                 .where(PortalUserProfile.user_id == user_id)
                 .execute()
             )
@@ -194,18 +203,77 @@ class TicketHandler:
                 return "尚未報名工作坊"
         return "已全部報名"
 
-    @distributed_trace()
-    async def check_in_ticket(self, ticket_id: UUID) -> CheckInResponse:
+    async def _interpretation_receiver_flags_for_user(
+        self, user_id: UUID
+    ) -> tuple[bool, Optional[bool]]:
         """
-        Check in a ticket using ticket ID. Only ministry users may use.
-        :param ticket_id:
-        :return:
+        :return: (has_interpretation_receiver, interpretation_receiver_checked_in or None if no IR)
+        """
+        row = await (
+            self._session.select(PortalUserTicket.is_checked_in)
+            .select_from(PortalUserTicket)
+            .join(
+                PortalTicketType,
+                PortalTicketType.id == PortalUserTicket.ticket_type_id,
+            )
+            .where(PortalUserTicket.user_id == user_id)
+            .where(PortalTicketType.code == TICKET_TYPE_CODE_INTERPRETATION_RECEIVER)
+            .fetchrow()
+        )
+        if not row:
+            return False, None
+        return True, bool(row["is_checked_in"])
+
+    async def _interpretation_receiver_ticket_id_for_user(self, user_id: UUID) -> Optional[UUID]:
+        return await (
+            self._session.select(PortalUserTicket.id)
+            .select_from(PortalUserTicket)
+            .join(
+                PortalTicketType,
+                PortalTicketType.id == PortalUserTicket.ticket_type_id,
+            )
+            .where(PortalUserTicket.user_id == user_id)
+            .where(PortalTicketType.code == TICKET_TYPE_CODE_INTERPRETATION_RECEIVER)
+            .fetchval()
+        )
+
+    async def _is_interpretation_receiver_ticket(
+        self, ticket_id: UUID, external_ticket
+    ) -> bool:
+        """True if ticket is Interpretation Receiver (DB portal_ticket_type.code or CMS meta.conf_code)."""
+        code_row = await (
+            self._session.select(PortalTicketType.code)
+            .select_from(PortalUserTicket)
+            .join(
+                PortalTicketType,
+                PortalTicketType.id == PortalUserTicket.ticket_type_id,
+            )
+            .where(PortalUserTicket.id == ticket_id)
+            .fetchval()
+        )
+        if code_row == TICKET_TYPE_CODE_INTERPRETATION_RECEIVER:
+            return True
+        tt = external_ticket.ticket_type
+        if isinstance(tt, TheHopeTicketType) and tt.meta:
+            if tt.meta.get("conf_code") == TICKET_TYPE_CODE_INTERPRETATION_RECEIVER:
+                return True
+        return False
+
+    @distributed_trace()
+    async def check_in_ticket(
+        self, ticket_id: UUID, interpretation_receiver: bool = False
+    ) -> CheckInResponse:
+        """
+        Main pass check-in, or IR redeem when interpretation_receiver=True (ticket_id is main pass QR).
         """
         user_ctx = get_user_context()
         if not user_ctx or not user_ctx.user_id:
             raise ForbiddenException(detail="Authentication required")
         if not user_ctx.is_ministry:
             raise ForbiddenException(detail="Only ministry partners can perform check-in")
+
+        if interpretation_receiver:
+            return await self._check_in_interpretation_receiver_by_main_ticket_id(ticket_id)
 
         ticket = await self._thehope_ticket_provider.get_ticket_by_id(ticket_id)
         if ticket is None:
@@ -241,18 +309,85 @@ class TicketHandler:
             message="報到成功"
         )
 
+    async def _check_in_interpretation_receiver_by_main_ticket_id(
+        self, main_ticket_id: UUID
+    ) -> CheckInResponse:
+        """
+        Redeem IR using main pass ticket_id: resolve holder, then check in their IR ticket.
+        Responses use main_ticket_id for holder context in _build_check_in_response.
+        """
+        main_ticket = await self._thehope_ticket_provider.get_ticket_by_id(main_ticket_id)
+        if main_ticket is None:
+            return CheckInResponse(success=False, message="系統查無此票券資訊")
+        if await self._is_interpretation_receiver_ticket(main_ticket_id, main_ticket):
+            return await self._build_check_in_response(
+                ticket_id=main_ticket_id,
+                success=False,
+                message="請掃描主票 QR 辦理口譯機領取",
+                include_workshop_status=False,
+            )
+        portal_user_id = await (
+            self._session.select(PortalUserTicket.user_id)
+            .select_from(PortalUserTicket)
+            .where(PortalUserTicket.id == main_ticket_id)
+            .fetchval()
+        )
+        if portal_user_id is None:
+            return await self._build_check_in_response(
+                ticket_id=main_ticket_id,
+                success=False,
+                message="無法確認持有人，請稍後再試或完成票券同步",
+                include_workshop_status=False,
+            )
+        ir_id = await self._interpretation_receiver_ticket_id_for_user(portal_user_id)
+        if ir_id is None:
+            return await self._build_check_in_response(
+                ticket_id=main_ticket_id,
+                success=False,
+                message="此票卷沒有加購口譯機",
+                include_workshop_status=False,
+            )
+        ir_ticket = await self._thehope_ticket_provider.get_ticket_by_id(ir_id)
+        if ir_ticket is None:
+            return await self._build_check_in_response(
+                ticket_id=main_ticket_id,
+                success=False,
+                message="口譯機票券資料異常",
+                include_workshop_status=False,
+            )
+        ir_checked_in = bool(ir_ticket.is_checked_in) if ir_ticket.is_checked_in is not None else False
+        if ir_checked_in:
+            return await self._build_check_in_response(
+                ticket_id=main_ticket_id,
+                success=False,
+                message="此票卷已經兌換過口譯機",
+                include_workshop_status=False,
+            )
+        await self._thehope_ticket_provider.check_in_ticket(ir_id)
+        checked_in_at = datetime.now(timezone.utc)
+        await (
+            self._session.update(PortalUserTicket)
+            .where(PortalUserTicket.id == ir_id)
+            .values(is_checked_in=True, checked_in_at=checked_in_at)
+            .execute()
+        )
+        return await self._build_check_in_response(
+            ticket_id=main_ticket_id,
+            success=True,
+            message="兌換成功",
+            include_workshop_status=False,
+        )
+
     async def _build_check_in_response(
         self,
         ticket_id: UUID,
         success: bool,
-        message: str
+        message: str,
+        include_workshop_status: bool = True,
     ) -> CheckInResponse:
         """
         Build CheckInResponse from ticket_id and context.
-        :param ticket_id:
-        :param success:
-        :param message:
-        :return:
+        :param include_workshop_status: False for interpretation receiver redeem (skip workshop query).
         """
         row = await (
             self._session.select(
@@ -296,7 +431,16 @@ class TicketHandler:
                 display_name=row["display_name"],
             )
 
-        workshop_status = await self._get_workshop_registration_status(row["id"])
+        has_ir, ir_checked_in = await self._interpretation_receiver_flags_for_user(row["id"])
+        ticket_base = ticket_base.model_copy(
+            update={
+                "has_interpretation_receiver": has_ir,
+                "interpretation_receiver_checked_in": ir_checked_in if has_ir else None,
+            }
+        )
+        workshop_status = None
+        if include_workshop_status:
+            workshop_status = await self._get_workshop_registration_status(row["id"])
         return CheckInResponse(
             success=success,
             message=message,

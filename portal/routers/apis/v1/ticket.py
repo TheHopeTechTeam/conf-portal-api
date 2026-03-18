@@ -16,7 +16,7 @@ router: AuthRouter = AuthRouter(is_admin=False)
     path="/check-in",
     status_code=status.HTTP_200_OK,
     response_model=CheckInResponse,
-    description="Check in a ticket using ticket ID from QR code. Only ministry partners can use.",
+    description="Main pass check-in or IR (口譯機) redeem via same main ticket QR; set interpretationReceiver for IR.",
     operation_id="ticket_check_in",
 )
 @inject
@@ -28,4 +28,7 @@ async def check_in_ticket(
     Check in a ticket. Scanner sends ticket_id from QR code.
     Returns structured response for UI (success/failure, message, ticket holder info, workshop status).
     """
-    return await ticket_handler.check_in_ticket(ticket_id=model.ticket_id)
+    return await ticket_handler.check_in_ticket(
+        ticket_id=model.ticket_id,
+        interpretation_receiver=model.interpretation_receiver,
+    )

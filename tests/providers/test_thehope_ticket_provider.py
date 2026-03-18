@@ -9,7 +9,6 @@ import pytest
 from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
 from portal.schemas.thehope_ticket import (
     TheHopeTicket,
-    TheHopeTicketsListResponse,
     TheHopeTicketType,
 )
 
@@ -73,64 +72,70 @@ async def test_get_ticket_types_returns_objectified_list(
 
 
 @pytest.mark.asyncio
-async def test_get_tickets_by_email_returns_objectified_response(
+async def test_get_tickets_by_email_returns_list_of_tickets(
     thehope_ticket_provider: TheHopeTicketProvider,
     mock_thehope_ticket_service,
 ):
-    """get_tickets_by_email should return TheHopeTicketsListResponse when service returns data."""
+    """get_ticket_by_email should return list of TheHopeTicket when service returns data."""
     raw = _raw_tickets_list_response(docs=[_raw_ticket()], total_docs=1)
-    mock_thehope_ticket_service.get_ticket_by_email = AsyncMock(return_value=raw)
+    mock_thehope_ticket_service.get_ticket_list_by_email = AsyncMock(return_value=raw)
 
     result = await thehope_ticket_provider.get_ticket_by_email("user@example.com")
 
     assert result is not None
-    assert isinstance(result, TheHopeTicketsListResponse)
-    assert len(result.docs) == 1
-    assert result.total_docs == 1
-    mock_thehope_ticket_service.get_ticket_by_email.assert_called_once_with("user@example.com")
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], TheHopeTicket)
+    mock_thehope_ticket_service.get_ticket_list_by_email.assert_called_once_with("user@example.com")
 
 
 @pytest.mark.asyncio
-async def test_get_tickets_by_email_returns_none_when_service_returns_none(
+async def test_get_tickets_by_email_returns_empty_list_when_service_returns_none(
     thehope_ticket_provider: TheHopeTicketProvider,
     mock_thehope_ticket_service,
 ):
-    """get_tickets_by_email should return None when service returns None."""
-    mock_thehope_ticket_service.get_ticket_by_email = AsyncMock(return_value=None)
+    """get_ticket_by_email should return empty list when service returns None."""
+    mock_thehope_ticket_service.get_ticket_list_by_email = AsyncMock(return_value=None)
 
     result = await thehope_ticket_provider.get_ticket_by_email("user@example.com")
 
-    assert result is None
+    assert result == []
 
 
 @pytest.mark.asyncio
-async def test_get_ticket_list_by_email_returns_first_ticket(
+async def test_get_ticket_by_email_returns_all_docs(
     thehope_ticket_provider: TheHopeTicketProvider,
     mock_thehope_ticket_service,
 ):
-    """get_ticket_list_by_email should return first ticket (docs[0]) when response has docs."""
-    ticket_id = uuid4()
-    raw = _raw_tickets_list_response(docs=[_raw_ticket(id_=ticket_id)], total_docs=1)
-    mock_thehope_ticket_service.get_ticket_by_email = AsyncMock(return_value=raw)
+    """get_ticket_by_email should return all tickets (docs) when response has multiple docs."""
+    ticket_id_1 = uuid4()
+    ticket_id_2 = uuid4()
+    raw = _raw_tickets_list_response(
+        docs=[_raw_ticket(id_=ticket_id_1), _raw_ticket(id_=ticket_id_2)],
+        total_docs=2,
+    )
+    mock_thehope_ticket_service.get_ticket_list_by_email = AsyncMock(return_value=raw)
 
     result = await thehope_ticket_provider.get_ticket_by_email("user@example.com")
 
     assert result is not None
-    assert isinstance(result, TheHopeTicket)
-    assert result.id == ticket_id
+    assert len(result) == 2
+    assert all(isinstance(t, TheHopeTicket) for t in result)
+    assert result[0].id == ticket_id_1
+    assert result[1].id == ticket_id_2
 
 
 @pytest.mark.asyncio
-async def test_get_ticket_list_by_email_returns_none_when_no_tickets(
+async def test_get_ticket_by_email_returns_empty_list_when_no_tickets(
     thehope_ticket_provider: TheHopeTicketProvider,
     mock_thehope_ticket_service,
 ):
-    """get_ticket_list_by_email should return None when get_tickets_by_email returns None."""
-    mock_thehope_ticket_service.get_ticket_by_email = AsyncMock(return_value=None)
+    """get_ticket_by_email should return empty list when get_ticket_list_by_email returns None."""
+    mock_thehope_ticket_service.get_ticket_list_by_email = AsyncMock(return_value=None)
 
     result = await thehope_ticket_provider.get_ticket_by_email("user@example.com")
 
-    assert result is None
+    assert result == []
 
 
 @pytest.mark.asyncio
