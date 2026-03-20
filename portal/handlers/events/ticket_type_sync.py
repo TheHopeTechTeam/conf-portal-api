@@ -52,17 +52,31 @@ class TicketTypeSyncEventHandler(EventHandler):
 
         for item in types_list or []:
             name = (item.name or "").strip()
-            code = (item.meta.get("conf_code") or "").strip()  # NOTE: Config code in ticket system
+            meta = item.meta or {}
+            code = (meta.get("conf_code") or "").strip()  # NOTE: Config code in ticket system
             if not name or not code:
                 continue
+
+            image_url = None
+            if isinstance(item.image, str):
+                image_url = item.image
+            elif item.image is not None:
+                image_url = item.image.url
+
             await (
                 self._session.insert(PortalTicketType)
-                .values(id=item.id, name=name, code=code)
+                .values(
+                    id=item.id,
+                    name=name,
+                    code=code,
+                    image_url=image_url,
+                )
                 .on_conflict_do_update(
                     index_elements=["id"],
                     set_={
                         "name": name,
                         "code": code,
+                        "image_url": image_url,
                     },
                 )
                 .execute()

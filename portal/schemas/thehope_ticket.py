@@ -55,6 +55,41 @@ class TheHopeTicketMember(BaseModel):
     location: Optional[str] = Field(None, description="所屬教會")
 
 
+class TheHopeTicketImageSize(BaseModel):
+    """Image size metadata in ticket type image payload."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    url: Optional[str] = Field(None)
+    width: Optional[int] = Field(None)
+    height: Optional[int] = Field(None)
+    mime_type: Optional[str] = Field(None, alias="mimeType")
+    filesize: Optional[int] = Field(None)
+    filename: Optional[str] = Field(None)
+
+
+class TheHopeTicketImage(BaseModel):
+    """Ticket type image payload from TheHope API."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: Optional[int] = Field(None)
+    alt: Optional[str] = Field(None)
+    caption: Optional[str] = Field(None)
+    updated_at: Optional[datetime] = Field(None, alias="updatedAt")
+    created_at: Optional[datetime] = Field(None, alias="createdAt")
+    url: Optional[str] = Field(None)
+    thumbnail_url: Optional[str] = Field(None, alias="thumbnailURL")
+    filename: Optional[str] = Field(None)
+    mime_type: Optional[str] = Field(None, alias="mimeType")
+    filesize: Optional[int] = Field(None)
+    width: Optional[int] = Field(None)
+    height: Optional[int] = Field(None)
+    focal_x: Optional[int] = Field(None, alias="focalX")
+    focal_y: Optional[int] = Field(None, alias="focalY")
+    sizes: Optional[dict[str, TheHopeTicketImageSize | None]] = Field(None)
+
+
 class TheHopeTicketType(BaseModel):
     """Ticket type reference in ticket response."""
 
@@ -67,7 +102,7 @@ class TheHopeTicketType(BaseModel):
     bundle_size: Optional[int] = Field(None, alias="bundleSize", description="套票人數")
     max_tickets: Optional[int] = Field(None, alias="maxTickets", description="可售票數上限")
     sold: Optional[int] = Field(None, description="已售數量")
-    image: Optional[str] = Field(None, description="圖片")
+    image: Optional[TheHopeTicketImage | str] = Field(None, description="圖片")
     caption: Optional[str] = Field(None, description="注意事項")
     description: Optional[Any] = Field(None, description="內容")
     meta: Optional[dict[str, Any]] = Field(None, description="自定義欄位")

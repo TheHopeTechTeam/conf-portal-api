@@ -12,11 +12,13 @@ from portal.libs.database.session_proxy import SessionProxy
 from portal.libs.events.bus import EventBus
 from portal.libs.events.types import (
     NotificationCreatedEvent,
+    SendSignInLinkEvent,
     TicketTypeSyncEvent,
     UserTicketSyncEvent,
 )
 from portal.handlers.events import (
     NotificationCreatedEventHandler,
+    SendSignInLinkEventHandler,
     TicketTypeSyncEventHandler,
     UserTicketSyncEventHandler,
 )
@@ -285,6 +287,14 @@ class Container(containers.DeclarativeContainer):
         UserTicketSyncEventHandler,
         ticket_handler=ticket_handler,
     )
+    send_sign_in_link_event_handler = providers.Factory(
+        SendSignInLinkEventHandler,
+        session=request_session,
+        user_handler=user_handler,
+        ticket_handler=ticket_handler,
+        firebase_provider=firebase_provider,
+        login_verification_email_provider=login_verification_email_provider,
+    )
     ticket_type_sync_event_handler = providers.Factory(
         TicketTypeSyncEventHandler,
         session=request_session,
@@ -307,6 +317,10 @@ class Container(containers.DeclarativeContainer):
         # Register user ticket sync event handler
         event_bus_instance.subscribe(
             UserTicketSyncEvent, container.user_ticket_sync_event_handler()
+        )
+        # Register send sign-in link event handler
+        event_bus_instance.subscribe(
+            SendSignInLinkEvent, container.send_sign_in_link_event_handler()
         )
         # Register ticket type sync event handler
         event_bus_instance.subscribe(

@@ -25,6 +25,7 @@ class PortalTicketType(ModelBase, AuditCreatedMixin):
     """
     name = Column(sa.String(64), nullable=False, unique=True, comment="Ticket type name")
     code = Column(sa.String(32), unique=True, comment="Ticket type code")
+    image_url = Column(sa.Text, comment="Ticket image url")
 
 
 class PortalUserTicket(ModelBase, BaseMixin):

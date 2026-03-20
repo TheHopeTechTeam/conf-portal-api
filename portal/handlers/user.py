@@ -216,6 +216,44 @@ class UserHandler:
         return user
 
     @distributed_trace()
+    async def ensure_portal_user_and_profile_by_email(self, email: str) -> uuid.UUID:
+        """
+        Ensure portal user and profile exist for the given email.
+        :param email:
+        :return:
+        """
+        existed_user_id = await (
+            self._session.select(PortalUser.id)
+            .where(PortalUser.email == email)
+            .where(PortalUser.is_deleted == False)
+            .where(PortalUser.is_active == True)
+            .fetchval()
+        )
+        if existed_user_id:
+            return existed_user_id
+
+        user_id = uuid.uuid4()
+        await (
+            self._session.insert(PortalUser)
+            .values(
+                id=user_id,
+                phone_number=None,
+                email=email,
+                verified=False,
+            )
+            .execute()
+        )
+        await (
+            self._session.insert(PortalUserProfile)
+            .values(
+                user_id=user_id,
+                is_ministry=False,
+            )
+            .execute()
+        )
+        return user_id
+
+    @distributed_trace()
     async def get_user_detail_by_id(self, user_id: uuid.UUID) -> Optional[SUserDetail]:
         """
 
@@ -252,6 +290,36 @@ class UserHandler:
             self._session.update(PortalUser)
             .values(last_login_at=datetime.now(tz=pytz.UTC))
             .where(PortalUser.id == user_id)
+            .execute()
+        )
+
+    @distributed_trace()
+    async def mark_user_verified(self, user_id: uuid.UUID) -> None:
+        await (
+            self._session.update(PortalUser)
+            .values(verified=True)
+            .where(PortalUser.id == user_id)
+            .execute()
+        )
+
+    @distributed_trace()
+    async def update_profile_display_name_if_empty(
+        self,
+        user_id: uuid.UUID,
+        display_name: Optional[str],
+    ) -> None:
+        if not display_name or not display_name.strip():
+            return
+        await (
+            self._session.update(PortalUserProfile)
+            .values(display_name=display_name.strip()[:64])
+            .where(PortalUserProfile.user_id == user_id)
+            .where(
+                sa.or_(
+                    PortalUserProfile.display_name.is_(None),
+                    PortalUserProfile.display_name == "",
+                )
+            )
             .execute()
         )
 

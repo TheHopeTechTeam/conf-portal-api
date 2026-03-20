@@ -3,7 +3,6 @@ Handler for authentication
 """
 import uuid
 from typing import Optional
-from urllib.parse import quote
 
 from redis.asyncio import Redis
 from starlette import status
@@ -16,7 +15,7 @@ from portal.libs.consts.enums import AuthProvider
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.events.publisher import publish_event_in_background
-from portal.libs.events.types import UserTicketSyncEvent
+from portal.libs.events.types import UserTicketSyncEvent, SendSignInLinkEvent
 from portal.libs.logger import logger
 from portal.models import PortalThirdPartyProvider, PortalUserThirdPartyAuth
 from portal.providers.firebase.base import FirebaseProvider
@@ -101,62 +100,100 @@ class UserAuthHandler:
         :return:
         """
         token_payload: FirebaseTokenPayload = self._third_party_provider.verify_firebase_token(token=model.firebase_token)
+        if not token_payload.email:
+            raise ApiBaseException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
         provider: Optional[SAuthProvider] = await self.get_provider_by_name(AuthProvider.FIREBASE.value)
+        if not provider:
+            raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Auth provider not configured")
         user: Optional[SUserThirdParty] = await self._user_handler.get_user_detail_by_provider_info(
             provider_uid=token_payload.user_id,
             email=token_payload.email
         )
+        is_first_login = False
+        if not user:
+            user = await self._user_handler.get_user_tp_detail_by_email(email=token_payload.email)
+            is_first_login = bool(user)
         if user:
-            await (
-                self._session.insert(PortalUserThirdPartyAuth)
-                .values(
-                    user_id=user.id,
-                    provider_id=provider.id,
-                    provider_uid=token_payload.user_id,
-                    additional_data=token_payload.model_dump_json(
-                        exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
-                    ),
+            try:
+                user = await self._prepare_firebase_login_user(
+                    user=user,
+                    provider=provider,
+                    token_payload=token_payload,
                 )
-                .on_conflict_do_update(
-                    index_elements=["user_id", "provider_id", "provider_uid"],
-                    set_={
-                        "additional_data": token_payload.model_dump_json(
-                            exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
-                        )
-                    },
+                return await self._build_login_response(
+                    user=user,
+                    device_key=model.device_id,
+                    first_login=is_first_login,
                 )
-                .execute()
-            )
-            await self._user_handler.update_last_login_at(user_id=user.id)
-            device_id = await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=model.device_id)
-            user_info = UserInfo(
-                id=user.id,
-                phone_number=user.phone_number,
-                email=user.email,
-                display_name=user.display_name,
-                volunteer=user.is_ministry,
-                verified=user.verified,
-            )
-            token = await self.get_token_info(user=user, device_id=device_id)
-            publish_event_in_background(UserTicketSyncEvent(user_id=user.id, email=user.email))
+            except Exception as e:
+                logger.error(f"Error preparing existing user login: {e}")
+                raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
         else:
             try:
                 user = await self._user_handler.create_user(token_payload=token_payload, provider=provider)
-                device_id = await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=model.device_id)
-                user_info = UserInfo(
-                    id=user.id,
-                    phone_number=user.phone_number,
-                    email=user.email,
-                    display_name=user.display_name,
-                    volunteer=user.is_ministry,
-                    verified=user.verified,
+                return await self._build_login_response(
+                    user=user,
+                    device_key=model.device_id,
                     first_login=True,
                 )
-                token = await self.get_token_info(user=user, device_id=device_id)
-                publish_event_in_background(UserTicketSyncEvent(user_id=user.id, email=user.email))
             except Exception as e:
                 logger.error(f"Error creating user: {e}")
                 raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
+
+    @distributed_trace()
+    async def _prepare_firebase_login_user(
+        self,
+        user: SUserThirdParty,
+        provider: SAuthProvider,
+        token_payload: FirebaseTokenPayload,
+    ) -> SUserThirdParty:
+        await (
+            self._session.insert(PortalUserThirdPartyAuth)
+            .values(
+                user_id=user.id,
+                provider_id=provider.id,
+                provider_uid=token_payload.user_id,
+                additional_data=token_payload.model_dump_json(
+                    exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
+                ),
+            )
+            .on_conflict_do_update(
+                index_elements=["user_id", "provider_id", "provider_uid"],
+                set_={
+                    "additional_data": token_payload.model_dump_json(
+                        exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
+                    )
+                },
+            )
+            .execute()
+        )
+        await self._user_handler.mark_user_verified(user_id=user.id)
+        await self._user_handler.update_last_login_at(user_id=user.id)
+        refreshed_user = await self._user_handler.get_user_tp_detail_by_email(email=user.email)
+        if not refreshed_user:
+            raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
+        return refreshed_user
+
+    @distributed_trace()
+    async def _build_login_response(
+        self,
+        user: SUserThirdParty,
+        device_key: str,
+        first_login: bool = False,
+    ) -> UserLoginResponse:
+        device_id = await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=device_key)
+        user_info = UserInfo(
+            id=user.id,
+            phone_number=user.phone_number,
+            email=user.email,
+            display_name=user.display_name,
+            volunteer=user.is_ministry,
+            verified=user.verified,
+            first_login=first_login,
+        )
+        token = await self.get_token_info(user=user, device_id=device_id)
+        if user.email:
+            publish_event_in_background(UserTicketSyncEvent(user_id=user.id, email=user.email))
         return UserLoginResponse(user=user_info, token=token)
 
     @distributed_trace()
@@ -216,7 +253,10 @@ class UserAuthHandler:
         :return:
         """
         try:
-            refresh_token, rt_data = await self._refresh_token_provider.rotate(refresh_token=refresh_data.refresh_token)  # type: str, RefreshTokenData
+            refresh_token_data: tuple[str, RefreshTokenData] = await self._refresh_token_provider.rotate(
+                refresh_token=refresh_data.refresh_token
+            )
+            refresh_token, rt_data = refresh_token_data
         except Exception as exc:
             raise UnauthorizedException(
                 detail="Invalid refresh token",
@@ -249,39 +289,10 @@ class UserAuthHandler:
         email: str,
     ) -> None:
         """
-        Generate Firebase sign-in link and send login verification email.
-        Always returns without leaking whether the email exists (same response for all).
-        member_name for the email greeting is resolved from DB (display_name) by email, else email local part.
+        Publish send sign-in link event in background.
         :param email: Recipient email address.
         """
-        continue_url = f"{settings.CONFERENCE_FRONTEND_URL.rstrip('/')}/finishSignIn"
-        user = await self._user_handler.get_user_tp_detail_by_email(email=email)
-        if user and user.display_name and user.display_name.strip():
-            member_name = user.display_name.strip()
-        else:
-            member_name = email.split("@")[0] if "@" in email else "there"
-        if self._firebase_provider is None or self._login_verification_email_provider is None:
-            raise ApiBaseException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Login verification email is not configured",
-            )
-        try:
-            raw_link = self._firebase_provider.generate_sign_in_with_email_link(
-                email=email,
-                continue_url=continue_url,
-            )
-            # Wrap with custom domain so the link opens on conference.thehope.app first;
-            # then OS can hand off to the app (Universal Links / App Links) instead of browser.
-            base_url = settings.CONFERENCE_FRONTEND_URL.rstrip("/")
-            sign_in_link = f"{base_url}/__/auth/links?link={quote(raw_link, safe='')}"
-            await self._login_verification_email_provider.send_login_verification_email(
-                to_email=email,
-                sign_in_link=sign_in_link,
-                member_name=member_name,
-            )
-        except Exception as e:
-            logger.error("Failed to send login verification email to %s: %s", email, e, exc_info=True)
-            # Do not re-raise: return same response to avoid leaking email existence
+        publish_event_in_background(SendSignInLinkEvent(email=email))
 
     @distributed_trace()
     async def logout(self, access_token: str, refresh_token: str = None) -> bool:

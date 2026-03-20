@@ -31,8 +31,8 @@ class PortalWorkshop(ModelBase, BaseMixin, SortableMixin):
     )
     participants_limit = Column(sa.BigInteger, comment="Participants limit")
     slido_url = Column(sa.String(500), comment="Slido URL")
-    is_creative = Column(sa.Boolean, default=False, comment="Is creative workshop")
-    is_leadership = Column(sa.Boolean, default=False, comment="Is leadership workshop")
+    is_creative = Column(sa.Boolean, default=False, comment="Is creative workshop", server_default=sa.text("false"))
+    is_leadership = Column(sa.Boolean, default=False, comment="Is leadership workshop", server_default=sa.text("false"))
 
 
 class PortalWorkshopInstructor(Base, SortableMixin):

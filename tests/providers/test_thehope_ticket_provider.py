@@ -50,6 +50,16 @@ def _raw_ticket_type(id_=None, name="一般票", price=1800):
         "bundleSize": 1,
         "maxTickets": 200,
         "sold": 0,
+        "image": {
+            "id": 1,
+            "url": "/api/v1/media/file/Web-ticket-guest.png",
+            "thumbnailURL": "/api/v1/media/file/Web-ticket-guest-300x300.png",
+            "filename": "Web-ticket-guest.png",
+            "mimeType": "image/png",
+            "filesize": 254305,
+            "width": 500,
+            "height": 500,
+        },
     }
 
 
@@ -68,6 +78,8 @@ async def test_get_ticket_types_returns_objectified_list(
     assert all(isinstance(t, TheHopeTicketType) for t in result)
     assert result[0].name == "一般票"
     assert result[1].name == "雙人套票"
+    assert result[0].image is not None
+    assert result[0].image.url == "/api/v1/media/file/Web-ticket-guest.png"
     mock_thehope_ticket_service.get_ticket_types.assert_called_once()
 
 

@@ -15,11 +15,11 @@ class PortalUser(ModelBase, RemarkMixin, DeletedMixin, AuditMixin):
     """Portal User Model"""
     phone_number = Column(
         sa.String(16),
-        nullable=False,
+        nullable=True,
         unique=True,
         comment="Phone number, unique identifier"
     )
-    email = Column(sa.String(255), nullable=True, unique=True, comment="Email, unique identifier")
+    email = Column(sa.String(255), nullable=False, unique=True, comment="Email, unique identifier")
     password_hash = Column(sa.String(512), nullable=True, comment="Password hash")
     salt = Column(sa.String(128), nullable=True, comment="Salt for password hash")
     verified = Column(sa.Boolean, default=False, comment="Is verified")
