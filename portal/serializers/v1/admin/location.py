@@ -23,7 +23,7 @@ class AdminLocationBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Location base model
     """
-    name: str = Field(..., description="Name")
+    name: Optional[str] = Field(..., description="Name")
 
 
 class AdminLocationItem(AdminLocationBase):
