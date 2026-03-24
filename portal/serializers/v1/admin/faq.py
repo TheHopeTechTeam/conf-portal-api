@@ -7,11 +7,11 @@ from uuid import UUID
 
 from pydantic import Field, BaseModel
 
-from portal.schemas.mixins import UUIDBaseModel
+from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
 
 
-class AdminFaqCategoryBase(UUIDBaseModel):
+class AdminFaqCategoryBase(UUIDBaseModel, JSONStringMixinModel):
     """
     FAQ Category base model
     """
