@@ -19,11 +19,13 @@ from portal.serializers.v1.admin.faq import (
     AdminFaqCategoryDetail,
     AdminFaqCategoryCreate,
     AdminFaqCategoryUpdate,
+    AdminFaqCategoryChangeSequence,
     AdminFaqQuery,
     AdminFaqPages,
     AdminFaqDetail,
     AdminFaqCreate,
     AdminFaqUpdate,
+    AdminFaqChangeSequence,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
@@ -49,6 +51,24 @@ async def create_category(
     :return:
     """
     return await admin_faq_handler.create_category(model=category_data)
+
+
+@router.put(
+    path="/category/sequence",
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FAQ.modify
+    ]
+)
+@inject
+async def change_category_sequence(
+    model: AdminFaqCategoryChangeSequence,
+    admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
+):
+    """
+    Swap sequence between two FAQ categories
+    """
+    await admin_faq_handler.change_category_sequence(model=model)
 
 
 @router.put(
@@ -203,6 +223,24 @@ async def restore_faqs(
     :return:
     """
     await admin_faq_handler.restore_faqs(model=model)
+
+
+@router.put(
+    path="/item/sequence",
+    status_code=status.HTTP_204_NO_CONTENT,
+    permissions=[
+        Permission.SUPPORT_FAQ.modify
+    ]
+)
+@inject
+async def change_faq_sequence(
+    model: AdminFaqChangeSequence,
+    admin_faq_handler: AdminFaqHandler = Depends(Provide[Container.admin_faq_handler])
+):
+    """
+    Swap sequence between two FAQs in the same category
+    """
+    await admin_faq_handler.change_faq_sequence(model=model)
 
 
 @router.put(

@@ -9,6 +9,7 @@ from pydantic import Field, BaseModel
 
 from portal.schemas.mixins import UUIDBaseModel, JSONStringMixinModel
 from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseResponseModel
+from portal.serializers.mixins.base import ChangeSequence
 
 
 class AdminFaqCategoryBase(UUIDBaseModel, JSONStringMixinModel):
@@ -17,7 +18,7 @@ class AdminFaqCategoryBase(UUIDBaseModel, JSONStringMixinModel):
     """
     name: str = Field(..., description="Name")
     remark: Optional[str] = Field(None, description="Remark")
-    sequences: Optional[float] = Field(None, description="Sequences")
+    sequence: Optional[float] = Field(None, description="Display order (small to large)")
     created_at: Optional[datetime] = Field(None, serialization_alias="createdAt", description="Created at")
     updated_at: Optional[datetime] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
@@ -68,11 +69,19 @@ class AdminFaqBase(UUIDBaseModel):
     updated_at: Optional[datetime] = Field(None, serialization_alias="updatedAt", description="Updated at")
 
 
+class AdminFaqSequenceItem(UUIDBaseModel):
+    """FAQ id and sequence for pagination neighbors"""
+    sequence: float = Field(..., description="Display order (small to large)")
+    category_id: UUID = Field(..., serialization_alias="categoryId", description="Category ID")
+
+
 class AdminFaqItem(AdminFaqBase):
     """
     FAQ item
     """
+    category_id: UUID = Field(..., serialization_alias="categoryId", description="Category ID")
     category_name: Optional[str] = Field(None, serialization_alias="categoryName", description="Category name")
+    sequence: float = Field(..., description="Display order within category (small to large)")
 
 
 class AdminFaqDetail(AdminFaqBase):
@@ -85,6 +94,16 @@ class AdminFaqDetail(AdminFaqBase):
 class AdminFaqPages(PaginationBaseResponseModel):
     """FAQ pages"""
     items: Optional[list[AdminFaqItem]] = Field(..., description="Items")
+    prev_item: Optional[AdminFaqSequenceItem] = Field(None, serialization_alias="prevItem", description="Previous FAQ in sort order")
+    next_item: Optional[AdminFaqSequenceItem] = Field(None, serialization_alias="nextItem", description="Next FAQ in sort order")
+
+
+class AdminFaqCategoryChangeSequence(ChangeSequence):
+    """FAQ category change sequence"""
+
+
+class AdminFaqChangeSequence(ChangeSequence):
+    """FAQ change sequence (same category only)"""
 
 
 class AdminFaqCreate(BaseModel):

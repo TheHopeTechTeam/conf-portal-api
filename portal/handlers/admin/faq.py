@@ -9,7 +9,7 @@ from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
+from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException, BadRequestException
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalFaq, PortalFaqCategory
@@ -29,6 +29,9 @@ from portal.serializers.v1.admin.faq import (
     AdminFaqCategoryCreate,
     AdminFaqCategoryUpdate,
     AdminFaqItem,
+    AdminFaqSequenceItem,
+    AdminFaqCategoryChangeSequence,
+    AdminFaqChangeSequence,
 )
 
 
@@ -43,20 +46,21 @@ class AdminFaqHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
-    @distributed_trace()
-    async def get_faq_pages(self, model: AdminFaqQuery) -> AdminFaqPages:
+    def _faq_pages_base_query(self, model: AdminFaqQuery):
         """
 
         :param model:
         :return:
         """
-        items, count = await (
+        return (
             self._session.select(
                 PortalFaq.id,
+                PortalFaq.category_id,
                 PortalFaqCategory.name.label("category_name"),
                 PortalFaq.question,
                 PortalFaq.related_link,
                 PortalFaq.remark,
+                PortalFaq.sequence,
                 PortalFaq.created_at,
                 PortalFaq.updated_at,
             )
@@ -69,11 +73,39 @@ class AdminFaqHandler:
                 )
             )
             .where(model.category_id is not None, lambda: PortalFaq.category_id == model.category_id)
-            .order_by_with(
-                tables=[PortalFaq],
+        )
+
+    def _apply_faq_pages_order(self, query, model: AdminFaqQuery):
+        """
+
+        :param query:
+        :param model:
+        :return:
+        """
+        if model.order_by:
+            return query.order_by_with(
+                tables=[PortalFaqCategory, PortalFaq],
                 order_by=model.order_by,
-                descending=model.descending
+                descending=model.descending or False
             )
+        return query.order_by(
+            [
+                PortalFaqCategory.sequence.asc(),
+                PortalFaq.sequence.asc(),
+                PortalFaq.id.asc(),
+            ],
+        )
+
+    @distributed_trace()
+    async def get_faq_pages(self, model: AdminFaqQuery) -> AdminFaqPages:
+        """
+
+        :param model:
+        :return:
+        """
+        ordered_query = self._apply_faq_pages_order(self._faq_pages_base_query(model), model)
+        items, count = await (
+            ordered_query
             .limit(model.page_size)
             .offset(model.page * model.page_size)
             .fetchpages(
@@ -81,11 +113,52 @@ class AdminFaqHandler:
                 as_model=AdminFaqItem
             )
         )
+
+        sequence_neighbor_query = self._apply_faq_pages_order(
+            (
+                self._session.select(
+                    PortalFaq.id,
+                    PortalFaq.sequence,
+                    PortalFaq.category_id,
+                )
+                .outerjoin(PortalFaqCategory, PortalFaq.category_id == PortalFaqCategory.id)
+                .where(PortalFaq.is_deleted == model.deleted)
+                .where(
+                    model.keyword is not None, lambda: sa.or_(
+                        PortalFaq.question.ilike(f"%{model.keyword}%"),
+                        PortalFaq.answer.ilike(f"%{model.keyword}%"),
+                    )
+                )
+                .where(model.category_id is not None, lambda: PortalFaq.category_id == model.category_id)
+            ),
+            model,
+        )
+
+        prev_item: Optional[AdminFaqSequenceItem] = None
+        if model.page > 0 and count > 0:
+            prev_item = await (
+                sequence_neighbor_query
+                .offset(model.page * model.page_size - 1)
+                .limit(1)
+                .fetchrow(as_model=AdminFaqSequenceItem)
+            )
+
+        next_item: Optional[AdminFaqSequenceItem] = None
+        if count > (model.page + 1) * model.page_size:
+            next_item = await (
+                sequence_neighbor_query
+                .offset((model.page + 1) * model.page_size)
+                .limit(1)
+                .fetchrow(as_model=AdminFaqSequenceItem)
+            )
+
         return AdminFaqPages(
             page=model.page,
             page_size=model.page_size,
             total=count,
-            items=items
+            items=items,
+            prev_item=prev_item,
+            next_item=next_item,
         )
 
     @distributed_trace()
@@ -245,6 +318,7 @@ class AdminFaqHandler:
                 PortalFaqCategory.id,
                 PortalFaqCategory.name,
                 PortalFaqCategory.remark,
+                PortalFaqCategory.sequence,
                 PortalFaqCategory.created_at,
                 PortalFaqCategory.updated_at,
             )
@@ -385,6 +459,77 @@ class AdminFaqHandler:
                 self._session.update(PortalFaqCategory)
                 .where(PortalFaqCategory.id.in_(model.ids))
                 .values(is_deleted=False)
+                .execute()
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
+
+    @distributed_trace()
+    async def change_category_sequence(self, model: AdminFaqCategoryChangeSequence) -> None:
+        """
+
+        :param model:
+        :return:
+        """
+        try:
+            await (
+                self._session.update(PortalFaqCategory)
+                .values(sequence=model.another_sequence)
+                .where(PortalFaqCategory.id == model.id)
+                .execute()
+            )
+            await (
+                self._session.update(PortalFaqCategory)
+                .values(sequence=model.sequence)
+                .where(PortalFaqCategory.id == model.another_id)
+                .execute()
+            )
+        except Exception as e:
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
+
+    @distributed_trace()
+    async def change_faq_sequence(self, model: AdminFaqChangeSequence) -> None:
+        """
+
+        :param model:
+        :return:
+        """
+        category_id_a = await (
+            self._session.select(PortalFaq.category_id)
+            .where(PortalFaq.id == model.id)
+            .where(PortalFaq.is_deleted == False)
+            .fetchval()
+        )
+        category_id_b = await (
+            self._session.select(PortalFaq.category_id)
+            .where(PortalFaq.id == model.another_id)
+            .where(PortalFaq.is_deleted == False)
+            .fetchval()
+        )
+        if category_id_a is None or category_id_b is None:
+            raise NotFoundException(detail="FAQ not found")
+        if category_id_a != category_id_b:
+            raise BadRequestException(detail="Cannot reorder FAQs across different categories")
+
+        try:
+            await (
+                self._session.update(PortalFaq)
+                .values(sequence=model.another_sequence)
+                .where(PortalFaq.id == model.id)
+                .execute()
+            )
+            await (
+                self._session.update(PortalFaq)
+                .values(sequence=model.sequence)
+                .where(PortalFaq.id == model.another_id)
                 .execute()
             )
         except Exception as e:
