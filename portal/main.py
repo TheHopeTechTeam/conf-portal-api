@@ -54,8 +54,7 @@ def setup_tracing():
         if not path:
             return event
 
-        method = (request.get("method") or "").upper()
-        event["transaction"] = f"{method} {path}".strip()
+        event["transaction"] = path.strip()
         event.setdefault("transaction_info", {})["source"] = "url"
         return event
 
