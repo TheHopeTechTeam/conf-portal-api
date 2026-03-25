@@ -117,8 +117,9 @@ class ConferenceHandler:
             )
             .fetchrow(as_model=ConferenceDetail)
         )
-        location_img = await self._file_handler.get_signed_url_by_resource_id(conference.location.id)
-        conference.location.image_url = location_img[0] if location_img else None
+        if conference.location.id is not None:
+            location_img = await self._file_handler.get_signed_url_by_resource_id(conference.location.id)
+            conference.location.image_url = location_img[0] if location_img else None
         for instructor in conference.instructors:
             instructor_img = await self._file_handler.get_signed_url_by_resource_id(instructor.id)
             instructor.image_url = instructor_img[0] if instructor_img else None
