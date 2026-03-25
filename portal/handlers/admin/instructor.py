@@ -150,11 +150,12 @@ class AdminInstructorHandler:
                 )
                 .execute()
             )
-            await self._file_handler.update_file_association(
-                file_ids=model.file_ids,
-                resource_id=instructor_id,
-                resource_name=self.__class__.__name__,
-            )
+            if model.file_ids:
+                await self._file_handler.update_file_association(
+                    file_ids=model.file_ids,
+                    resource_id=instructor_id,
+                    resource_name=self.__class__.__name__,
+                )
         except UniqueViolationError as e:
             raise ConflictErrorException(
                 detail=f"Instructor {model.name} already exists",

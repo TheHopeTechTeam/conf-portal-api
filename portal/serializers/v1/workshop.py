@@ -35,7 +35,7 @@ class WorkshopDetail(WorkshopBase):
     start_datetime: datetime = Field(..., serialization_alias="startDatetime", description="Start Date and Time")
     end_datetime: datetime = Field(..., serialization_alias="endDatetime", description="End Date and Time")
     instructor: InstructorBase = Field(..., description="Instructor")
-    participants_limit: int = Field(..., serialization_alias="participantsLimit", description="Participants Limit")
+    participants_limit: Optional[int] = Field(..., serialization_alias="participantsLimit", description="Participants Limit")
     image_url: Optional[str] = Field(default=None, serialization_alias="imageUrl", description="Image URL")
 
 
