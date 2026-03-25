@@ -73,7 +73,7 @@ async def get_workshop_by_id(
 
 
 @router.post(
-    path="/",
+    path="",
     status_code=status.HTTP_201_CREATED,
     response_model=UUIDBaseModel,
     permissions=[

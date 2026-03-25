@@ -13,6 +13,7 @@ from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalWorkshop, PortalWorkshopRegistration, PortalLocation, PortalConference, PortalWorkshopInstructor, PortalInstructor
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -222,6 +223,7 @@ class AdminWorkshopHandler:
                 debug_detail=str(e),
             )
         except Exception as e:
+            logger.exception(e)
             raise ApiBaseException(
                 status_code=500,
                 detail="Internal Server Error",

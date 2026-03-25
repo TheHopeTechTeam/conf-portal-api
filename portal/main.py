@@ -3,6 +3,7 @@ main application
 """
 
 from collections import defaultdict
+from urllib.parse import urlparse
 
 import firebase_admin
 import sentry_sdk
@@ -42,6 +43,22 @@ def setup_tracing():
     """
     if not settings.SENTRY_URL:
         return
+
+    def before_send_transaction(event, hint):
+        request = (event or {}).get("request") or {}
+        url = request.get("url")
+        if not url:
+            return event
+
+        path = urlparse(url).path or ""
+        if not path:
+            return event
+
+        method = (request.get("method") or "").upper()
+        event["transaction"] = f"{method} {path}".strip()
+        event.setdefault("transaction_info", {})["source"] = "url"
+        return event
+
     sentry_sdk.init(
         dsn=settings.SENTRY_URL,
         integrations=[
@@ -55,6 +72,7 @@ def setup_tracing():
         profiles_sample_rate=1.0,
         environment=settings.ENV.upper(),
         enable_tracing=True,
+        before_send_transaction=before_send_transaction,
     )
 
 
@@ -119,6 +137,82 @@ def get_admin_application(container: Container) -> FastAPI:
     admin_application.container = container
     register_middleware(application=admin_application)
     admin_application.include_router(admin_router, prefix="/api/v1")
+
+    @admin_application.exception_handler(HTTPException)
+    @distributed_trace(inject_span=True)
+    async def root_http_exception_handler(request, exc: HTTPException, _span: Span = None):
+        """
+
+        :param request:
+        :param exc:
+        :param _span:
+        :return:
+        """
+        session = get_request_session()
+        if session is not None:
+            await session.rollback()
+        try:
+            _span.set_data("internal.exc_detail", exc.detail)
+            _span.set_data("internal.endpoint", str(request.url))
+        except Exception:
+            pass
+        return await http_exception_handler(request, exc)
+
+
+    @admin_application.exception_handler(ApiBaseException)
+    @distributed_trace(inject_span=True)
+    async def root_api_exception_handler(
+        request, exc: ApiBaseException, _span: Span = None
+    ):
+        """
+
+        :param request:
+        :param exc:
+        :param _span:
+        :return:
+        """
+        session = get_request_session()
+        if session is not None:
+            await session.rollback()
+        content = defaultdict()
+        content["detail"] = exc.detail
+        if settings.is_dev:
+            content["debug_detail"] = exc.debug_detail
+            content["url"] = str(request.url)
+        try:
+            _span.set_data("internal.exc_detail", exc.detail)
+            _span.set_data("internal.exc_dev_info", exc.debug_detail)
+            _span.set_data("internal.endpoint", str(request.url))
+        except Exception:
+            pass
+        return JSONResponse(content=content, status_code=exc.status_code)
+
+
+    @admin_application.exception_handler(Exception)
+    @distributed_trace(inject_span=True)
+    async def exception_handler(request: Request, exc, _span: Span = None):
+        """
+
+        :param request:
+        :param exc:
+        :param _span:
+        :return:
+        """
+        content = defaultdict()
+        content["detail"] = {"message": "Internal Server Error", "url": str(request.url)}
+        if settings.is_dev:
+            content["debug_detail"] = f"{exc.__class__.__name__}: {exc}"
+        try:
+            _span.set_data("internal.exc_detail", content["detail"])
+            _span.set_data("internal.exc_dev_info", content["debug_detail"])
+            _span.set_data("internal.endpoint", str(request.url))
+        except Exception:
+            pass
+        return JSONResponse(
+            content=content, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
     return admin_application
 
 

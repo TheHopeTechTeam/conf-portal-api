@@ -13,6 +13,7 @@ from portal.exceptions.responses import NotFoundException, ConflictErrorExceptio
 from portal.handlers import AdminFileHandler
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalLocation
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -149,17 +150,19 @@ class AdminLocationHandler:
                 )
                 .execute()
             )
-            await self._file_handler.update_file_association(
-                file_ids=model.file_ids,
-                resource_id=location_id,
-                resource_name=self.__class__.__name__,
-            )
+            if model.file_ids:
+                await self._file_handler.update_file_association(
+                    file_ids=model.file_ids,
+                    resource_id=location_id,
+                    resource_name=self.__class__.__name__,
+                )
         except UniqueViolationError as e:
             raise ConflictErrorException(
                 detail=f"Location {model.name} already exists",
                 debug_detail=str(e),
             )
         except Exception as e:
+            logger.exception(e)
             raise ApiBaseException(
                 status_code=500,
                 detail="Internal Server Error",
