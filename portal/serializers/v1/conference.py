@@ -2,6 +2,7 @@
 Conference serializers
 """
 from datetime import date
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -24,7 +25,7 @@ class ConferenceDetail(ConferenceBase):
     Conference Detail
     """
     description: str = Field(..., description="Description")
-    location: LocationBase = Field(..., description="Location")
+    location: Optional[LocationBase] = Field(..., description="Location")
     instructors: list[InstructorBase] = Field(..., description="Instructors")
 
 

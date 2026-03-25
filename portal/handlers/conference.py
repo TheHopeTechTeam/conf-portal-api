@@ -13,6 +13,7 @@ from portal.exceptions.responses import ApiBaseException
 from portal.handlers import AdminFileHandler
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalConference, PortalConferenceInstructors, PortalInstructor, PortalLocation
 from portal.serializers.v1.conference import ConferenceBase, ConferenceDetail, ConferenceList
 
@@ -123,12 +124,17 @@ class ConferenceHandler:
                         sa.cast(sa.text("'{}'"), ARRAY(JSONB))
                     ).label("instructors")
                 )
-                .outerjoin(PortalLocation, PortalConference.location_id == PortalLocation.id)
+            .outerjoin(
+                PortalLocation,
+                sa.and_(
+                    PortalConference.location_id == PortalLocation.id,
+                    PortalLocation.is_deleted == False,  # noqa
+                ),
+            )
                 .outerjoin(PortalConferenceInstructors, PortalConferenceInstructors.conference_id == PortalConference.id)
                 .outerjoin(instructor_cte, instructor_cte.c.id == PortalConferenceInstructors.instructor_id)
                 .where(PortalConference.id == conference_id)
                 .where(PortalConference.is_deleted == False)
-                .where(PortalLocation.is_deleted == False)
                 .group_by(
                     PortalConference.id,
                     PortalLocation.id,
@@ -143,5 +149,10 @@ class ConferenceHandler:
                 instructor.image_url = instructor_img[0] if instructor_img else None
             return conference
         except Exception as e:
-            raise ApiBaseException(status_code=500, detail=f"Internal Server Error: {e}")
+            logger.exception(e)
+            raise ApiBaseException(
+                status_code=500,
+                detail="Internal Server Error",
+                debug_detail=str(e),
+            )
 
