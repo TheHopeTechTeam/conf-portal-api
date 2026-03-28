@@ -14,7 +14,7 @@ class FaqCategoryBase(UUIDBaseModel):
     FAQ category base model
     """
     name: str = Field(..., description="Name")
-    description: str = Field(..., description="Description")
+    description: Optional[str] = Field(..., description="Description")
 
 
 class FaqCategoryList(BaseModel):
