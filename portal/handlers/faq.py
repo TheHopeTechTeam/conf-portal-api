@@ -7,6 +7,7 @@ from typing import Optional
 from redis.asyncio import Redis
 
 from portal.config import settings
+from portal.exceptions.responses import NotFoundException
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalFaqCategory, PortalFaq
@@ -57,7 +58,7 @@ class FAQHandler:
             .fetchrow(as_model=FaqCategoryBase)
         )
         if not category:
-            return None
+            raise NotFoundException(detail=f"FAQ Category {category_id} not found")
         return category
 
     @distributed_trace()
@@ -77,7 +78,7 @@ class FAQHandler:
             .fetchrow(as_model=FaqBase)
         )
         if not faq:
-            return None
+            raise NotFoundException(detail=f"FAQ {faq_id} not found")
         return faq
 
     @distributed_trace()
