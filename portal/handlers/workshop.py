@@ -34,7 +34,7 @@ from portal.serializers.v1.workshop import (
     WorkshopSchedule,
     WorkshopScheduleList,
     WorkshopRegistered,
-    WorkshopRegisteredList,
+    WorkshopRegisteredList, WorkshopTime,
 )
 
 
@@ -276,7 +276,7 @@ class WorkshopHandler:
         :param workshop_id:
         :return:
         """
-        workshop: Optional[PortalWorkshop] = await (
+        workshop: Optional[WorkshopTime] = await (
             self._session.select(
                 PortalWorkshop.start_datetime,
                 PortalWorkshop.end_datetime,
@@ -284,7 +284,7 @@ class WorkshopHandler:
             )
             .where(PortalWorkshop.id == workshop_id)
             .where(PortalWorkshop.is_deleted == False)
-            .fetchrow()
+            .fetchrow(as_model=WorkshopTime)
         )
         if not workshop:
             raise NotFoundException(detail=f"Workshop {workshop_id} not found")
@@ -426,6 +426,7 @@ class WorkshopHandler:
             .where(PortalWorkshop.id == workshop_id)
             .where(PortalWorkshop.is_deleted == False)
             .where(PortalWorkshopRegistration.unregistered_at.is_(None))
+            .group_by(PortalWorkshop.participants_limit)
             .fetchval()
         )
         return is_full

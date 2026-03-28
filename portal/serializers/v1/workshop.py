@@ -11,6 +11,15 @@ from portal.serializers.v1.instructor import InstructorBase
 from portal.serializers.v1.location import LocationBase
 
 
+class WorkshopTime(BaseModel):
+    """
+    Workshop time
+    """
+    start_datetime: datetime = Field(..., serialization_alias="startDatetime", description="Start Date and Time")
+    end_datetime: datetime = Field(..., serialization_alias="endDatetime", description="End Date and Time")
+    timezone: str = Field(..., description="Time Zone", exclude=True)
+
+
 class WorkshopBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Workshop
