@@ -54,6 +54,7 @@ class AdminConferenceHandler:
             self._session.select(
                 PortalConference.id,
                 PortalConference.title,
+                PortalConference.timezone,
                 PortalConference.start_date,
                 PortalConference.end_date,
                 PortalConference.is_active,
@@ -118,6 +119,7 @@ class AdminConferenceHandler:
             self._session.select(
                 PortalConference.id,
                 PortalConference.title,
+                PortalConference.timezone,
                 PortalConference.start_date,
                 PortalConference.end_date,
                 PortalConference.is_active,
@@ -156,6 +158,7 @@ class AdminConferenceHandler:
             self._session.select(
                 PortalConference.id,
                 PortalConference.title,
+                PortalConference.timezone,
                 PortalConference.start_date,
                 PortalConference.end_date,
                 PortalConference.is_active,

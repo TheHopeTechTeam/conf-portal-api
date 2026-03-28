@@ -31,6 +31,7 @@ class AdminConferenceItem(AdminConferenceBase):
     """
     Conference item
     """
+    timezone: str = Field(..., description="IANA timezone for conference dates and times")
     start_date: date = Field(..., serialization_alias="startDate", description="Start Date")
     end_date: date = Field(..., serialization_alias="endDate", description="End Date")
     is_active: Optional[bool] = Field(default=None, serialization_alias="isActive", description="Is Active")
@@ -45,6 +46,7 @@ class AdminConferenceDetail(AdminConferenceBase):
     """
     Conference detail
     """
+    timezone: str = Field(..., description="IANA timezone for conference dates and times")
     start_date: date = Field(..., serialization_alias="startDate", description="Start Date")
     end_date: date = Field(..., serialization_alias="endDate", description="End Date")
     is_active: Optional[bool] = Field(default=None, serialization_alias="isActive", description="Is Active")

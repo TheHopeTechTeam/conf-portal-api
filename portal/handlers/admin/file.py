@@ -59,7 +59,7 @@ class AdminFileHandler:
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
         )
         self._bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-        self._folder_prefix = "original_files"
+        self._folder_prefix = f"original_files/{settings.ENV}"
 
     @distributed_trace()
     async def get_file_pages(self, model: AdminFileQuery) -> AdminFilePages:
