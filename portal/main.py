@@ -236,6 +236,7 @@ def get_application() -> FastAPI:
         init_firebase()
     except Exception as e:
         logger.error(f"Error initializing firebase: {e}")
+
     register_middleware(application=application)
     register_router(application=application)
 

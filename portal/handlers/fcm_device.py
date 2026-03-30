@@ -62,11 +62,17 @@ class FCMDeviceHandler:
         :return:
         """
         try:
-            device_id: uuid.UUID = await (
+            device_id: Optional[uuid.UUID] = await (
                 self._session.select(PortalFcmDevice.id)
                 .where(PortalFcmDevice.device_key == device_key)
                 .fetchval()
             )
+            if device_id is None:
+                # No registered device for this key; skip link. Do not insert with
+                # device_id=None: validation fails and Session.execute rolls back the
+                # entire request transaction.
+                logger.warning(f"No registered device for this key: {device_key}")
+                return None
             await (
                 self._session.insert(PortalFcmUserDevice)
                 .values(
