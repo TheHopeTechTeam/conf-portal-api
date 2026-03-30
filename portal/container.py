@@ -44,7 +44,6 @@ class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(
         modules=[],
         packages=[
-            "portal.authorization",
             "portal.handlers",
             "portal.routers",
             "portal.middlewares",

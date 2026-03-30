@@ -44,9 +44,9 @@ class SUserSensitive(SUserDetail):
 
 
 class SUserThirdParty(SUserDetail):
-    provider_id: UUID = Field(..., description="Provider ID", frozen=True, exclude=True)
-    provider: str = Field(..., description="Provider name", frozen=True, exclude=True)
-    provider_uid: str = Field(..., description="Provider UID", frozen=True, exclude=True)
+    provider_id: Optional[UUID] = Field(..., description="Provider ID", frozen=True, exclude=True)
+    provider: Optional[str] = Field(..., description="Provider name", frozen=True, exclude=True)
+    provider_uid: Optional[str] = Field(..., description="Provider UID", frozen=True, exclude=True)
     additional_data: Optional[dict] = Field(None, description="Additional Data from the provider", frozen=True, exclude=True)
 
     @field_validator("additional_data", mode="before")

@@ -70,8 +70,8 @@ class FCMDeviceHandler:
             await (
                 self._session.insert(PortalFcmUserDevice)
                 .values(
-                    user_id=user_id,
                     device_id=device_id,
+                    user_id=user_id,
                 )
                 .on_conflict_do_nothing(index_elements=["user_id", "device_id"])
                 .execute()

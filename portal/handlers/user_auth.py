@@ -126,7 +126,7 @@ class UserAuthHandler:
                     first_login=is_first_login,
                 )
             except Exception as e:
-                logger.error(f"Error preparing existing user login: {e}")
+                logger.exception(e)
                 raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
         else:
             try:
@@ -219,6 +219,7 @@ class UserAuthHandler:
                 family_id=family_id,
             )
         except Exception as exc:
+            logger.exception(exc)
             raise UnauthorizedException(debug_detail=str(exc))
         else:
             return TokenResponse(

@@ -4,6 +4,7 @@ Refresh Token Provider: issue, rotate, revoke, verify
 import hashlib
 import secrets
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from uuid import UUID
 
 from portal.config import settings
@@ -35,7 +36,7 @@ class RefreshTokenProvider:
     async def issue(
         self,
         user_id: UUID,
-        device_id: UUID,
+        device_id: Optional[UUID],
         family_id: UUID
     ) -> str:
         """
@@ -53,24 +54,25 @@ class RefreshTokenProvider:
         ip = self._req_ctx.ip or self._req_ctx.client_ip or None
         try:
             # Upsert PortalAuthDevice
-            await (
-                self._session.insert(PortalAuthDevice)
-                .values(
-                    id=device_id,
-                    user_id=user_id,
-                    last_ip=ip,
-                    last_user_agent=user_agent
+            if device_id:
+                await (
+                    self._session.insert(PortalAuthDevice)
+                    .values(
+                        id=device_id,
+                        user_id=user_id,
+                        last_ip=ip,
+                        last_user_agent=user_agent
+                    )
+                    .on_conflict_do_update(
+                        constraint="pk_portal_auth_device",
+                        set_={
+                            "last_seen_at": now,
+                            "last_ip": ip,
+                            "last_user_agent": user_agent,
+                        }
+                    )
+                    .execute()
                 )
-                .on_conflict_do_update(
-                    constraint="pk_portal_auth_device",
-                    set_={
-                        "last_seen_at": now,
-                        "last_ip": ip,
-                        "last_user_agent": user_agent,
-                    }
-                )
-                .execute()
-            )
             rt_data: RefreshTokenData = RefreshTokenData(
                 user_id=user_id,
                 device_id=device_id,

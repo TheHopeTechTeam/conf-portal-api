@@ -230,7 +230,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         user: SUserDetail = await user_handler.get_user_detail_by_id(payload.sub)
         if not user:
             raise UnauthorizedException()
-        if not user.is_active or not user.verified:
+        if not user.is_active:
             raise UnauthorizedException()
 
         user_context = UserContext(

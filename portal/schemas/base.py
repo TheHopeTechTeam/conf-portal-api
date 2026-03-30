@@ -52,7 +52,7 @@ class CheckInTokenPayload(BaseModel):
 class RefreshTokenData(UUIDBaseModel):
     """Opaque Refresh Token Data for provider operations"""
     user_id: UUID = Field(..., description="User ID")
-    device_id: UUID = Field(..., description="Device ID")
+    device_id: Optional[UUID] = Field(..., description="Device ID")
     family_id: UUID = Field(..., description="Family ID")
     parent_id: Optional[UUID] = Field(None, description="Parent ID")
     replaced_by_id: Optional[UUID] = Field(None, description="Replaced by ID")
