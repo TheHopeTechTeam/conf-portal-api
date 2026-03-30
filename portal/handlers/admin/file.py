@@ -297,6 +297,8 @@ class AdminFileHandler:
             values = []
             for file_id in file_ids:
                 values.append({"file_id": file_id, "resource_id": resource_id, "resource_name": resource_name})
+            if not values:
+                return
             await (
                 self._session.insert(PortalFileAssociation)
                 .values(values)

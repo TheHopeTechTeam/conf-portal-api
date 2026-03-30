@@ -257,6 +257,7 @@ class Container(containers.DeclarativeContainer):
         handlers.AdminWorkshopHandler,
         session=request_session,
         redis_client=redis_client,
+        file_handler=admin_file_handler,
     )
     admin_workshop_registration_handler = providers.Factory(
         handlers.AdminWorkshopRegistrationHandler,

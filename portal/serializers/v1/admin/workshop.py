@@ -13,6 +13,7 @@ from portal.serializers.mixins import GenericQueryBaseModel, PaginationBaseRespo
 from portal.serializers.mixins.base import ChangeSequence
 from portal.serializers.v1.admin.location import AdminLocationBase
 from portal.serializers.v1.admin.conference import AdminConferenceBase
+from portal.serializers.v1.admin.file import AdminFileGridItem
 
 
 class AdminWorkshopQuery(GenericQueryBaseModel):
@@ -53,6 +54,7 @@ class AdminWorkshopDetail(AdminWorkshopItem):
     location: AdminLocationBase = Field(..., description="Location")
     conference: AdminConferenceBase = Field(..., description="Conference")
     description: Optional[str] = Field(None, description="Description")
+    files: Optional[list[AdminFileGridItem]] = Field(None, description="Files")
 
 
 class AdminWorkshopPageItem(AdminWorkshopItem):
@@ -82,6 +84,7 @@ class AdminWorkshopCreate(BaseModel):
     description: Optional[str] = Field(None, description="Description")
     is_creative: bool = Field(default=False, description="Is creative workshop")
     is_leadership: bool = Field(default=False, description="Is leadership workshop")
+    file_ids: Optional[list[UUID]] = Field(None, description="File IDs (at most one cover image)")
 
 
 class AdminWorkshopUpdate(AdminWorkshopCreate):

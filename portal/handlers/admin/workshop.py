@@ -10,7 +10,8 @@ from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
 
 from portal.config import settings
-from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
+from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException, BadRequestException
+from portal.handlers import AdminFileHandler
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
@@ -41,9 +42,11 @@ class AdminWorkshopHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        file_handler: AdminFileHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._file_handler = file_handler
 
     @distributed_trace()
     async def get_workshop_pages(self, query_model: AdminWorkshopQuery) -> AdminWorkshopPages:
@@ -198,6 +201,7 @@ class AdminWorkshopHandler:
 
         if not item:
             raise NotFoundException(detail=f"Workshop {workshop_id} not found")
+        item.files = await self._file_handler.get_files_by_resource_id(resource_id=item.id)
         return item
 
     @distributed_trace()
@@ -207,15 +211,23 @@ class AdminWorkshopHandler:
         :param model:
         :return:
         """
+        if model.file_ids is not None and len(model.file_ids) > 1:
+            raise BadRequestException(detail="At most one file_id is allowed for workshop cover image")
+
         workshop_id = uuid.uuid4()
         try:
             await (
                 self._session.insert(PortalWorkshop)
                 .values(
-                    model.model_dump(exclude_none=True),
+                    model.model_dump(exclude_none=True, exclude={"file_ids"}),
                     id=workshop_id,
                 )
                 .execute()
+            )
+            await self._file_handler.update_file_association(
+                file_ids=model.file_ids,
+                resource_id=workshop_id,
+                resource_name=self.__class__.__name__,
             )
         except UniqueViolationError as e:
             raise ConflictErrorException(
@@ -240,21 +252,29 @@ class AdminWorkshopHandler:
         :param model:
         :return:
         """
+        if model.file_ids is not None and len(model.file_ids) > 1:
+            raise BadRequestException(detail="At most one file_id is allowed for workshop cover image")
+
         try:
             await (
                 self._session.insert(PortalWorkshop)
                 .values(
-                    model.model_dump(exclude_none=True),
+                    model.model_dump(exclude_none=True, exclude={"file_ids"}),
                     id=workshop_id,
                 )
                 .on_conflict_do_update(
                     index_elements=[PortalWorkshop.id],
                     set_={
                         "updated_at": sa.func.now(),
-                        **model.model_dump()
+                        **model.model_dump(exclude={"file_ids"}),
                     }
                 )
                 .execute()
+            )
+            await self._file_handler.update_file_association(
+                file_ids=model.file_ids,
+                resource_id=workshop_id,
+                resource_name=self.__class__.__name__,
             )
         except UniqueViolationError as e:
             raise ConflictErrorException(
