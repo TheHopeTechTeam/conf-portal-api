@@ -51,7 +51,7 @@ class AdminUserList(BaseModel):
 
 class AdminUserCreate(BaseModel):
     """UserCreate"""
-    phone_number: str = Field(..., description="User's phone number")
+    phone_number: Optional[str] = Field(..., description="User's phone number")
     email: str = Field(..., description="User's email address")
     verified: bool = Field(False, description="Is the user verified")
     is_active: bool = Field(True, description="Is the user active")
