@@ -146,8 +146,8 @@ class JWTProvider:
                 **kwargs
             )
             return AccessTokenPayload.model_validate(payload)
-        except jwt.PyJWTError as e:
-            logger.error(f"Error decoding JWT: {e}")
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"Invalid JWT: {e}")
             return None
 
     def is_token_expired(self, token: str, is_admin: bool = True) -> bool:
