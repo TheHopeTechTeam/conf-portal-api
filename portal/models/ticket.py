@@ -24,7 +24,7 @@ class PortalTicketType(ModelBase, AuditCreatedMixin):
         REGULAR_PASS_DOUBLE
     """
     name = Column(sa.String(64), nullable=False, unique=True, comment="Ticket type name")
-    code = Column(sa.String(32), unique=True, comment="Ticket type code")
+    code = Column(sa.String(32), comment="Ticket type code")
     image_url = Column(sa.Text, comment="Ticket image url")
 
 

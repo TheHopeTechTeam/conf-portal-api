@@ -38,9 +38,13 @@ class TheHopeTicketService:
         """
         url = self._build_url(path="/ticketTypes")
         try:
+            params = {
+                "limit": 20,
+            }
             resp = await (
                 http_client.create(url)
                 .add_headers(self._headers)
+                .add_query(params)
                 .verbose(False)
                 .aget()
             )
