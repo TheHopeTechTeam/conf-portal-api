@@ -225,7 +225,7 @@ class AdminWorkshopHandler:
                 .execute()
             )
             await self._file_handler.update_file_association(
-                file_ids=model.file_ids,
+                file_ids=model.file_ids if model.file_ids else [],
                 resource_id=workshop_id,
                 resource_name=self.__class__.__name__,
             )
@@ -272,7 +272,7 @@ class AdminWorkshopHandler:
                 .execute()
             )
             await self._file_handler.update_file_association(
-                file_ids=model.file_ids,
+                file_ids=model.file_ids if model.file_ids else [],
                 resource_id=workshop_id,
                 resource_name=self.__class__.__name__,
             )

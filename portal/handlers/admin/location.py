@@ -150,12 +150,11 @@ class AdminLocationHandler:
                 )
                 .execute()
             )
-            if model.file_ids:
-                await self._file_handler.update_file_association(
-                    file_ids=model.file_ids,
-                    resource_id=location_id,
-                    resource_name=self.__class__.__name__,
-                )
+            await self._file_handler.update_file_association(
+                file_ids=model.file_ids if model.file_ids else [],
+                resource_id=location_id,
+                resource_name=self.__class__.__name__,
+            )
         except UniqueViolationError as e:
             raise ConflictErrorException(
                 detail=f"Location {model.name} already exists",
@@ -193,7 +192,7 @@ class AdminLocationHandler:
                 .execute()
             )
             await self._file_handler.update_file_association(
-                file_ids=model.file_ids,
+                file_ids=model.file_ids if model.file_ids else [],
                 resource_id=location_id,
                 resource_name=self.__class__.__name__,
             )
