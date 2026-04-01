@@ -34,7 +34,8 @@ from portal.serializers.v1.workshop import (
     WorkshopSchedule,
     WorkshopScheduleList,
     WorkshopRegistered,
-    WorkshopRegisteredList, WorkshopTime,
+    WorkshopRegisteredList,
+    WorkshopTime,
 )
 
 
@@ -50,10 +51,7 @@ class WorkshopHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
-        try:
-            self._user_ctx: UserContext = get_user_context()
-        except Exception:
-            self._user_ctx = None
+        self._user_ctx: UserContext = get_user_context()
 
     @distributed_trace()
     async def get_pass_session_workshops_for_user(
@@ -158,13 +156,17 @@ class WorkshopHandler:
                 ).label("is_full"),
                 PortalWorkshop.timezone
             )
-            .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
+            .outerjoin(
+                PortalWorkshopRegistration, sa.and_(
+                    PortalWorkshop.id == PortalWorkshopRegistration.workshop_id,
+                    PortalWorkshopRegistration.unregistered_at.is_(None),
+                )
+            )
             .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
             .where(PortalWorkshop.is_deleted == sa.false())
             .where(PortalLocation.is_deleted == sa.false())
             .where(PortalWorkshop.is_creative == sa.false())
             .where(PortalWorkshop.is_leadership == sa.false())
-            .where(PortalWorkshopRegistration.unregistered_at.is_(None))
             .group_by(
                 PortalWorkshop.id,
                 PortalLocation.id,
@@ -237,14 +239,19 @@ class WorkshopHandler:
                     sa.cast("bio", sa.Text), PortalInstructor.bio,
                 ).label("instructor"),
             )
-            .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
+            .outerjoin(
+                PortalWorkshopRegistration,
+                sa.and_(
+                    PortalWorkshop.id == PortalWorkshopRegistration.workshop_id,
+                    PortalWorkshopRegistration.unregistered_at.is_(None),
+                )
+            )
             .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
             .outerjoin(PortalWorkshopInstructor, PortalWorkshopInstructor.workshop_id == PortalWorkshop.id)
             .outerjoin(PortalInstructor, PortalInstructor.id == PortalWorkshopInstructor.instructor_id)
             .where(PortalWorkshop.id == workshop_id)
             .where(PortalWorkshop.is_deleted == False)
             .where(PortalLocation.is_deleted == False)
-            .where(PortalWorkshopRegistration.unregistered_at.is_(None))
             .group_by(
                 PortalWorkshop.id,
                 PortalWorkshop.participants_limit,
