@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 from portal.config import settings
-from portal.exceptions.responses import ApiBaseException
+from portal.exceptions.responses import ApiBaseException, NotFoundException
 from portal.handlers import AdminFileHandler
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -141,6 +141,8 @@ class ConferenceHandler:
                 )
                 .fetchrow(as_model=ConferenceDetail)
             )
+            if not conference:
+                raise NotFoundException(detail=f"Conference {conference_id} not found")
             if conference.location is not None:
                 location_img = await self._file_handler.get_signed_url_by_resource_id(conference.location.id)
                 conference.location.image_url = location_img[0] if location_img else None
