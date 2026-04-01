@@ -361,7 +361,6 @@ class AdminFileHandler:
                 PortalFile.region
             )
             .outerjoin(PortalFileAssociation, PortalFileAssociation.file_id == PortalFile.id)
-            .where(PortalFile.is_public == True)
             .where(PortalFileAssociation.resource_id.isnot(None))
             .where(PortalFileAssociation.resource_id == resource_id)
             .fetch(as_model=AdminFileDetail)
