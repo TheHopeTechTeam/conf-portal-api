@@ -106,11 +106,6 @@ class UserSessionWorkshop(UUIDBaseModel):
         default=None,
         description="Venue; null if no location",
     )
-    slido_url: Optional[str] = Field(
-        default=None,
-        serialization_alias="slidoUrl",
-        description="Slido URL",
-    )
 
 
 class UserDetail(UserBase):

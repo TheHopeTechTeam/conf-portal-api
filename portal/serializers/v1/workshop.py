@@ -26,9 +26,9 @@ class WorkshopBase(UUIDBaseModel, JSONStringMixinModel):
     """
     title: str = Field(..., description="Title")
     description: str = Field(..., description="Description")
-    location: LocationBase = Field(..., description="Location")
+    location: Optional[LocationBase] = Field(..., description="Location")
     slido_url: Optional[str] = Field(default=None, serialization_alias="slidoUrl", description="Slido URL")
-    is_full: bool = Field(..., serialization_alias="isFull", description="The number of participants has reached the upper limit")
+    is_full: bool = Field(default=False, serialization_alias="isFull", description="The number of participants has reached the upper limit")
     # exclude fields for response
     start_datetime: Optional[datetime] = Field(None, description="Start Date and Time", exclude=True)
     end_datetime: Optional[datetime] = Field(None, description="End Date and Time", exclude=True)
@@ -43,7 +43,7 @@ class WorkshopDetail(WorkshopBase):
     # conference: str = Field(..., description="Conference")
     start_datetime: datetime = Field(..., serialization_alias="startDatetime", description="Start Date and Time")
     end_datetime: datetime = Field(..., serialization_alias="endDatetime", description="End Date and Time")
-    instructor: InstructorBase = Field(..., description="Instructor")
+    instructor: Optional[InstructorBase] = Field(..., description="Instructor")
     participants_limit: Optional[int] = Field(..., serialization_alias="participantsLimit", description="Participants Limit")
     image_url: Optional[str] = Field(default=None, serialization_alias="imageUrl", description="Image URL")
 

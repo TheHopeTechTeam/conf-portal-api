@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as sa
 from asyncpg import UniqueViolationError
 from redis.asyncio import Redis
+import pydantic
 
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, BadRequestException
@@ -18,6 +19,7 @@ from portal.handlers import AdminFileHandler
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import (
     PortalConference,
     PortalWorkshop,
@@ -65,67 +67,66 @@ class WorkshopHandler:
         Registered workshops for the active conference matching is_creative / is_leadership flags.
         Used when building user detail for pass types (e.g. creative-only vs leadership-only rows).
         """
-        rows = await (
+
+        session_workshops: list[WorkshopBase] = await (
             self._session.select(
                 PortalWorkshop.id,
                 PortalWorkshop.title,
                 PortalWorkshop.start_datetime,
                 PortalWorkshop.end_datetime,
                 PortalWorkshop.description,
-                PortalWorkshop.slido_url,
-                PortalWorkshop.timezone,
-                sa.func.json_build_object(
-                    sa.cast("id", sa.VARCHAR(40)),
-                    sa.cast(PortalLocation.id, sa.String),
-                    sa.cast("name", sa.VARCHAR(255)),
-                    PortalLocation.name,
-                    sa.cast("address", sa.Text),
-                    PortalLocation.address,
-                    sa.cast("floor", sa.VARCHAR(10)),
-                    PortalLocation.floor,
-                    sa.cast("room_number", sa.VARCHAR(10)),
-                    PortalLocation.room_number,
+                sa.func.coalesce(
+                    sa.case(
+                        (
+                            PortalLocation.id.is_not(None),
+                            sa.func.json_build_object(
+                                sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
+                                sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
+                                sa.cast("address", sa.Text), PortalLocation.address,
+                                sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
+                                sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
+                            )
+                        ),
+                        else_=None
+                    ),
+                    sa.null()
                 ).label("location"),
+                PortalWorkshop.timezone
             )
-            .select_from(PortalWorkshopRegistration)
-            .join(PortalWorkshop, PortalWorkshopRegistration.workshop_id == PortalWorkshop.id)
-            .join(PortalConference, PortalWorkshop.conference_id == PortalConference.id)
+            .outerjoin(PortalConference, PortalWorkshop.conference_id == PortalConference.id)
             .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
-            .where(PortalWorkshopRegistration.user_id == user_id)
-            .where(PortalWorkshopRegistration.unregistered_at.is_(None))
             .where(PortalWorkshop.is_deleted == sa.false())
             .where(PortalConference.is_active == sa.true())
             .where(PortalWorkshop.is_creative == is_creative)
             .where(PortalWorkshop.is_leadership == is_leadership)
+            .group_by(
+                PortalWorkshop.id,
+                PortalLocation.id,
+                PortalWorkshop.participants_limit,
+                PortalWorkshop.start_datetime
+            )
             .order_by(PortalWorkshop.start_datetime)
-            .fetch()
+            .fetch(as_model=WorkshopBase)
         )
-        out: list[UserSessionWorkshop] = []
-        for row in rows:
-            loc_data = row["location"]
-            location = None
-            if loc_data and loc_data.get("id"):
-                location = LocationBase(
-                    id=UUID(loc_data["id"]),
-                    name=loc_data["name"] or "",
-                    address=loc_data.get("address"),
-                    floor=loc_data.get("floor"),
-                    room_number=loc_data.get("room_number"),
-                    image_url=None,
-                )
-            tz = ZoneInfo(row["timezone"])
-            out.append(
+        workshops: list[UserSessionWorkshop] = []
+        for workshop in session_workshops:
+            start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
+            end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
+            workshop.start_datetime = start_datetime_with_tz
+            workshop.end_datetime = end_datetime_with_tz
+            if workshop.location:
+                location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
+                workshop.location.image_url = location_img[0] if location_img else None
+            workshops.append(
                 UserSessionWorkshop(
-                    id=row["id"],
-                    title=row["title"],
-                    start_datetime=row["start_datetime"].astimezone(tz=tz),
-                    end_datetime=row["end_datetime"].astimezone(tz=tz),
-                    description=row["description"] or "",
-                    location=location,
-                    slido_url=row["slido_url"],
+                    title=workshop.title,
+                    start_datetime=workshop.start_datetime,
+                    end_datetime=workshop.end_datetime,
+                    description=workshop.description,
+                    location=workshop.location if workshop.location else None
                 )
             )
-        return out
+        return workshops
 
     @distributed_trace()
     async def get_workshop_schedule_list(self) -> WorkshopScheduleList:
@@ -141,12 +142,21 @@ class WorkshopHandler:
                 PortalWorkshop.start_datetime,
                 PortalWorkshop.end_datetime,
                 PortalWorkshop.description,
-                sa.func.json_build_object(
-                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
-                    sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
-                    sa.cast("address", sa.Text), PortalLocation.address,
-                    sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
-                    sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
+                sa.func.coalesce(
+                    sa.case(
+                        (
+                            PortalLocation.id.is_not(None),
+                            sa.func.json_build_object(
+                                sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
+                                sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
+                                sa.cast("address", sa.Text), PortalLocation.address,
+                                sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
+                                sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
+                            )
+                        ),
+                        else_=None
+                    ),
+                    sa.null()
                 ).label("location"),
                 PortalWorkshop.slido_url,
                 PortalWorkshop.participants_limit,
@@ -183,8 +193,9 @@ class WorkshopHandler:
             start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
             end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
             mapping_key = f"{start_datetime_with_tz.isoformat()},{end_datetime_with_tz.isoformat()}"
-            location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
-            workshop.location.image_url = location_img[0] if location_img else None
+            if workshop.location:
+                location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
+                workshop.location.image_url = location_img[0] if location_img else None
             if mapping_key not in schedule_map:
                 schedule_map[mapping_key] = []
             schedule_map[mapping_key].append(workshop)
@@ -211,70 +222,94 @@ class WorkshopHandler:
         :param workshop_id:
         :return:
         """
-        workshop: Optional[WorkshopDetail] = await (
-            self._session.select(
-                PortalWorkshop.id,
-                PortalWorkshop.title,
-                PortalWorkshop.start_datetime,
-                PortalWorkshop.end_datetime,
-                PortalWorkshop.description,
-                PortalWorkshop.slido_url,
-                PortalWorkshop.participants_limit,
-                PortalWorkshop.timezone,
-                sa.func.json_build_object(
-                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
-                    sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
-                    sa.cast("address", sa.Text), PortalLocation.address,
-                    sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
-                    sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
-                ).label("location"),
-                sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, sa.text("true")),
-                    else_=sa.text("false")
-                ).label("is_full"),
-                sa.func.json_build_object(
-                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalInstructor.id, sa.String),
-                    sa.cast("name", sa.VARCHAR(255)), PortalInstructor.name,
-                    sa.cast("title", sa.VARCHAR(255)), PortalInstructor.title,
-                    sa.cast("bio", sa.Text), PortalInstructor.bio,
-                ).label("instructor"),
-            )
-            .outerjoin(
-                PortalWorkshopRegistration,
-                sa.and_(
-                    PortalWorkshop.id == PortalWorkshopRegistration.workshop_id,
-                    PortalWorkshopRegistration.unregistered_at.is_(None),
+        try:
+            workshop: Optional[WorkshopDetail] = await (
+                self._session.select(
+                    PortalWorkshop.id,
+                    PortalWorkshop.title,
+                    PortalWorkshop.start_datetime,
+                    PortalWorkshop.end_datetime,
+                    PortalWorkshop.description,
+                    PortalWorkshop.slido_url,
+                    PortalWorkshop.participants_limit,
+                    PortalWorkshop.timezone,
+                    sa.func.coalesce(
+                        sa.case(
+                            (
+                                PortalLocation.id.is_not(None),
+                                sa.func.json_build_object(
+                                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
+                                    sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
+                                    sa.cast("address", sa.Text), PortalLocation.address,
+                                    sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
+                                    sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
+                                ),
+                            ),
+                            else_=None
+                        ),
+                        sa.null()
+                    ).label("location"),
+                    sa.case(
+                        (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, sa.text("true")),
+                        else_=sa.text("false")
+                    ).label("is_full"),
+                    sa.func.coalesce(
+                        sa.case(
+                            (
+                                PortalLocation.id.is_not(None),
+                                sa.func.json_build_object(
+                                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalInstructor.id, sa.String),
+                                    sa.cast("name", sa.VARCHAR(255)), PortalInstructor.name,
+                                    sa.cast("title", sa.VARCHAR(255)), PortalInstructor.title,
+                                    sa.cast("bio", sa.Text), PortalInstructor.bio,
+                                ),
+                            ),
+                            else_=None
+                        ),
+                        sa.null()
+                    ).label("instructor"),
                 )
+                .outerjoin(
+                    PortalWorkshopRegistration,
+                    sa.and_(
+                        PortalWorkshop.id == PortalWorkshopRegistration.workshop_id,
+                        PortalWorkshopRegistration.unregistered_at.is_(None),
+                    )
+                )
+                .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
+                .outerjoin(PortalWorkshopInstructor, PortalWorkshopInstructor.workshop_id == PortalWorkshop.id)
+                .outerjoin(PortalInstructor, PortalInstructor.id == PortalWorkshopInstructor.instructor_id)
+                .where(PortalWorkshop.id == workshop_id)
+                .where(PortalWorkshop.is_deleted == False)
+                .where(PortalLocation.is_deleted == False)
+                .group_by(
+                    PortalWorkshop.id,
+                    PortalWorkshop.participants_limit,
+                    PortalWorkshop.start_datetime,
+                    PortalLocation.id,
+                    PortalInstructor.id,
+                )
+                .order_by(PortalWorkshop.start_datetime)
+                .fetchrow(as_model=WorkshopDetail)
             )
-            .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
-            .outerjoin(PortalWorkshopInstructor, PortalWorkshopInstructor.workshop_id == PortalWorkshop.id)
-            .outerjoin(PortalInstructor, PortalInstructor.id == PortalWorkshopInstructor.instructor_id)
-            .where(PortalWorkshop.id == workshop_id)
-            .where(PortalWorkshop.is_deleted == False)
-            .where(PortalLocation.is_deleted == False)
-            .group_by(
-                PortalWorkshop.id,
-                PortalWorkshop.participants_limit,
-                PortalWorkshop.start_datetime,
-                PortalLocation.id,
-                PortalInstructor.id,
-            )
-            .order_by(PortalWorkshop.start_datetime)
-            .fetchrow(as_model=WorkshopDetail)
-        )
-        if not workshop:
-            raise NotFoundException(detail=f"Workshop {workshop_id} not found")
-        start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
-        end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
-        workshop.start_datetime = start_datetime_with_tz
-        workshop.end_datetime = end_datetime_with_tz
-        location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
-        workshop.location.image_url = location_img[0] if location_img else None
-        instructor_img = await self._file_handler.get_signed_url_by_resource_id(workshop.instructor.id)
-        workshop.instructor.image_url = instructor_img[0] if instructor_img else None
-        workshop_img = await self._file_handler.get_signed_url_by_resource_id(workshop.id)
-        workshop.image_url = workshop_img[0] if workshop_img else None
-        return workshop
+        except pydantic.ValidationError as e:
+            logger.error(f"Failed to get workshop detail: {e}")
+        else:
+            if not workshop:
+                raise NotFoundException(detail=f"Workshop {workshop_id} not found")
+            start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
+            end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
+            workshop.start_datetime = start_datetime_with_tz
+            workshop.end_datetime = end_datetime_with_tz
+            if workshop.location:
+                location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
+                workshop.location.image_url = location_img[0] if location_img else None
+            if workshop.instructor:
+                instructor_img = await self._file_handler.get_signed_url_by_resource_id(workshop.instructor.id)
+                workshop.instructor.image_url = instructor_img[0] if instructor_img else None
+            workshop_img = await self._file_handler.get_signed_url_by_resource_id(workshop.id)
+            workshop.image_url = workshop_img[0] if workshop_img else None
+            return workshop
 
     @distributed_trace()
     async def check_has_registered_at_timeslot(self, workshop_id: uuid.UUID) -> bool:
@@ -452,12 +487,21 @@ class WorkshopHandler:
                 PortalWorkshop.start_datetime,
                 PortalWorkshop.end_datetime,
                 PortalWorkshop.description,
-                sa.func.json_build_object(
-                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
-                    sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
-                    sa.cast("address", sa.Text), PortalLocation.address,
-                    sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
-                    sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
+                sa.func.coalesce(
+                    sa.case(
+                        (
+                            PortalLocation.id.is_not(None),
+                            sa.func.json_build_object(
+                                sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalLocation.id, sa.String),
+                                sa.cast("name", sa.VARCHAR(255)), PortalLocation.name,
+                                sa.cast("address", sa.Text), PortalLocation.address,
+                                sa.cast("floor", sa.VARCHAR(10)), PortalLocation.floor,
+                                sa.cast("room_number", sa.VARCHAR(10)), PortalLocation.room_number,
+                            ),
+                        ),
+                        else_=None
+                    ),
+                    sa.null()
                 ).label("location"),
                 PortalWorkshop.slido_url,
                 PortalWorkshop.participants_limit,
@@ -493,7 +537,8 @@ class WorkshopHandler:
             end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
             workshop.start_datetime = start_datetime_with_tz
             workshop.end_datetime = end_datetime_with_tz
-            location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
-            workshop.location.image_url = location_img[0] if location_img else None
+            if workshop.location:
+                location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
+                workshop.location.image_url = location_img[0] if location_img else None
             my_workshops.append(workshop)
         return WorkshopRegisteredList(workshops=my_workshops)
