@@ -277,7 +277,13 @@ class WorkshopHandler:
                     )
                 )
                 .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
-                .outerjoin(PortalWorkshopInstructor, PortalWorkshopInstructor.workshop_id == PortalWorkshop.id)
+                .outerjoin(
+                    PortalWorkshopInstructor,
+                    sa.and_(
+                        PortalWorkshopInstructor.workshop_id == PortalWorkshop.id,
+                        PortalWorkshopInstructor.is_primary == True,
+                    )
+                )
                 .outerjoin(PortalInstructor, PortalInstructor.id == PortalWorkshopInstructor.instructor_id)
                 .where(PortalWorkshop.id == workshop_id)
                 .where(PortalWorkshop.is_deleted == False)
