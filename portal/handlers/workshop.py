@@ -256,7 +256,7 @@ class WorkshopHandler:
                     sa.func.coalesce(
                         sa.case(
                             (
-                                PortalLocation.id.is_not(None),
+                                PortalInstructor.id.is_not(None),
                                 sa.func.json_build_object(
                                     sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalInstructor.id, sa.String),
                                     sa.cast("name", sa.VARCHAR(255)), PortalInstructor.name,

@@ -150,6 +150,8 @@ class ConferenceHandler:
                 instructor_img = await self._file_handler.get_signed_url_by_resource_id(instructor.id)
                 instructor.image_url = instructor_img[0] if instructor_img else None
             return conference
+        except ApiBaseException as e:
+            raise e
         except Exception as e:
             logger.exception(e)
             raise ApiBaseException(

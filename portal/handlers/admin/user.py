@@ -345,7 +345,8 @@ class AdminUserHandler:
                 .values(**profile_fields)
                 .execute()
             )
-
+        except ApiBaseException as e:
+            raise e
         except UniqueViolationError as e:
             raise ConflictErrorException(detail="User already exists", debug_detail=str(e))
         except Exception as e:
