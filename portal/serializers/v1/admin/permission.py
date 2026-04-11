@@ -62,11 +62,11 @@ class AdminPermissionQuery(GenericQueryBaseModel):
 
 class AdminPermissionCreate(BaseModel):
     """PermissionCreate"""
-    display_name: str = Field(..., serialization_alias="displayName", description="Display name")
+    display_name: str = Field(..., description="Display name")
     code: str = Field(..., description="Code")
-    resource_id: UUID = Field(..., serialization_alias="resourceId", description="Resource ID")
-    verb_id: UUID = Field(..., serialization_alias="verbId", description="Verb ID")
-    is_active: bool = Field(..., serialization_alias="isActive", description="Is active")
+    resource_id: UUID = Field(..., description="Resource ID")
+    verb_id: UUID = Field(..., description="Verb ID")
+    is_active: bool = Field(..., description="Is active")
     description: Optional[str] = Field(None, description="Description")
     remark: Optional[str] = Field(None, description="Remark")
 

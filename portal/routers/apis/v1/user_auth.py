@@ -128,15 +128,7 @@ async def user_logout(
     :param user_auth_handler:
     :return:
     """
-    success = await user_auth_handler.logout(
+    return await user_auth_handler.logout(
         logout_data.access_token,
         logout_data.refresh_token
     )
-
-    if not success:
-        raise ApiBaseException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to logout"
-        )
-
-    return LogoutResponse(message="Successfully logged out")

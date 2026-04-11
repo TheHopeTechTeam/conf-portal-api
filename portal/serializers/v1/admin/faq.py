@@ -108,10 +108,10 @@ class AdminFaqChangeSequence(ChangeSequence):
 
 class AdminFaqCreate(BaseModel):
     """FAQ create"""
-    category_id: UUID = Field(..., serialization_alias="categoryId", description="Category ID")
+    category_id: UUID = Field(..., description="Category ID")
     question: str = Field(..., description="Question")
     answer: str = Field(..., description="Answer")
-    related_link: Optional[str] = Field(None, serialization_alias="relatedLink", description="Related Link")
+    related_link: Optional[str] = Field(None, description="Related Link")
     remark: Optional[str] = Field(None, description="Remark")
     description: Optional[str] = Field(None, description="Description")
 

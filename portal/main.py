@@ -72,6 +72,7 @@ def setup_tracing():
         environment=settings.ENV.upper(),
         enable_tracing=True,
         before_send_transaction=before_send_transaction,
+        enable_logs=True,
     )
 
 

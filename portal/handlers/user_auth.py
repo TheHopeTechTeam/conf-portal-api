@@ -4,11 +4,12 @@ Handler for authentication
 import uuid
 from typing import Optional
 
+from pydantic import ValidationError
 from redis.asyncio import Redis
 from starlette import status
 
 from portal.config import settings
-from portal.exceptions.responses import ApiBaseException, UnauthorizedException, NotFoundException
+from portal.exceptions.responses import ApiBaseException, UnauthorizedException, NotFoundException, BadRequestException
 from portal.handlers.fcm_device import FCMDeviceHandler
 from portal.handlers.user import UserHandler
 from portal.libs.consts.enums import AuthProvider
@@ -27,7 +28,7 @@ from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.base import RefreshTokenData
 from portal.schemas.user import SUserThirdParty, SAuthProvider, SUserDetail
-from portal.serializers.mixins import TokenResponse, RefreshTokenRequest
+from portal.serializers.mixins import TokenResponse, RefreshTokenRequest, LogoutResponse
 from portal.serializers.v1.user import UserLogin, UserLoginResponse, UserInfo, UserLocalLogin
 
 
@@ -300,7 +301,7 @@ class UserAuthHandler:
         publish_event_in_background(SendSignInLinkEvent(email=email))
 
     @distributed_trace()
-    async def logout(self, access_token: str, refresh_token: str = None) -> bool:
+    async def logout(self, access_token: str, refresh_token: str = None) -> LogoutResponse:
         """
         Logout admin user: blacklist AT and revoke RT family via provider
         :param access_token:
@@ -309,7 +310,7 @@ class UserAuthHandler:
         """
         try:
             if not self._token_blacklist_provider:
-                return False
+                raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")
             # Get token expiration
             access_exp = self._jwt_provider.get_token_expiration(access_token)
             if access_exp:
@@ -317,7 +318,10 @@ class UserAuthHandler:
             # Revoke refresh token (and family)
             if refresh_token:
                 await self._refresh_token_provider.revoke_by_token(refresh_token, revoke_family=True)
-            return True
+            return LogoutResponse(message="Successfully logged out")
+        except ValidationError as ve:
+            logger.warning(f"Token validation error during logout: {ve}")
+            raise BadRequestException(detail="Invalid token format")
         except Exception as e:
             logger.error(f"Error logging out: {e}")
-            return False
+            raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error")

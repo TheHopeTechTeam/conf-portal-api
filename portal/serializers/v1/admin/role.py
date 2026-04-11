@@ -70,7 +70,7 @@ class AdminRoleCreate(BaseModel):
     """RoleCreate"""
     code: str = Field(..., description="Role code")
     name: Optional[str] = Field(None, description="Role name")
-    is_active: bool = Field(True, serialization_alias="isActive", description="Is role active")
+    is_active: bool = Field(True, description="Is role active")
     description: Optional[str] = Field(None, description="Description")
     remark: Optional[str] = Field(None, description="Remark")
     permissions: list[UUID] = Field(..., description="Permissions")

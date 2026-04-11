@@ -47,12 +47,12 @@ class AdminEventInfoList(BaseModel):
 class AdminEventInfoCreate(BaseModel):
     """Event info create"""
     title: str = Field(..., description="Title")
-    start_datetime: datetime = Field(..., serialization_alias="startTime", description="Start Datetime")
-    end_datetime: datetime = Field(..., serialization_alias="endTime", description="End Datetime")
+    start_datetime: datetime = Field(..., description="Start Datetime")
+    end_datetime: datetime = Field(..., description="End Datetime")
     timezone: str = Field(..., description="Timezone")
-    text_color: Optional[str] = Field(..., serialization_alias="textColor", description="Text color")
-    background_color: Optional[str] = Field(..., serialization_alias="backgroundColor", description="Background color")
-    conference_id: UUID = Field(..., serialization_alias="conferenceId", description="Conference ID")
+    text_color: Optional[str] = Field(..., description="Text color")
+    background_color: Optional[str] = Field(..., description="Background color")
+    conference_id: UUID = Field(..., description="Conference ID")
     remark: Optional[str] = Field(default=None, description="Remark")
     description: Optional[str] = Field(default=None, description="Description")
 
