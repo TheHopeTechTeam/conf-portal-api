@@ -42,8 +42,9 @@ class TheHopeTicketUser(BaseModel):
 
 
 class TheHopeTicketMember(BaseModel):
-    """Member reference in ticket response (owner / user)."""
-
+    """
+    Member reference in ticket response (owner / user).
+    """
     model_config = ConfigDict(populate_by_name=True)
 
     id: UUID = Field(..., description="資料唯一識別碼")
@@ -53,6 +54,16 @@ class TheHopeTicketMember(BaseModel):
     tel: Optional[str] = Field(None, description="聯絡電話")
     role: Optional[str] = Field(None, description="會眾身份")
     location: Optional[str] = Field(None, description="所屬教會")
+    consented_at: Optional[datetime] = Field(None, alias="consentedAt")
+    auth_nonce: Optional[str] = Field(None, alias="authNonce")
+    auth_nonce_issued_at: Optional[datetime] = Field(None, alias="authNonceIssuedAt")
+    dietary_requirement: Optional[str] = Field(None, alias="dietaryRequirement")
+    meta: Optional[dict[str, Any]] = Field(None, description="自定義欄位")
+    updated_by: Optional[UUID] = Field(None, alias="updatedBy")
+    deleted_at: Optional[datetime] = Field(None, alias="deletedAt")
+    deleted_by: Optional[UUID] = Field(None, alias="deletedBy")
+    updated_at: Optional[datetime] = Field(None, alias="updatedAt")
+    created_at: Optional[datetime] = Field(None, alias="createdAt")
 
 
 class TheHopeTicketImageSize(BaseModel):
@@ -140,10 +151,10 @@ class TheHopeTicket(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: UUID = Field(..., description="資料唯一識別碼")
-    order: TheHopeTicketOrder | str = Field(..., description="關聯到 orders 的資料")
-    ticket_type: TheHopeTicketType | str = Field(..., alias="type", description="關聯到 ticketTypes 的資料")
-    owner: Optional[TheHopeTicketMember | str] = Field(None, description="關聯到 members 的資料")
-    user: Optional[TheHopeTicketMember | str] = Field(None, description="關聯到 members 的資料")
+    order: UUID = Field(..., description="關聯到 orders 的資料")
+    ticket_type: TheHopeTicketType = Field(..., alias="type", description="關聯到 ticketTypes 的資料")
+    owner: Optional[TheHopeTicketMember] = Field(None, description="關聯到 members 的資料")
+    user: TheHopeTicketMember = Field(..., description="關聯到 members 的資料")
     is_redeemed: Optional[bool] = Field(None, alias="isRedeemed", description="是否已取票")
     is_checked_in: Optional[bool] = Field(None, alias="isCheckedIn", description="是否已報到")
 

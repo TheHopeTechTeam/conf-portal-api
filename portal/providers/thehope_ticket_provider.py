@@ -67,7 +67,7 @@ class TheHopeTicketProvider:
         response = await self.get_ticket_list_by_email(user_email)
         if response is None:
             return []
-        return list(response.docs)
+        return response.docs
 
     @distributed_trace()
     async def check_in_ticket(self, ticket_id: UUID) -> TheHopeTicketCheckInResponse:

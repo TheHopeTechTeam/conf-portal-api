@@ -48,7 +48,6 @@ class TicketBase(UUIDBaseModel, JSONStringMixinModel):
     order_id: UUID = Field(None, description="Order id", serialization_alias="orderId")
     is_redeemed: bool = Field(False, description="Is redeemed", serialization_alias="isRedeemed")
     is_checked_in: bool = Field(False, description="Is checked in", serialization_alias="isCheckedIn")
-    checked_in_at: Optional[datetime] = Field(None, description="Checked in at", serialization_alias="checkedInAt")
     identity: Optional[str] = Field(None, description="Identity")
     belong_church: Optional[str] = Field(None, serialization_alias="belongChurch", description="Belong church")
 

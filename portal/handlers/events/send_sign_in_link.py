@@ -52,7 +52,7 @@ class SendSignInLinkEventHandler(EventHandler):
     @distributed_trace()
     async def handle(self, event: SendSignInLinkEvent) -> None:
         user_id = await self._user_handler.ensure_portal_user_and_profile_by_email(email=event.email)
-        await self._ticket_handler.sync_user_ticket(user_id=user_id, email=event.email)
+        await self._ticket_handler.sync_ticket_user_name(user_id=user_id, email=event.email)
         display_name = await (
             self._session.select(PortalUserProfile.display_name)
             .where(PortalUserProfile.user_id == user_id)

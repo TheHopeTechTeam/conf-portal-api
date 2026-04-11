@@ -140,7 +140,7 @@ def get_admin_application(container: Container) -> FastAPI:
 
     @admin_application.exception_handler(HTTPException)
     @distributed_trace(inject_span=True)
-    async def root_http_exception_handler(request, exc: HTTPException, _span: Span = None):
+    async def root_http_exception_handler(request, exc: HTTPException, *, _span: Span = None):
         """
 
         :param request:
@@ -162,7 +162,7 @@ def get_admin_application(container: Container) -> FastAPI:
     @admin_application.exception_handler(ApiBaseException)
     @distributed_trace(inject_span=True)
     async def root_api_exception_handler(
-        request, exc: ApiBaseException, _span: Span = None
+        request, exc: ApiBaseException, *, _span: Span = None
     ):
         """
 
@@ -190,7 +190,7 @@ def get_admin_application(container: Container) -> FastAPI:
 
     @admin_application.exception_handler(Exception)
     @distributed_trace(inject_span=True)
-    async def exception_handler(request: Request, exc, _span: Span = None):
+    async def exception_handler(request: Request, exc, *, _span: Span = None):
         """
 
         :param request:
@@ -296,7 +296,7 @@ async def root():
 
 @app.exception_handler(HTTPException)
 @distributed_trace(inject_span=True)
-async def root_http_exception_handler(request, exc: HTTPException, _span: Span = None):
+async def root_http_exception_handler(request, exc: HTTPException, *, _span: Span = None):
     """
 
     :param request:
@@ -318,7 +318,7 @@ async def root_http_exception_handler(request, exc: HTTPException, _span: Span =
 @app.exception_handler(ApiBaseException)
 @distributed_trace(inject_span=True)
 async def root_api_exception_handler(
-    request, exc: ApiBaseException, _span: Span = None
+    request, exc: ApiBaseException, *, _span: Span = None
 ):
     """
 
@@ -346,7 +346,7 @@ async def root_api_exception_handler(
 
 @app.exception_handler(Exception)
 @distributed_trace(inject_span=True)
-async def exception_handler(request: Request, exc, _span: Span = None):
+async def exception_handler(request: Request, exc, *, _span: Span = None):
     """
 
     :param request:

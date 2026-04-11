@@ -3,7 +3,7 @@ UserHandler
 """
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import pytz
 import sqlalchemy as sa
@@ -12,30 +12,26 @@ from starlette import status
 
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, NotFoundException
+from portal.handlers import TicketHandler
+from portal.handlers.workshop import WorkshopHandler
 from portal.libs.consts.enums import Gender
 from portal.libs.consts.ticket_type_codes import (
-    TICKET_TYPE_CODE_INTERPRETATION_RECEIVER,
     TICKET_TYPE_CODE_SUBSTRING_CREATIVE,
     TICKET_TYPE_CODE_SUBSTRING_LEADERSHIP,
 )
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import (
     PortalUser,
     PortalUserProfile,
     PortalThirdPartyProvider,
     PortalUserThirdPartyAuth,
-    PortalUserTicket,
-    PortalTicketType,
 )
 from portal.schemas.auth import FirebaseTokenPayload
 from portal.schemas.user import SUserThirdParty, SAuthProvider, SUserDetail
-from portal.serializers.v1.ticket import TicketBase
 from portal.serializers.v1.user import UserUpdate, UserDetail
-
-if TYPE_CHECKING:
-    from portal.handlers.workshop import WorkshopHandler
 
 
 class UserHandler:
@@ -45,11 +41,13 @@ class UserHandler:
         self,
         session: Session,
         redis_client: RedisPool,
-        workshop_handler: "WorkshopHandler",
+        workshop_handler: WorkshopHandler,
+        ticket_handler: TicketHandler
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._workshop_handler = workshop_handler
+        self._ticket_handler = ticket_handler
         # contexts
         self._user_ctx: UserContext = get_user_context()
 
@@ -347,53 +345,16 @@ class UserHandler:
         )
         if not user:
             raise NotFoundException(detail=f"User {user_id} not found")
-        ir_row = await (
-            self._session.select(PortalUserTicket.is_checked_in)
-            .select_from(PortalUserTicket)
-            .join(
-                PortalTicketType,
-                PortalTicketType.id == PortalUserTicket.ticket_type_id,
+        try:
+            ticket = await self._ticket_handler.get_user_ticket_by_email(email=user.email)
+        except Exception:
+            logger.exception(
+                "get_user: get_user_ticket_by_email failed",
+                extra={"portal_user_id": str(user_id), "holder_email": user.email},
             )
-            .where(PortalUserTicket.user_id == user_id)
-            .where(PortalTicketType.code == TICKET_TYPE_CODE_INTERPRETATION_RECEIVER)
-            .fetchrow()
-        )
-        has_interpretation_receiver = ir_row is not None
-        interpretation_receiver_checked_in = (
-            bool(ir_row["is_checked_in"]) if ir_row else None
-        )
-        ticket = await (
-            self._session.select(
-                PortalUserTicket.id,
-                sa.func.json_build_object(
-                    sa.cast("id", sa.VARCHAR(40)), sa.cast(PortalTicketType.id, sa.String),
-                    sa.cast("name", sa.VARCHAR(255)), PortalTicketType.name,
-                    sa.cast("code", sa.VARCHAR(32)), PortalTicketType.code,
-                ).label("type"),
-                PortalUserTicket.order_id,
-                PortalUserTicket.is_redeemed,
-                PortalUserTicket.is_checked_in,
-                PortalUserTicket.checked_in_at,
-                PortalUserTicket.identity,
-                PortalUserTicket.belong_church
-            )
-            .select_from(PortalUserTicket)
-            .join(PortalTicketType, PortalTicketType.id == PortalUserTicket.ticket_type_id)
-            .where(PortalUserTicket.user_id == user_id)
-            .where(PortalTicketType.code != TICKET_TYPE_CODE_INTERPRETATION_RECEIVER)
-            .fetchrow(as_model=TicketBase)
-        )
+            ticket = None
         if ticket:
-            user.ticket = ticket.model_copy(
-                update={
-                    "has_interpretation_receiver": has_interpretation_receiver,
-                    "interpretation_receiver_checked_in": (
-                        interpretation_receiver_checked_in
-                        if has_interpretation_receiver
-                        else None
-                    ),
-                }
-            )
+            user.ticket = ticket
             ticket_code_upper = (ticket.type.code or "").upper()
             if TICKET_TYPE_CODE_SUBSTRING_CREATIVE in ticket_code_upper:
                 user.creative_session = (

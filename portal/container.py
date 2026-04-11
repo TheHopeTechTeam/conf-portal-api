@@ -6,6 +6,11 @@ from dependency_injector import containers, providers
 
 from portal import handlers
 from portal.config import settings
+from portal.handlers.events import (
+    NotificationCreatedEventHandler,
+    SendSignInLinkEventHandler,
+    TicketTypeSyncEventHandler,
+)
 from portal.libs.authorization.permission_checker import PermissionChecker
 from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.libs.database.session_proxy import SessionProxy
@@ -14,24 +19,17 @@ from portal.libs.events.types import (
     NotificationCreatedEvent,
     SendSignInLinkEvent,
     TicketTypeSyncEvent,
-    UserTicketSyncEvent,
-)
-from portal.handlers.events import (
-    NotificationCreatedEventHandler,
-    SendSignInLinkEventHandler,
-    TicketTypeSyncEventHandler,
-    UserTicketSyncEventHandler,
 )
 from portal.libs.smtp_client.smtp_client import SmtpClient
 from portal.providers.firebase.base import FirebaseProvider
 from portal.providers.jwt_provider import JWTProvider
 from portal.providers.login_verification_email_provider import LoginVerificationEmailProvider
 from portal.providers.password_provider import PasswordProvider
+from portal.providers.password_reset_token_provider import PasswordResetTokenProvider
 from portal.providers.refresh_token_provider import RefreshTokenProvider
 from portal.providers.template_render_provider import TemplateRenderProvider
-from portal.providers.token_blacklist_provider import TokenBlacklistProvider
-from portal.providers.password_reset_token_provider import PasswordResetTokenProvider
 from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
+from portal.providers.token_blacklist_provider import TokenBlacklistProvider
 from portal.services import (
     TheHopeTicketService
 )
@@ -155,6 +153,7 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
         workshop_handler=workshop_handler,
+        ticket_handler=ticket_handler,
     )
     user_auth_handler = providers.Factory(
         handlers.UserAuthHandler,
@@ -233,7 +232,6 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
         password_provider=password_provider,
-        ticket_handler=ticket_handler,
     )
     admin_auth_handler = providers.Factory(
         handlers.AdminAuthHandler,
@@ -288,10 +286,6 @@ class Container(containers.DeclarativeContainer):
         NotificationCreatedEventHandler,
         session=request_session,
     )
-    user_ticket_sync_event_handler = providers.Factory(
-        UserTicketSyncEventHandler,
-        ticket_handler=ticket_handler,
-    )
     send_sign_in_link_event_handler = providers.Factory(
         SendSignInLinkEventHandler,
         session=request_session,
@@ -318,10 +312,6 @@ class Container(containers.DeclarativeContainer):
         # Register notification event handlers
         event_bus_instance.subscribe(
             NotificationCreatedEvent, container.notification_created_event_handler()
-        )
-        # Register user ticket sync event handler
-        event_bus_instance.subscribe(
-            UserTicketSyncEvent, container.user_ticket_sync_event_handler()
         )
         # Register send sign-in link event handler
         event_bus_instance.subscribe(

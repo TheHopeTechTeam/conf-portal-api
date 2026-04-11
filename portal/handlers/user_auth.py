@@ -16,7 +16,7 @@ from portal.libs.consts.enums import AuthProvider
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.events.publisher import publish_event_in_background
-from portal.libs.events.types import UserTicketSyncEvent, SendSignInLinkEvent
+from portal.libs.events.types import SendSignInLinkEvent
 from portal.libs.logger import logger
 from portal.models import PortalThirdPartyProvider, PortalUserThirdPartyAuth
 from portal.providers.firebase.base import FirebaseProvider
@@ -77,7 +77,6 @@ class UserAuthHandler:
             verified=user.verified,
         )
         token = await self.get_token_info(user=user, device_id=device_id)
-        publish_event_in_background(UserTicketSyncEvent(user_id=user.id, email=user.email))
         return UserLoginResponse(user=user_info, token=token)
 
     @distributed_trace()
@@ -197,8 +196,6 @@ class UserAuthHandler:
             first_login=first_login,
         )
         token = await self.get_token_info(user=user, device_id=device_id)
-        if user.email:
-            publish_event_in_background(UserTicketSyncEvent(user_id=user.id, email=user.email))
         return UserLoginResponse(user=user_info, token=token)
 
     @distributed_trace()

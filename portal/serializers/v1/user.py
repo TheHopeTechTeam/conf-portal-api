@@ -60,8 +60,8 @@ class UserBase(UUIDBaseModel):
     User base
     """
     # google_uid: str = Field(..., serialization_alias="googleUid", description="Google UID")
+    email: str = Field(description="Email")
     phone_number: Optional[str] = Field(None, serialization_alias="phoneNumber", description="Phone Number")
-    email: Optional[str] = Field(default=None, description="Email")
     display_name: Optional[str] = Field(default=None, serialization_alias="displayName", description="Display Name")
     volunteer: Optional[bool] = Field(default=False, description="Volunteer")
 

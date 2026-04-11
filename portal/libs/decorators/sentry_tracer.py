@@ -119,7 +119,7 @@ def distributed_trace(
                 ...
 
             @distributed_trace(inject_span=True)
-            def func_with_inject_span(self, xxx, _span: Span):
+            def func_with_inject_span(self, xxx, *, _span: Span = None):
                 # _span.set_data()
                 ...
 

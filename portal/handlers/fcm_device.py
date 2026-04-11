@@ -25,7 +25,7 @@ class FCMDeviceHandler:
         self._session = session
 
     @distributed_trace(inject_span=True)
-    async def register_device(self, device_id: str, fcm_create: FCMCreate, _span: Span = None):
+    async def register_device(self, device_id: str, fcm_create: FCMCreate, *, _span: Span = None):
         """
         Register FCM Device
         """

@@ -30,7 +30,7 @@ class TheHopeTicketService:
         return urljoin(self._base_url, f"{version}/{path}")
 
     @distributed_trace(inject_span=True)
-    async def get_ticket_types(self, _span: Span) -> dict:
+    async def get_ticket_types(self, *, _span: Span = None) -> dict:
         """
 
         :param _span:
@@ -56,7 +56,7 @@ class TheHopeTicketService:
             raise e
 
     @distributed_trace(inject_span=True)
-    async def get_ticket_by_id(self, ticket_id: UUID, _span: Span) -> Optional[dict]:
+    async def get_ticket_by_id(self, ticket_id: UUID, *, _span: Span = None) -> Optional[dict]:
         """
         Get ticket by id.
         :param ticket_id:
@@ -84,7 +84,7 @@ class TheHopeTicketService:
             return None
 
     @distributed_trace(inject_span=True)
-    async def get_ticket_list_by_email(self, user_email: str, _span: Span) -> Optional[dict]:
+    async def get_ticket_list_by_email(self, user_email: str, *, _span: Span = None) -> Optional[dict]:
         """
         Get ticket by user email
         :param user_email:
@@ -114,7 +114,7 @@ class TheHopeTicketService:
             return None
 
     @distributed_trace(inject_span=True)
-    async def check_in_ticket(self, ticket_id: UUID, _span: Span) -> dict:
+    async def check_in_ticket(self, ticket_id: UUID, *, _span: Span = None) -> dict:
         """
         Update ticket check-in status
         :param ticket_id:

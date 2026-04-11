@@ -36,3 +36,7 @@ def admin_role_handler(user_context, container: Container) -> AdminRoleHandler:
 @pytest.fixture
 def admin_user_handler(user_context, container: Container) -> AdminUserHandler:
     return container.admin_user_handler()
+
+@pytest.fixture
+def ticket_handler(user_context, container: Container) -> AdminUserHandler:
+    return container.ticket_handler()
