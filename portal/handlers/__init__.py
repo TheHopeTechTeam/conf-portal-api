@@ -23,6 +23,7 @@ from .conference import ConferenceHandler
 from .event_info import EventInfoHandler
 from .faq import FAQHandler
 from .fcm_device import FCMDeviceHandler
+from .conf_client_event import ConfClientEventHandler
 from .feedback import FeedbackHandler
 from .testimony import TestimonyHandler
 from .ticket import TicketHandler
@@ -57,6 +58,7 @@ __all__ = [
     "EventInfoHandler",
     "FAQHandler",
     "FCMDeviceHandler",
+    "ConfClientEventHandler",
     "FeedbackHandler",
     "TestimonyHandler",
     "TicketHandler",

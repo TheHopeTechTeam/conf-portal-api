@@ -269,6 +269,11 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
     )
 
+    conf_client_event_handler = providers.Factory(
+        handlers.ConfClientEventHandler,
+        firebase_provider=firebase_provider,
+    )
+
     # [Authorization]
     permission_checker = providers.Factory(
         PermissionChecker,

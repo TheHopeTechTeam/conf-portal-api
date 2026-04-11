@@ -4,6 +4,7 @@ Admin API routes
 from portal.config import settings
 from portal.routers.auth_router import AuthRouter
 from .auth import router as auth_router
+from .conf_client_event import router as conf_client_event_router
 from .conference import router as conference_router
 from .event_info import router as event_info_router
 from .faq import router as faq_router
@@ -11,16 +12,16 @@ from .feedback import router as feedback_router
 from .file import router as file_router
 from .instructor import router as instructor_router
 from .location import router as location_router
+from .notification import router as notification_router
 from .permission import router as permission_router
 from .resource import router as resource_router
 from .role import router as role_router
 from .testimony import router as testimony_router
+from .ticket_type import router as ticket_type_router
 from .user import router as user_router
 from .verb import router as verb_router
 from .workshop import router as workshop_router
 from .workshop_registration import router as workshop_registration_router
-from .notification import router as notification_router
-from .ticket_type import router as ticket_type_router
 
 router: AuthRouter = AuthRouter(is_admin=True)
 
@@ -42,6 +43,8 @@ router.include_router(workshop_router, prefix="/workshop", tags=["Admin - Worksh
 router.include_router(workshop_registration_router, prefix="/workshop_registration", tags=["Admin - Workshop Registration"])
 router.include_router(notification_router, prefix="/notification", tags=["Admin - Notification"])
 router.include_router(ticket_type_router, prefix="/ticket-type", tags=["Admin - Ticket Type"])
+
+router.include_router(conf_client_event_router, prefix="/conf-client-event", tags=["Admin - Conf Client Event"])
 
 if settings.is_dev:
     from .demo import router as demo_router

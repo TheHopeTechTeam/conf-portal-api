@@ -30,11 +30,14 @@ def set_request_context(context: RequestContext) -> Token:
     return request_context_var.set(context)
 
 
-def get_request_context() -> RequestContext:
+def get_request_context() -> Optional[RequestContext]:
     """
     Get current request's request context.
     """
-    return request_context_var.get()
+    try:
+        return request_context_var.get()
+    except LookupError:
+        return None
 
 
 def reset_request_context(token) -> None:

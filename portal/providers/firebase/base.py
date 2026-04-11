@@ -1,11 +1,16 @@
 """
 FirebaseProvider
 """
-from firebase_admin import auth, App
+import firebase_admin
+from firebase_admin import auth, firestore, App
 from firebase_admin.auth import ActionCodeSettings, UserRecord
 
+from portal.config import settings
+from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.schemas.auth import FirebaseTokenPayload
 from .authentication import FirebaseAuthentication
+
+_telemetry_firestore_client = None
 
 
 class FirebaseProvider:
@@ -14,6 +19,7 @@ class FirebaseProvider:
     def __init__(self, app: App = None):
         """initialize"""
         self.app = app
+        self._firestore_client = firestore.client(app=app, database_id=settings.APP_NAME)
 
     @property
     def authentication(self) -> FirebaseAuthentication:
@@ -72,4 +78,12 @@ class FirebaseProvider:
             action_code_settings=action_code_settings,
             app=self.app,
         )
+
+    @distributed_trace()
+    def write_conf_client_event_document(self, document: dict) -> None:
+        """
+        Add one document to conf_client_events_{ENV} in the telemetry Firestore database.
+        """
+        collection_name = f"conf_client_events_{settings.ENV}"
+        self._firestore_client.collection(collection_name).add(document)
 
