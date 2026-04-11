@@ -88,6 +88,9 @@ class Configuration(BaseSettings):
     AWS_S3_CACHE_CONTROL: str = os.getenv(key="AWS_S3_CACHE_CONTROL", default="max-age=86400")
     MAX_UPLOAD_SIZE: int = int(os.getenv(key="MAX_UPLOAD_SIZE", default=5 * 1024 * 1024))  # 3MB
 
+    # [Firebase]
+    FIREBASE_TEST_EMAIL: Optional[str] = os.getenv(key="FIREBASE_TEST_EMAIL")
+
     # [Redis]
     REDIS_URL: Optional[str] = os.getenv(key="REDIS_URL")
     REDIS_DB: int = int(os.getenv(key="REDIS_DB", default="0"))

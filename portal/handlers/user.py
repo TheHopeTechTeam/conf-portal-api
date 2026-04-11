@@ -75,7 +75,7 @@ class UserHandler:
                     phone_number=token_payload.phone_number,
                     email=token_payload.email,
                     verified=True,
-                    last_login=now,
+                    last_login_at=now,
                 )
                 .execute()
             )
@@ -93,7 +93,7 @@ class UserHandler:
                     user_id=user_id,
                     provider_id=provider.id,
                     provider_uid=token_payload.user_id,
-                    additional_data=token_payload.model_dump(
+                    additional_data=token_payload.model_dump_json(
                         exclude={"name", "email", "phone_number", "exp", "iat", "user_id"}
                     ),
                 )

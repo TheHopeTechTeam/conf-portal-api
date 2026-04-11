@@ -100,10 +100,14 @@ class UserAuthHandler:
         :return:
         """
         token_payload: FirebaseTokenPayload = self._third_party_provider.verify_firebase_token(token=model.firebase_token)
+        email_verified = token_payload.email_verified if token_payload.email else False
+        if token_payload.email and token_payload.email.lower() != settings.FIREBASE_TEST_EMAIL and not email_verified:
+            raise ApiBaseException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email not verified or invalid login method")
         if not token_payload.email:
             raise ApiBaseException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
         provider: Optional[SAuthProvider] = await self.get_provider_by_name(AuthProvider.FIREBASE.value)
         if not provider:
+            logger.error("Auth provider not configured")
             raise ApiBaseException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Auth provider not configured")
         user: Optional[SUserThirdParty] = await self._user_handler.get_user_detail_by_provider_info(
             provider_uid=token_payload.user_id,
