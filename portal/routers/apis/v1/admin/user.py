@@ -25,7 +25,6 @@ from portal.serializers.v1.admin.user import (
     AdminChangePassword,
     AdminUserRoles,
     AdminUserList,
-    SyncUserTicket,
 )
 
 router: AuthRouter = AuthRouter(is_admin=True)
