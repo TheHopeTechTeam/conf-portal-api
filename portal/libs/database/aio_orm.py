@@ -665,6 +665,66 @@ def condition_clause(conditional_exp: any, criterion):
     return criterion
 
 
+def _iter_exception_chain(exc: BaseException):
+    seen: set[int] = set()
+    pending = [exc]
+    while pending:
+        current = pending.pop()
+        ident = id(current)
+        if ident in seen:
+            continue
+        seen.add(ident)
+        yield current
+        if current.__cause__ is not None:
+            pending.append(current.__cause__)
+        if current.__context__ is not None and current.__context__ is not current.__cause__:
+            pending.append(current.__context__)
+
+
+def _is_transient_asyncpg_connection_error(exc: BaseException) -> bool:
+    transient_types = (
+        asyncpg.exceptions.ConnectionDoesNotExistError,
+        asyncpg.exceptions.InterfaceError,
+        asyncpg.exceptions.PostgresConnectionError,
+        asyncpg.exceptions.TooManyConnectionsError,
+        ConnectionResetError,
+        BrokenPipeError,
+    )
+    for link in _iter_exception_chain(exc):
+        if isinstance(link, transient_types):
+            return True
+        msg = (str(link) or "").lower()
+        if "closed" in msg and "middle" in msg and "operation" in msg:
+            return True
+        if "connection" in msg and "lost" in msg:
+            return True
+    return False
+
+
+_TRANSIENT_DB_IO_RETRIES = 2
+
+
+def _log_db_transient_retry(op: str, attempt_index: int, exc: BaseException) -> None:
+    logger.warning(
+        "db_io_transient_retry op=%s attempt=%s/%s exc_type=%s exc=%r",
+        op,
+        attempt_index + 1,
+        _TRANSIENT_DB_IO_RETRIES,
+        type(exc).__name__,
+        exc,
+    )
+
+
+def _log_db_transient_exhausted(op: str, exc: BaseException) -> None:
+    logger.warning(
+        "db_io_transient_exhausted op=%s attempts=%s exc_type=%s exc=%r",
+        op,
+        _TRANSIENT_DB_IO_RETRIES,
+        type(exc).__name__,
+        exc,
+    )
+
+
 class ISession:
     def _proxy_id(self) -> int:
         pass
@@ -703,6 +763,41 @@ class Session(ISession):
         :return:
         """
         self._isolation = isolation
+
+    async def _discard_broken_connection_unlocked(self) -> None:
+        """
+        Drop broken socket and transaction state. Caller must hold self._locker.
+        """
+        logger.warning(
+            "db_connection_discard_begin use_pool=%s conn_present=%s tx_present=%s",
+            self._use_pool,
+            self._conn is not None,
+            self._tx is not None,
+        )
+        try:
+            if self._tx is not None and self._tx._state == TransactionState.STARTED:  # noqa
+                await self._tx.rollback()
+        except Exception:
+            pass
+        self._tx = None
+        conn = self._conn
+        self._conn = None
+        self._retry_count = 0
+        if conn is not None:
+            try:
+                if self._use_pool and self._pool is not None:
+                    try:
+                        conn.terminate()
+                    except Exception:
+                        pass
+                    try:
+                        await self._pool.release(conn)
+                    except Exception:
+                        pass
+                else:
+                    await conn.close()
+            except Exception:
+                pass
 
     async def _ensure_transaction(self, lock: bool = True):
         lock and await self._locker.acquire()
@@ -805,15 +900,27 @@ class Session(ISession):
         append_statement: str = None,
         timeout: float = None
     ):
+        await self._locker.acquire()
         try:
-            await self._locker.acquire()
-            await self._ensure_connection(False)
-            await self._ensure_transaction(False)
-            sql, params = self._format_statement(statement, append_statement, *params)
-            return await self._conn.execute(sql, *params, timeout=timeout)
-        except Exception:
-            await self.rollback(False)
-            raise
+            for attempt in range(_TRANSIENT_DB_IO_RETRIES):
+                try:
+                    await self._ensure_connection(False)
+                    await self._ensure_transaction(False)
+                    sql, params = self._format_statement(statement, append_statement, *params)
+                    return await self._conn.execute(sql, *params, timeout=timeout)
+                except Exception as exc:
+                    try:
+                        await self.rollback(False)
+                    except Exception:
+                        pass
+                    is_transient = _is_transient_asyncpg_connection_error(exc)
+                    if attempt + 1 < _TRANSIENT_DB_IO_RETRIES and is_transient:
+                        _log_db_transient_retry("execute", attempt, exc)
+                        await self._discard_broken_connection_unlocked()
+                        continue
+                    if is_transient:
+                        _log_db_transient_exhausted("execute", exc)
+                    raise
         finally:
             self._locker.release()
 
@@ -896,9 +1003,25 @@ class Session(ISession):
 
     async def fetchvals(self, statement, *params, timeout: float = None):
         sql, params = self._format_statement(statement, None, *params)
-        await self._ensure_connection()
-        rows = await self._conn.fetch(sql, *params, timeout=timeout)
-        return [_format_value(item[0]) for item in rows]
+        for attempt in range(_TRANSIENT_DB_IO_RETRIES):
+            try:
+                await self._ensure_connection()
+                rows = await self._conn.fetch(sql, *params, timeout=timeout)
+                return [_format_value(item[0]) for item in rows]
+            except Exception as exc:
+                try:
+                    await self.rollback(False)
+                except Exception:
+                    pass
+                is_transient = _is_transient_asyncpg_connection_error(exc)
+                if attempt + 1 < _TRANSIENT_DB_IO_RETRIES and is_transient:
+                    _log_db_transient_retry("fetchvals", attempt, exc)
+                    async with self._locker:
+                        await self._discard_broken_connection_unlocked()
+                    continue
+                if is_transient:
+                    _log_db_transient_exhausted("fetchvals", exc)
+                raise
 
     async def fetchdict(
         self,
@@ -938,25 +1061,37 @@ class Session(ISession):
         timeout: float = None,
         as_model: Type[BaseModel] = None
     ) -> Union[List[T], T, dict, str, int]:
+        await self._locker.acquire()
         try:
-            await self._locker.acquire()
             sql, params = self._format_statement(statement, append_statement, *params)
-            await self._ensure_connection(False)
-            match method:
-                case FetchMethod.FETCH_VAL:
-                    value = await self._conn.fetchval(sql, *params, timeout=timeout)
-                    return _format_value(value)
-                case FetchMethod.FETCH_ROW:
-                    value = await self._conn.fetchrow(sql, *params, timeout=timeout)
-                    return _format_dict(item=value, as_model=as_model)
-                case FetchMethod.FETCH:
-                    rows = await self._conn.fetch(sql, *params, timeout=timeout) or []
-                    return [_format_dict(item=item, as_model=as_model) for item in rows]
-                case _:
-                    raise NotImplementedError()
-        except Exception:
-            await self.rollback(False)
-            raise
+            for attempt in range(_TRANSIENT_DB_IO_RETRIES):
+                try:
+                    await self._ensure_connection(False)
+                    match method:
+                        case FetchMethod.FETCH_VAL:
+                            value = await self._conn.fetchval(sql, *params, timeout=timeout)
+                            return _format_value(value)
+                        case FetchMethod.FETCH_ROW:
+                            value = await self._conn.fetchrow(sql, *params, timeout=timeout)
+                            return _format_dict(item=value, as_model=as_model)
+                        case FetchMethod.FETCH:
+                            rows = await self._conn.fetch(sql, *params, timeout=timeout) or []
+                            return [_format_dict(item=item, as_model=as_model) for item in rows]
+                        case _:
+                            raise NotImplementedError()
+                except Exception as exc:
+                    try:
+                        await self.rollback(False)
+                    except Exception:
+                        pass
+                    is_transient = _is_transient_asyncpg_connection_error(exc)
+                    if attempt + 1 < _TRANSIENT_DB_IO_RETRIES and is_transient:
+                        _log_db_transient_retry(f"_fetch:{method.value}", attempt, exc)
+                        await self._discard_broken_connection_unlocked()
+                        continue
+                    if is_transient:
+                        _log_db_transient_exhausted(f"_fetch:{method.value}", exc)
+                    raise
         finally:
             self._locker.release()
 

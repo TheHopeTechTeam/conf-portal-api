@@ -69,8 +69,8 @@ class PostgresConnection:
                 dsn=settings.SQLALCHEMY_DATABASE_URI,
                 schema=settings.DATABASE_SCHEMA,
                 application_name=settings.DATABASE_APPLICATION_NAME,
-                min_size=0,
-                max_size=100,
+                min_size=settings.DATABASE_CONNECTION_POOL_MIN_SIZE,
+                max_size=settings.DATABASE_CONNECTION_POOL_MAX_SIZE,
                 command_timeout=command_timeout
             )
 
@@ -87,7 +87,9 @@ class PostgresConnection:
 
             context.pool = await asyncpg.create_pool(
                 server_settings=server_settings,
-                max_inactive_connection_lifetime=60 * 10,
+                max_inactive_connection_lifetime=(
+                    settings.DATABASE_CONNECTION_POOL_MAX_INACTIVE_LIFETIME_SECONDS
+                ),
                 **context.connect_kwargs
             )
             return context.pool

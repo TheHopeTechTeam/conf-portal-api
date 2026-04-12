@@ -102,7 +102,15 @@ class Configuration(BaseSettings):
     DATABASE_PORT: str = os.getenv(key="DATABASE_PORT", default="5432")
     DATABASE_NAME: str = os.getenv(key="DATABASE_NAME", default="postgres")
     DATABASE_SCHEMA: str = os.getenv(key="DATABASE_SCHEMA", default="public")
-    DATABASE_CONNECTION_POOL_MAX_SIZE: int = os.getenv("DATABASE_CONNECTION_POOL_MAX_SIZE", 10)
+    DATABASE_CONNECTION_POOL_MIN_SIZE: int = int(
+        os.getenv(key="DATABASE_CONNECTION_POOL_MIN_SIZE", default="0")
+    )
+    DATABASE_CONNECTION_POOL_MAX_SIZE: int = int(
+        os.getenv(key="DATABASE_CONNECTION_POOL_MAX_SIZE", default="10")
+    )
+    DATABASE_CONNECTION_POOL_MAX_INACTIVE_LIFETIME_SECONDS: int = int(
+        os.getenv(key="DATABASE_CONNECTION_POOL_MAX_INACTIVE_LIFETIME_SECONDS", default="600")
+    )
     DATABASE_APPLICATION_NAME: str = APP_NAME
 
     DATABASE_POOL: bool = os.getenv("DATABASE_POOL", True)

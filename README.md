@@ -394,8 +394,12 @@ Key configurable environment variables:
 - `DATABASE_PORT`: Database port (default: 5432)
 - `DATABASE_NAME`: Database name
 - `DATABASE_SCHEMA`: Database schema (default: public)
-- `DATABASE_CONNECTION_POOL_MAX_SIZE`: Connection pool max size (default: 10)
+- `DATABASE_CONNECTION_POOL_MIN_SIZE`: asyncpg pool `min_size` (default: 0)
+- `DATABASE_CONNECTION_POOL_MAX_SIZE`: asyncpg pool `max_size` (default: 10). Previously hard-coded to 100 in code; set this explicitly if you relied on the old behavior.
+- `DATABASE_CONNECTION_POOL_MAX_INACTIVE_LIFETIME_SECONDS`: asyncpg `max_inactive_connection_lifetime` in seconds (default: 600)
 - `SQL_ECHO`: Whether to output SQL statements (default: False)
+
+See [docs/database-connection-stability.md](docs/database-connection-stability.md) for aligning DB / proxy / pool timeouts.
 
 #### Redis Settings
 

@@ -3,12 +3,13 @@ import uuid
 from enum import Enum
 from typing import Optional
 
+import asyncpg.exceptions
 import pytest
 from pydantic import BaseModel
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-from portal.libs.database.aio_orm import Session, _format_where
+from portal.libs.database.aio_orm import Session, _format_where, _is_transient_asyncpg_connection_error
 from portal.libs.database.orm import ModelBase
 from portal.models import Demo
 
@@ -226,3 +227,27 @@ async def update_demo_worker(session: Session, demo_id: str = None):
         .values(name=uuid.uuid1().hex[:16]) \
         .where(Demo.id == demo_id) \
         .execute()
+
+
+def test_is_transient_asyncpg_connection_error_types():
+    assert _is_transient_asyncpg_connection_error(
+        asyncpg.exceptions.ConnectionDoesNotExistError("connection was closed")
+    )
+    assert _is_transient_asyncpg_connection_error(ConnectionResetError(54, "Connection reset"))
+
+
+def test_is_transient_asyncpg_connection_error_message_fallback():
+    class CustomExc(Exception):
+        pass
+
+    assert _is_transient_asyncpg_connection_error(
+        CustomExc("connection was closed in the middle of operation")
+    )
+    assert not _is_transient_asyncpg_connection_error(ValueError("syntax error"))
+
+
+def test_is_transient_asyncpg_connection_error_follows_cause_chain():
+    root = asyncpg.exceptions.ConnectionDoesNotExistError("connection was closed")
+    wrapper = RuntimeError("sentry or outer")
+    wrapper.__cause__ = root
+    assert _is_transient_asyncpg_connection_error(wrapper)

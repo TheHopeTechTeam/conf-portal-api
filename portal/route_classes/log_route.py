@@ -10,6 +10,7 @@ from fastapi.routing import APIRoute
 
 from portal.config import settings
 from portal.libs.logger import logger
+from portal.libs.shared import validator
 
 
 class LogRoute(APIRoute):
@@ -38,6 +39,8 @@ class LogRoute(APIRoute):
         """
         filtered_params = {}
         for key, value in params.items():
+            if validator.is_empty(value):
+                continue
             if self._is_sensitive_key(key):
                 filtered_params[key] = "********"
             else:
@@ -54,6 +57,8 @@ class LogRoute(APIRoute):
         if isinstance(data, dict):
             filtered_dict = {}
             for key, value in data.items():
+                if validator.is_empty(value):
+                    continue
                 if self._is_sensitive_key(key):
                     filtered_dict[key] = "********"
                 else:
