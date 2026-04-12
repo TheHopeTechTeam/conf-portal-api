@@ -151,7 +151,7 @@ class TheHopeTicket(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: UUID = Field(..., description="資料唯一識別碼")
-    order: UUID = Field(..., description="關聯到 orders 的資料")
+    order: TheHopeTicketOrder | UUID = Field(..., description="關聯到 orders 的資料")
     ticket_type: TheHopeTicketType = Field(..., alias="type", description="關聯到 ticketTypes 的資料")
     owner: Optional[TheHopeTicketMember] = Field(None, description="關聯到 members 的資料")
     user: TheHopeTicketMember = Field(..., description="關聯到 members 的資料")

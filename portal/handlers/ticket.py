@@ -23,7 +23,7 @@ from portal.models import (
 from portal.providers.thehope_ticket_provider import TheHopeTicketProvider
 from portal.schemas.thehope_ticket import (
     TheHopeTicketType,
-    TheHopeTicket,
+    TheHopeTicket, TheHopeTicketOrder,
 )
 from portal.serializers.v1.ticket import CheckInResponse, TicketBase, TicketType
 
@@ -149,7 +149,12 @@ class TicketHandler:
                     break
                 else:
                     ticket_base_data["id"] = ticket.id
-                    ticket_base_data["order_id"] = ticket.order
+                    order_id: Optional[UUID] = None
+                    if isinstance(ticket.order, TheHopeTicketOrder):
+                        order_id = ticket.order.id
+                    elif isinstance(ticket.order, UUID):
+                        order_id = ticket.order
+                    ticket_base_data["order_id"] = order_id
                     ticket_base_data["is_checked_in"] = ticket.is_checked_in
                     ticket_base_data["is_redeemed"] = ticket.is_redeemed
                     ticket_base_data["identity"] = ROLES.get(ticket.user.role, "會眾") if ticket.user.role else "會眾"
