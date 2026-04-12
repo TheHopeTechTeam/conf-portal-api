@@ -5,6 +5,7 @@ import asyncio
 import base64
 import hashlib
 import io
+import json
 import mimetypes
 import os
 import uuid
@@ -307,6 +308,9 @@ class AdminFileHandler:
             )
         except Exception as e:
             raise Exception(f"Failed to create file association: {str(e)}")
+        finally:
+            cache_key = CacheKeys("file").add_attribute("resource_association").add_attribute(resource_id.hex).build()
+            await self._redis.delete(cache_key)
 
     @distributed_trace()
     async def get_files_by_resource_id(self, resource_id: uuid.UUID) -> Optional[list[AdminFileGridItem]]:
@@ -351,22 +355,29 @@ class AdminFileHandler:
         :param resource_id: Associated resource ID
         :return:
         """
-        files: Optional[list[AdminFileDetail]] = await (
-            self._session.select(
-                PortalFile.id,
-                PortalFile.original_name,
-                PortalFile.key,
-                PortalFile.storage,
-                PortalFile.bucket,
-                PortalFile.region
+        cache_key = CacheKeys("file").add_attribute("resource_association").add_attribute(resource_id.hex).build()
+        if await self._redis.exists(cache_key):
+            raw_data = await self._redis.get(cache_key)
+            json_data = json.loads(raw_data)
+            files = [AdminFileDetail.model_validate(file) for file in json_data]
+        else:
+            files: Optional[list[AdminFileDetail]] = await (
+                self._session.select(
+                    PortalFile.id,
+                    PortalFile.original_name,
+                    PortalFile.key,
+                    PortalFile.storage,
+                    PortalFile.bucket,
+                    PortalFile.region
+                )
+                .outerjoin(PortalFileAssociation, PortalFileAssociation.file_id == PortalFile.id)
+                .where(PortalFileAssociation.resource_id.isnot(None))
+                .where(PortalFileAssociation.resource_id == resource_id)
+                .fetch(as_model=AdminFileDetail)
             )
-            .outerjoin(PortalFileAssociation, PortalFileAssociation.file_id == PortalFile.id)
-            .where(PortalFileAssociation.resource_id.isnot(None))
-            .where(PortalFileAssociation.resource_id == resource_id)
-            .fetch(as_model=AdminFileDetail)
-        )
-        if not files:
-            return None
+            if not files:
+                return None
+            await self._redis.set(cache_key, json.dumps([file.model_dump() for file in files]), ex=CacheExpiry.HOUR)
         signed_urls = []
         for file in files:
             signed_url = await self.get_signed_url(file=file)
