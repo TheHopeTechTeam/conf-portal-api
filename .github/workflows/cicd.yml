@@ -77,9 +77,6 @@ jobs:
         run: |-
           #!/usr/bin/env bash
           set -euo pipefail
-          echo "Meta json: ${{ steps.meta.outputs.json }}"
-          echo "Meta tags: ${{ steps.meta.outputs.tags }}"
-          echo "Meta version: ${{ steps.meta.outputs.version }}"
 
           curl --location --request PATCH 'https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID_STG }}' \
             --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
@@ -92,12 +89,12 @@ jobs:
               }
             }'
 
-          # Match Sentry release / APP_VERSION to the pushed image tag (same as imagePath suffix).
-          # curl --location --request PUT 'https://api.render.com/v1/env-groups/${{ secrets.RENDER_ENVIRONMENT_STG_ID }}/env-vars/VERSION' \
-          #   --header 'accept: application/json' \
-          #   --header 'content-type: application/json' \
-          #   --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
-          #   --data "{\"value\": \"${image_tag}\"}"
+          # Sentry release / APP_VERSION = docker/metadata-action primary tag (same as registry tag suffix).
+          curl --location --request PUT 'https://api.render.com/v1/env-groups/${{ secrets.RENDER_ENVIRONMENT_STG_ID }}/env-vars/VERSION' \
+            --header 'accept: application/json' \
+            --header 'content-type: application/json' \
+            --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+            --data '{"value": "${{ steps.meta.outputs.version }}"}'
   deploy-stg:
     if: github.ref == format('refs/heads/{0}', 'main')
     needs: update-service-stg

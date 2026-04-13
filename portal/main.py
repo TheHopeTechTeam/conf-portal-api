@@ -69,6 +69,7 @@ def setup_tracing():
 
     sentry_sdk.init(
         dsn=settings.SENTRY_URL,
+        release=settings.APP_VERSION,
         integrations=[
             AsyncPGIntegration(),
             FastApiIntegration(),

@@ -437,6 +437,7 @@ See [docs/database-connection-stability.md](docs/database-connection-stability.m
 #### Other Settings
 
 - `SENTRY_URL`: Sentry DSN (error tracking)
+- `VERSION`: Application version (maps to `APP_VERSION` and Sentry `release`; STG CI sets this to the **Docker image tag** for that deploy; release CI sets STG and PROD to the **semver image tag** and redeploys STG so the service picks it up)
 - `RATE_LIMITERS_CONFIG_PATH`: Rate Limiter configuration file path
 
 ### Gunicorn Configuration
