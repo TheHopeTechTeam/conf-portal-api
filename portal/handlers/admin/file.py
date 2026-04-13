@@ -27,6 +27,7 @@ from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
 from portal.models import PortalFile, PortalFileAssociation
+from portal.schemas.file import SignedUrlFileByResourceRow
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.file import (
@@ -349,40 +350,56 @@ class AdminFileHandler:
         return file_items
 
     @distributed_trace()
+    async def get_signed_urls_by_resource_ids(
+        self,
+        resource_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, list[str]]:
+        """
+        Load files for many resource IDs in one query and build presigned URLs per file.
+
+        :param resource_ids: Associated resource IDs (duplicates are ignored)
+        :return: Mapping resource_id -> list of signed URLs (same order as association sequence)
+        """
+        unique_ids = list(set(resource_ids))
+        if not unique_ids:
+            return {}
+        rows: Optional[list[SignedUrlFileByResourceRow]] = await (
+            self._session.select(
+                PortalFileAssociation.resource_id,
+                PortalFile.id,
+                PortalFile.original_name,
+                PortalFile.key,
+                PortalFile.storage,
+                PortalFile.bucket,
+                PortalFile.region,
+            )
+            .outerjoin(PortalFileAssociation, PortalFileAssociation.file_id == PortalFile.id)
+            .where(PortalFileAssociation.resource_id.isnot(None))
+            .where(PortalFileAssociation.resource_id.in_(unique_ids))
+            .fetch(as_model=SignedUrlFileByResourceRow)
+        )
+        if not rows:
+            return {}
+        url_by_resource: dict[uuid.UUID, list[str]] = {}
+        for row in rows:
+            file_detail = AdminFileDetail.model_validate(row.model_dump(exclude={"resource_id"}))
+            signed_url = await self.get_signed_url(file=file_detail)
+            if not signed_url:
+                continue
+            if row.resource_id not in url_by_resource:
+                url_by_resource[row.resource_id] = []
+            url_by_resource[row.resource_id].append(signed_url)
+        return url_by_resource
+
+    @distributed_trace()
     async def get_signed_url_by_resource_id(self, resource_id: uuid.UUID) -> Optional[list[str]]:
         """
         Generate a signed URL for file access by resource ID
         :param resource_id: Associated resource ID
         :return:
         """
-        cache_key = CacheKeys("file").add_attribute("resource_association").add_attribute(resource_id.hex).build()
-        if await self._redis.exists(cache_key):
-            raw_data = await self._redis.get(cache_key)
-            json_data = json.loads(raw_data)
-            files = [AdminFileDetail.model_validate(file) for file in json_data]
-        else:
-            files: Optional[list[AdminFileDetail]] = await (
-                self._session.select(
-                    PortalFile.id,
-                    PortalFile.original_name,
-                    PortalFile.key,
-                    PortalFile.storage,
-                    PortalFile.bucket,
-                    PortalFile.region
-                )
-                .outerjoin(PortalFileAssociation, PortalFileAssociation.file_id == PortalFile.id)
-                .where(PortalFileAssociation.resource_id.isnot(None))
-                .where(PortalFileAssociation.resource_id == resource_id)
-                .fetch(as_model=AdminFileDetail)
-            )
-            if not files:
-                return None
-            await self._redis.set(cache_key, json.dumps([file.model_dump() for file in files]), ex=CacheExpiry.HOUR)
-        signed_urls = []
-        for file in files:
-            signed_url = await self.get_signed_url(file=file)
-            signed_urls.append(signed_url)
-        return signed_urls
+        mapping = await self.get_signed_urls_by_resource_ids([resource_id])
+        return mapping.get(resource_id)
 
     @distributed_trace()
     async def get_signed_url(self, file_id: uuid.UUID = None, file: AdminFileBase = None, expiration: int = 3600) -> Optional[str]:

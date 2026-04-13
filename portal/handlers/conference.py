@@ -143,12 +143,21 @@ class ConferenceHandler:
             )
             if not conference:
                 raise NotFoundException(detail=f"Conference {conference_id} not found")
+            resource_ids = []
             if conference.location is not None:
-                location_img = await self._file_handler.get_signed_url_by_resource_id(conference.location.id)
-                conference.location.image_url = location_img[0] if location_img else None
+                resource_ids.append(conference.location.id)
+            resource_ids.extend(instructor.id for instructor in conference.instructors)
+            signed_urls_by_resource = (
+                await self._file_handler.get_signed_urls_by_resource_ids(resource_ids)
+                if resource_ids
+                else {}
+            )
+            if conference.location is not None:
+                location_urls = signed_urls_by_resource.get(conference.location.id)
+                conference.location.image_url = location_urls[0] if location_urls else None
             for instructor in conference.instructors:
-                instructor_img = await self._file_handler.get_signed_url_by_resource_id(instructor.id)
-                instructor.image_url = instructor_img[0] if instructor_img else None
+                instructor_urls = signed_urls_by_resource.get(instructor.id)
+                instructor.image_url = instructor_urls[0] if instructor_urls else None
             return conference
         except ApiBaseException as e:
             raise e

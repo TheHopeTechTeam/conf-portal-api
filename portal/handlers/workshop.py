@@ -108,6 +108,12 @@ class WorkshopHandler:
             .order_by(PortalWorkshop.start_datetime)
             .fetch(as_model=WorkshopBase)
         )
+        location_ids = [w.location.id for w in session_workshops if w.location]
+        signed_urls_by_resource = (
+            await self._file_handler.get_signed_urls_by_resource_ids(location_ids)
+            if location_ids
+            else {}
+        )
         workshops: list[UserSessionWorkshop] = []
         for workshop in session_workshops:
             start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
@@ -115,8 +121,8 @@ class WorkshopHandler:
             workshop.start_datetime = start_datetime_with_tz
             workshop.end_datetime = end_datetime_with_tz
             if workshop.location:
-                location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
-                workshop.location.image_url = location_img[0] if location_img else None
+                location_urls = signed_urls_by_resource.get(workshop.location.id)
+                workshop.location.image_url = location_urls[0] if location_urls else None
             workshops.append(
                 UserSessionWorkshop(
                     title=workshop.title,
@@ -188,14 +194,20 @@ class WorkshopHandler:
         )
         if not workshops:
             return WorkshopScheduleList(schedule=[])
+        location_ids = [w.location.id for w in workshops if w.location]
+        signed_urls_by_resource = (
+            await self._file_handler.get_signed_urls_by_resource_ids(location_ids)
+            if location_ids
+            else {}
+        )
         schedule_map = defaultdict(list)
         for workshop in workshops:
             start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
             end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
             mapping_key = f"{start_datetime_with_tz.isoformat()},{end_datetime_with_tz.isoformat()}"
             if workshop.location:
-                location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
-                workshop.location.image_url = location_img[0] if location_img else None
+                location_urls = signed_urls_by_resource.get(workshop.location.id)
+                workshop.location.image_url = location_urls[0] if location_urls else None
             if mapping_key not in schedule_map:
                 schedule_map[mapping_key] = []
             schedule_map[mapping_key].append(workshop)
@@ -307,14 +319,20 @@ class WorkshopHandler:
             end_datetime_with_tz = workshop.end_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
             workshop.start_datetime = start_datetime_with_tz
             workshop.end_datetime = end_datetime_with_tz
+            resource_ids = [workshop.id]
             if workshop.location:
-                location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
-                workshop.location.image_url = location_img[0] if location_img else None
+                resource_ids.append(workshop.location.id)
             if workshop.instructor:
-                instructor_img = await self._file_handler.get_signed_url_by_resource_id(workshop.instructor.id)
-                workshop.instructor.image_url = instructor_img[0] if instructor_img else None
-            workshop_img = await self._file_handler.get_signed_url_by_resource_id(workshop.id)
-            workshop.image_url = workshop_img[0] if workshop_img else None
+                resource_ids.append(workshop.instructor.id)
+            signed_urls_by_resource = await self._file_handler.get_signed_urls_by_resource_ids(resource_ids)
+            if workshop.location:
+                location_urls = signed_urls_by_resource.get(workshop.location.id)
+                workshop.location.image_url = location_urls[0] if location_urls else None
+            if workshop.instructor:
+                instructor_urls = signed_urls_by_resource.get(workshop.instructor.id)
+                workshop.instructor.image_url = instructor_urls[0] if instructor_urls else None
+            workshop_urls = signed_urls_by_resource.get(workshop.id)
+            workshop.image_url = workshop_urls[0] if workshop_urls else None
             return workshop
 
     @distributed_trace()
@@ -537,6 +555,12 @@ class WorkshopHandler:
             .order_by(PortalWorkshop.start_datetime)
             .fetch(as_model=WorkshopRegistered)
         )
+        location_ids = [w.location.id for w in registered_workshops if w.location]
+        signed_urls_by_resource = (
+            await self._file_handler.get_signed_urls_by_resource_ids(location_ids)
+            if location_ids
+            else {}
+        )
         my_workshops: list[WorkshopRegistered] = []
         for workshop in registered_workshops:  # type: WorkshopRegistered
             start_datetime_with_tz = workshop.start_datetime.astimezone(tz=ZoneInfo(workshop.timezone))
@@ -544,7 +568,7 @@ class WorkshopHandler:
             workshop.start_datetime = start_datetime_with_tz
             workshop.end_datetime = end_datetime_with_tz
             if workshop.location:
-                location_img = await self._file_handler.get_signed_url_by_resource_id(workshop.location.id)
-                workshop.location.image_url = location_img[0] if location_img else None
+                location_urls = signed_urls_by_resource.get(workshop.location.id)
+                workshop.location.image_url = location_urls[0] if location_urls else None
             my_workshops.append(workshop)
         return WorkshopRegisteredList(workshops=my_workshops)
