@@ -11,6 +11,8 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
+  # Opts JS actions (e.g. softprops/action-gh-release) into Node 24; see action-gh-release release notes.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 
 jobs:
@@ -128,3 +130,54 @@ jobs:
           curl --location --request POST 'https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID_STG }}/deploys' \
             --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
             --header 'Content-Type: application/json'
+
+  github-release:
+    name: Create GitHub Release
+    if: github.ref_type == 'tag'
+    needs: deploy-stg
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build release notes from CHANGELOG
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          file="CHANGELOG.md"
+          out="release_body.md"
+          rm -f extracted.md
+          if [[ -f "${file}" ]]; then
+            awk -v ver="${tag}" '
+              /^## \[/ {
+                if (p) exit
+                if ($0 ~ "\\[" ver "\\]") { p=1; print; next }
+                next
+              }
+              p { print }
+            ' "${file}" > extracted.md || true
+          fi
+          if [[ -f extracted.md ]] && [[ -s extracted.md ]]; then
+            mv extracted.md "${out}"
+          else
+            {
+              echo "## Summary"
+              echo ""
+              echo "No \`CHANGELOG.md\` section found for \`${tag}\`. Add \`## [${tag}]\` (Keep a Changelog style) before tagging, or rely on the auto-generated list below."
+              echo ""
+            } > "${out}"
+          fi
+
+      # softprops/action-gh-release@v2 still declares `runs.using: node20`, so GitHub may show a Node 20
+      # deprecation notice on the run summary. The action author is working on a Node 24 upgrade; until a
+      # new release ships, `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` (workflow env above) opts JS actions into Node 24.
+      # https://github.com/softprops/action-gh-release/pull/670
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release_body.md
+          generate_release_notes: true
+          make_latest: true

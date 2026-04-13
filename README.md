@@ -496,6 +496,16 @@ For detailed usage instructions, refer to `docs/auth_router_readme.md`.
 
 ### Production Deployment
 
+#### Versioned releases (`CHANGELOG.md` and tags)
+
+1. Create a branch named `chore/release-x.x.x` from the commit you intend to ship (usually `main` at release time).
+2. Edit `CHANGELOG.md`: move items out of `[Unreleased]` into a new section `## [x.x.x] - YYYY-MM-DD`, using the [Keep a Changelog](https://keepachangelog.com/) categories (`Added`, `Changed`, `Fixed`, `Removed`, etc.).
+3. Open a pull request, get review, and merge to `main`.
+4. A **repository admin** pushes the Git tag `x.x.x` (same pattern as `.github/workflows/release.yml`: `*.*.*`). Restrict tag creation in GitHub so only admins can push these tags (for example **Settings → Rules → Rulesets** with a tag ruleset, or your organization’s tag protection policy).
+5. Pushing that tag runs `.github/workflows/release.yml`: Docker image is published to GHCR, Render (STG and PROD) is updated, STG is redeployed, and a **GitHub Release** is created. The release body starts from the matching `## [x.x.x]` section in `CHANGELOG.md` (if present); GitHub’s auto-generated notes are added after that block (`softprops/action-gh-release` behavior). The `github-release` job sets `permissions.contents: write` on `GITHUB_TOKEN`.
+
+`CHANGELOG.md` is the human-maintained summary; auto-generated notes list merged PRs after it.
+
 1. Set production environment variables
 2. Configure database and Redis
 3. Set up Firebase credentials
