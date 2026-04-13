@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.19] - 2026-04-13
+
+### Summary
+
+Refines STG CI trigger conditions to avoid unnecessary GitHub Actions runs, and standardizes CI/CD environment naming for clearer workflow semantics. Tag pushes are excluded from `cicd.yml`, and deployment workflows are now scoped to runtime-related file changes.
+
+### Changed
+
+- **CI/CD environment naming (`.github/workflows/cicd.yml`, `.github/workflows/release.yml`)**: Standardizes environment names and job labels to improve consistency across STG and release workflows.
+- **STG CI trigger scope (`.github/workflows/cicd.yml`)**: Keeps `main` branch-only behavior while explicitly excluding tag pushes from this workflow.
+- **STG CI path filtering (`.github/workflows/cicd.yml`)**: Restricts workflow execution to deployment-relevant files (`portal/**`, `alembic/**`, `Dockerfile`, `entrypoint.sh`, `pyproject.toml`, `poetry.lock`, and the workflow file itself) so docs-only and other non-runtime changes do not trigger build/deploy.
+
+### Breaking changes
+
+None.
+
 ## [0.2.18] - 2026-04-13
 
 ### Summary
