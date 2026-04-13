@@ -4,6 +4,11 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from portal.container import Container
+from portal.libs.database.asyncpg_transient_errors import is_transient_asyncpg_connection_error
+from portal.libs.database.transient_db_http_response import (
+    safe_rollback_session,
+    transient_db_503_json_response,
+)
 from portal.libs.contexts.request_context import (
     RequestContext,
     set_request_context,
@@ -47,10 +52,15 @@ class CoreRequestMiddleware(BaseHTTPMiddleware):
             )
             response = await call_next(request)
         except Exception as e:
-            await db_session.rollback()
+            await safe_rollback_session(db_session)
+            if is_transient_asyncpg_connection_error(e):
+                return transient_db_503_json_response(request, e)
             raise e
         else:
-            await db_session.commit()
+            if response.status_code < 400:
+                await db_session.commit()
+            else:
+                await db_session.rollback()
             return response
         finally:
             if req_ctx_token is not None:

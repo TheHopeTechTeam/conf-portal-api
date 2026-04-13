@@ -26,6 +26,11 @@ from portal.container import Container
 from portal.exceptions.responses import ApiBaseException
 from portal.libs.consts.base import SECURITY_SCHEMES
 from portal.libs.contexts.request_session_context import get_request_session
+from portal.libs.database.asyncpg_transient_errors import is_transient_asyncpg_connection_error
+from portal.libs.database.transient_db_http_response import (
+    safe_rollback_session,
+    transient_db_503_content,
+)
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
 from portal.libs.events.publisher import set_global_container
@@ -123,22 +128,13 @@ def init_firebase():
     )
 
 
-def get_admin_application(container: Container) -> FastAPI:
+def register_exception_handler(application: FastAPI) -> None:
     """
-    get admin application
-    :param container: Container instance from main application
+    register exception handler
+    :param application:
+    :return:
     """
-    admin_application = FastAPI(
-        lifespan=lifespan,
-        openapi_url="/api/openapi.json" if settings.is_dev else None,
-        docs_url="/docs" if settings.is_dev else None,
-        redoc_url="/redoc" if settings.is_dev else None,
-    )
-    admin_application.container = container
-    register_middleware(application=admin_application)
-    admin_application.include_router(admin_router, prefix="/api/v1")
-
-    @admin_application.exception_handler(HTTPException)
+    @application.exception_handler(HTTPException)
     @distributed_trace(inject_span=True)
     async def root_http_exception_handler(request, exc: HTTPException, *, _span: Span = None):
         """
@@ -159,7 +155,7 @@ def get_admin_application(container: Container) -> FastAPI:
         return await http_exception_handler(request, exc)
 
 
-    @admin_application.exception_handler(ApiBaseException)
+    @application.exception_handler(ApiBaseException)
     @distributed_trace(inject_span=True)
     async def root_api_exception_handler(
         request, exc: ApiBaseException, *, _span: Span = None
@@ -188,7 +184,7 @@ def get_admin_application(container: Container) -> FastAPI:
         return JSONResponse(content=content, status_code=exc.status_code)
 
 
-    @admin_application.exception_handler(Exception)
+    @application.exception_handler(Exception)
     @distributed_trace(inject_span=True)
     async def exception_handler(request: Request, exc, *, _span: Span = None):
         """
@@ -198,6 +194,19 @@ def get_admin_application(container: Container) -> FastAPI:
         :param _span:
         :return:
         """
+        if is_transient_asyncpg_connection_error(exc):
+            await safe_rollback_session(get_request_session())
+            content = transient_db_503_content(request, exc)
+            try:
+                _span.set_data("internal.exc_detail", content["detail"])
+                _span.set_data("internal.exc_dev_info", content.get("debug_detail"))
+                _span.set_data("internal.endpoint", str(request.url))
+            except Exception:
+                pass
+            return JSONResponse(
+                content=content, status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
         content = defaultdict()
         content["detail"] = {"message": "Internal Server Error", "url": str(request.url)}
         if settings.is_dev:
@@ -212,6 +221,23 @@ def get_admin_application(container: Container) -> FastAPI:
             content=content, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+
+
+def get_admin_application(container: Container) -> FastAPI:
+    """
+    get admin application
+    :param container: Container instance from main application
+    """
+    admin_application = FastAPI(
+        lifespan=lifespan,
+        openapi_url="/api/openapi.json" if settings.is_dev else None,
+        docs_url="/docs" if settings.is_dev else None,
+        redoc_url="/redoc" if settings.is_dev else None,
+    )
+    admin_application.container = container
+    register_middleware(application=admin_application)
+    admin_application.include_router(admin_router, prefix="/api/v1")
+    register_exception_handler(application=admin_application)
 
     return admin_application
 
@@ -261,6 +287,8 @@ def get_application() -> FastAPI:
 
     application.openapi = custom_openapi
 
+    register_exception_handler(application=application)
+
     return application
 
 
@@ -292,78 +320,3 @@ async def root():
 #         content={"detail": str(exc)},
 #         status_code=status.HTTP_401_UNAUTHORIZED
 #     )
-
-
-@app.exception_handler(HTTPException)
-@distributed_trace(inject_span=True)
-async def root_http_exception_handler(request, exc: HTTPException, *, _span: Span = None):
-    """
-
-    :param request:
-    :param exc:
-    :param _span:
-    :return:
-    """
-    session = get_request_session()
-    if session is not None:
-        await session.rollback()
-    try:
-        _span.set_data("internal.exc_detail", exc.detail)
-        _span.set_data("internal.endpoint", str(request.url))
-    except Exception:
-        pass
-    return await http_exception_handler(request, exc)
-
-
-@app.exception_handler(ApiBaseException)
-@distributed_trace(inject_span=True)
-async def root_api_exception_handler(
-    request, exc: ApiBaseException, *, _span: Span = None
-):
-    """
-
-    :param request:
-    :param exc:
-    :param _span:
-    :return:
-    """
-    session = get_request_session()
-    if session is not None:
-        await session.rollback()
-    content = defaultdict()
-    content["detail"] = exc.detail
-    if settings.is_dev:
-        content["debug_detail"] = exc.debug_detail
-        content["url"] = str(request.url)
-    try:
-        _span.set_data("internal.exc_detail", exc.detail)
-        _span.set_data("internal.exc_dev_info", exc.debug_detail)
-        _span.set_data("internal.endpoint", str(request.url))
-    except Exception:
-        pass
-    return JSONResponse(content=content, status_code=exc.status_code)
-
-
-@app.exception_handler(Exception)
-@distributed_trace(inject_span=True)
-async def exception_handler(request: Request, exc, *, _span: Span = None):
-    """
-
-    :param request:
-    :param exc:
-    :param _span:
-    :return:
-    """
-    content = defaultdict()
-    content["detail"] = {"message": "Internal Server Error", "url": str(request.url)}
-    if settings.is_dev:
-        content["debug_detail"] = f"{exc.__class__.__name__}: {exc}"
-    try:
-        _span.set_data("internal.exc_detail", content["detail"])
-        _span.set_data("internal.exc_dev_info", content["debug_detail"])
-        _span.set_data("internal.endpoint", str(request.url))
-    except Exception:
-        pass
-    return JSONResponse(
-        content=content, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-    )
