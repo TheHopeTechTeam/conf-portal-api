@@ -5,13 +5,11 @@ on:
     branches:
       - main
 
-
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-
 
 jobs:
   build-docker:
@@ -54,10 +52,10 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-            context: .
-            push: true
-            tags: ${{ steps.meta.outputs.tags }}
-            labels: ${{ steps.meta.outputs.labels }}
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
   update-service-stg:
     if: github.ref == format('refs/heads/{0}', 'main')
     needs: build-docker
@@ -79,6 +77,9 @@ jobs:
         run: |-
           #!/usr/bin/env bash
           set -euo pipefail
+          echo "Meta json: ${{ steps.meta.outputs.json }}"
+          echo "Meta tags: ${{ steps.meta.outputs.tags }}"
+          echo "Meta version: ${{ steps.meta.outputs.version }}"
 
           curl --location --request PATCH 'https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID_STG }}' \
             --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
@@ -90,6 +91,13 @@ jobs:
                 "imagePath":"${{ steps.meta.outputs.tags }}"
               }
             }'
+
+          # Match Sentry release / APP_VERSION to the pushed image tag (same as imagePath suffix).
+          # curl --location --request PUT 'https://api.render.com/v1/env-groups/${{ secrets.RENDER_ENVIRONMENT_STG_ID }}/env-vars/VERSION' \
+          #   --header 'accept: application/json' \
+          #   --header 'content-type: application/json' \
+          #   --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+          #   --data "{\"value\": \"${image_tag}\"}"
   deploy-stg:
     if: github.ref == format('refs/heads/{0}', 'main')
     needs: update-service-stg
