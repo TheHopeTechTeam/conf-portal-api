@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.17] - 2026-04-13
+
+### Summary
+
+Stops emitting **`logger.warning`** lines for transient asyncpg connection failures during **`Session.execute`**, **`Session.fetchvals`**, and the internal **`_fetch`** path in **`portal/libs/database/aio_orm.py`**. The previous messages keyed **`db_io_transient_retry`** and **`db_io_transient_exhausted`** are removed; **rollback**, **retry**, and **`_discard_broken_connection_unlocked`** behavior are unchanged.
+
+### Removed
+
+- **Database I/O (`portal/libs/database/aio_orm.py`)**: **`_log_db_transient_retry`** and **`_log_db_transient_exhausted`** helpers and all **`db_io_transient_*`** warning calls tied to **`_TRANSIENT_DB_IO_RETRIES`**.
+
+### Breaking changes
+
+None.
+
 ## [0.2.16] - 2026-04-13
 
 ### Summary
