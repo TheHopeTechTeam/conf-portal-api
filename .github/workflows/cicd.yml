@@ -115,7 +115,7 @@ jobs:
     if: github.ref == format('refs/heads/{0}', 'main')
     needs: deploy-stg
     runs-on: ubuntu-latest
-    name: Sentry release STG
+    name: Sentry release STG (set commits)
     steps:
       - uses: actions/checkout@v5
         with:
@@ -131,7 +131,23 @@ jobs:
           tags: |
             type=sha,prefix=,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
 
-      - name: Create Sentry release
+      # `auto` keys off Sentry's last release, not "this push"; use the push's before..after SHAs.
+      - name: Resolve Sentry commit range (push to main)
+        id: sentry_commits
+        run: |
+          set -euo pipefail
+          before="${{ github.event.before }}"
+          echo "current_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          if [[ -z "${before}" || "${before}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "mode=skip" >> "$GITHUB_OUTPUT"
+            echo "previous_sha=" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=manual" >> "$GITHUB_OUTPUT"
+            echo "previous_sha=${before}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Sentry release (manual commits)
+        if: steps.sentry_commits.outputs.mode == 'manual'
         uses: getsentry/action-release@v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -140,6 +156,20 @@ jobs:
         with:
           release: ${{ steps.meta.outputs.version }}
           environment: stg
-          set_commits: auto
-          ignore_missing: true
+          set_commits: manual
+          repo: ${{ github.repository }}
+          commit: ${{ steps.sentry_commits.outputs.current_sha }}
+          previous_commit: ${{ steps.sentry_commits.outputs.previous_sha }}
           ignore_empty: true
+
+      - name: Create Sentry release (no before SHA)
+        if: steps.sentry_commits.outputs.mode == 'skip'
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          release: ${{ steps.meta.outputs.version }}
+          environment: stg
+          set_commits: skip
