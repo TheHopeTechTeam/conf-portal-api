@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.18] - 2026-04-13
+
+### Summary
+
+Introduces event-driven admin operation audit logging across admin write paths, standardizes `operation_code` to table names, and extends logging coverage to authentication, notification, and file operations. This release also refines CI Sentry release workflow behavior for commit handling.
+
+### Added
+
+- **Admin audit events**: Added `AdminOperationLogEvent` pipeline and background event handling to persist admin operation logs through the event bus.
+- **Audit payload utilities**: Added normalized audit payload helpers and shallow changed-field computation for stable JSONB log data.
+- **Admin handler coverage**: Added `create_log` calls for admin write flows in conference, event info, FAQ/category, feedback, instructor, location, notification, workshop, workshop registration, and auth handlers.
+- **Auth/file operation logs**: Added admin login/logout audit logging and file upload/bulk delete audit logging.
+
+### Changed
+
+- **Operation type storage**: Changed `PortalLog.operation_type` to string-based enum values and removed integer mapping usage.
+- **Operation code standard**: Switched `operation_code` usage to model table names (for example `PortalUser.__tablename__`) instead of hard-coded audit codes.
+- **Request metadata source**: `ip_address` and `user_agent` for admin logs now come from request context middleware data.
+- **Log handler API shape**: Unified DI argument naming to `log_handler` for admin handlers and expanded container wiring accordingly.
+- **Admin log creation flow**: `AdminLogHandler.create_log` is now synchronous and safely suppresses internal failures while still publishing events in background.
+- **CI/CD**: Updated Sentry release workflow behavior in GitHub Actions for commit/release handling improvements.
+
+### Breaking changes
+
+None.
+
 ## [0.2.17] - 2026-04-13
 
 ### Summary
