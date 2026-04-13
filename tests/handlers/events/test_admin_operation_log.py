@@ -115,7 +115,7 @@ async def test_admin_log_handler_create_log_publishes_event():
         with patch("portal.handlers.admin.log.publish_event_in_background") as publish_mock:
             log_handler = AdminLogHandler()
             rid = uuid.uuid4()
-            await log_handler.create_log(
+            log_handler.create_log(
                 OperationType.DELETE,
                 record_id=rid,
                 operation_code="portal_role",
@@ -143,7 +143,7 @@ async def test_admin_log_handler_create_log_autofills_changed_fields():
     try:
         with patch("portal.handlers.admin.log.publish_event_in_background") as publish_mock:
             log_handler = AdminLogHandler()
-            await log_handler.create_log(
+            log_handler.create_log(
                 OperationType.UPDATE,
                 old_data={"name": "a", "keep": 1},
                 new_data={"name": "b", "keep": 1},
@@ -167,7 +167,7 @@ async def test_admin_log_handler_create_log_respects_explicit_changed_fields():
         with patch("portal.handlers.admin.log.publish_event_in_background") as publish_mock:
             log_handler = AdminLogHandler()
             explicit = [{"field": "name", "old": "x", "new": "y"}]
-            await log_handler.create_log(
+            log_handler.create_log(
                 OperationType.UPDATE,
                 old_data={"name": "a"},
                 new_data={"name": "b"},
@@ -193,7 +193,7 @@ async def test_admin_log_handler_create_log_falls_back_when_normalize_raises():
                 side_effect=RuntimeError("normalize failed"),
             ):
                 log_handler = AdminLogHandler()
-                await log_handler.create_log(
+                log_handler.create_log(
                     OperationType.UPDATE,
                     old_data={"name": "a"},
                     new_data={"name": "b"},
@@ -217,6 +217,6 @@ async def test_admin_log_handler_create_log_swallows_outer_failure():
             side_effect=RuntimeError("publish failed"),
         ):
             log_handler = AdminLogHandler()
-            await log_handler.create_log(OperationType.OTHER)
+            log_handler.create_log(OperationType.OTHER)
     finally:
         reset_user_context(user_token)

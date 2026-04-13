@@ -99,6 +99,11 @@ class Container(containers.DeclarativeContainer):
         smtp_client=smtp_client,
     )
 
+    # Log handlers
+    admin_log_handler = providers.Factory(
+        handlers.AdminLogHandler,
+    )
+
     # File handlers
     admin_file_handler = providers.Factory(
         handlers.AdminFileHandler,
@@ -234,6 +239,7 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
         password_provider=password_provider,
+        admin_log_handler=admin_log_handler,
     )
     admin_auth_handler = providers.Factory(
         handlers.AdminAuthHandler,
@@ -267,9 +273,6 @@ class Container(containers.DeclarativeContainer):
     admin_notification_handler = providers.Factory(
         handlers.AdminNotificationHandler,
         session=request_session,
-    )
-    admin_log_handler = providers.Factory(
-        handlers.AdminLogHandler,
     )
 
     conf_client_event_handler = providers.Factory(

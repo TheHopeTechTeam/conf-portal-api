@@ -21,7 +21,7 @@ class AdminLogHandler:
     """AdminLogHandler"""
 
     @distributed_trace()
-    async def create_log(
+    def create_log(
         self,
         operation_type: OperationType,
         record_id: Optional[UUID] = None,
@@ -31,7 +31,7 @@ class AdminLogHandler:
         changed_fields: Optional[list[dict[str, Any]]] = None,
     ) -> None:
         """
-        Create an operation log (async via AdminOperationLogEvent).
+        Create an operation log (schedules AdminOperationLogEvent in the background).
         Client IP and user agent are taken from request context when set by middleware.
         Any unexpected error is logged and suppressed so callers are not interrupted.
         :param operation_type:

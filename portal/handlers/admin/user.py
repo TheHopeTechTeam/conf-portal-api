@@ -2,7 +2,7 @@
 AdminUserHandler
 """
 import uuid
-from typing import TYPE_CHECKING, Optional
+from typing import Any, Optional
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -13,6 +13,8 @@ from redis.asyncio import Redis
 from portal.config import settings
 from portal.exceptions.responses import ForbiddenException, BadRequestException
 from portal.exceptions.responses.base import ApiBaseException, ConflictErrorException
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import OperationType
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -42,7 +44,6 @@ from portal.serializers.v1.admin.user import (
     AdminUserList,
 )
 
-
 class AdminUserHandler:
     """AdminUserHandler"""
 
@@ -50,12 +51,44 @@ class AdminUserHandler:
         self,
         session: Session,
         redis_client: RedisPool,
-        password_provider: PasswordProvider
+        password_provider: PasswordProvider,
+        admin_log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._password_provider = password_provider
+        self._admin_log_handler = admin_log_handler
         self._user_ctx: Optional[UserContext] = get_user_context()
+
+    async def _get_user_audit_dict(self, user_id: UUID) -> Optional[dict[str, Any]]:
+        item = await self.get_user_by_id(user_id)
+        if not item:
+            return None
+        return item.model_dump(mode="json")
+
+    def _new_user_public_payload(self, user_id: UUID, model: AdminUserCreate) -> dict[str, Any]:
+        data = model.model_dump(mode="json", exclude={"password", "password_confirm"})
+        data["id"] = str(user_id)
+        return data
+
+    def _new_user_profile_payload(self, user_id: UUID, model: AdminUserCreate) -> dict[str, Any]:
+        return {
+            "user_id": str(user_id),
+            "display_name": model.display_name,
+            "gender": model.gender,
+            "is_ministry": model.is_ministry,
+        }
+
+    def _extract_profile_payload_from_user_item(self, row: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        if not isinstance(row, dict):
+            return None
+        return {
+            "user_id": row.get("id"),
+            "display_name": row.get("display_name"),
+            "gender": row.get("gender"),
+            "is_ministry": row.get("is_ministry"),
+            "description": row.get("description"),
+        }
 
     @distributed_trace()
     async def get_user_detail_by_email(self, email: EmailStr) -> Optional[SUserSensitive]:
@@ -346,6 +379,18 @@ class AdminUserHandler:
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
         else:
+            self._admin_log_handler.create_log(
+                OperationType.CREATE,
+                record_id=user_id,
+                operation_code=PortalUser.__tablename__,
+                new_data=self._new_user_public_payload(user_id, model),
+            )
+            self._admin_log_handler.create_log(
+                OperationType.CREATE,
+                record_id=user_id,
+                operation_code=PortalUserProfile.__tablename__,
+                new_data=self._new_user_profile_payload(user_id, model),
+            )
             return UUIDBaseModel(id=user_id)
 
     @distributed_trace()
@@ -357,6 +402,7 @@ class AdminUserHandler:
         """
         if not self._user_ctx:
             raise ApiBaseException(status_code=403, detail="Forbidden")
+        old_row = await self._get_user_audit_dict(self._user_ctx.user_id)
         try:
             user_fields = {
                 "phone_number": model.phone_number,
@@ -391,6 +437,23 @@ class AdminUserHandler:
             raise ConflictErrorException(detail="User already exists", debug_detail=str(e))
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
+        else:
+            new_row = await self._get_user_audit_dict(self._user_ctx.user_id)
+            if old_row is not None and new_row is not None:
+                self._admin_log_handler.create_log(
+                    OperationType.UPDATE,
+                    record_id=self._user_ctx.user_id,
+                    operation_code=PortalUser.__tablename__,
+                    old_data=old_row,
+                    new_data=new_row,
+                )
+                self._admin_log_handler.create_log(
+                    OperationType.UPDATE,
+                    record_id=self._user_ctx.user_id,
+                    operation_code=PortalUserProfile.__tablename__,
+                    old_data=self._extract_profile_payload_from_user_item(old_row),
+                    new_data=self._extract_profile_payload_from_user_item(new_row),
+                )
 
     @distributed_trace()
     async def update_user(self, user_id: UUID, model: AdminUserUpdate) -> None:
@@ -400,6 +463,7 @@ class AdminUserHandler:
         :param model:
         :return:
         """
+        old_row = await self._get_user_audit_dict(user_id)
         try:
             # Update PortalUser
             user_fields = {
@@ -441,6 +505,23 @@ class AdminUserHandler:
             raise ConflictErrorException(detail="User already exists", debug_detail=str(e))
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
+        else:
+            new_row = await self._get_user_audit_dict(user_id)
+            if old_row is not None and new_row is not None:
+                self._admin_log_handler.create_log(
+                    OperationType.UPDATE,
+                    record_id=user_id,
+                    operation_code=PortalUser.__tablename__,
+                    old_data=old_row,
+                    new_data=new_row,
+                )
+                self._admin_log_handler.create_log(
+                    OperationType.UPDATE,
+                    record_id=user_id,
+                    operation_code=PortalUserProfile.__tablename__,
+                    old_data=self._extract_profile_payload_from_user_item(old_row),
+                    new_data=self._extract_profile_payload_from_user_item(new_row),
+                )
 
     @distributed_trace()
     async def delete_user(self, user_id: UUID, model: DeleteBaseModel) -> None:
@@ -450,6 +531,7 @@ class AdminUserHandler:
         :param model:
         :return:
         """
+        old_row = await self._get_user_audit_dict(user_id)
         try:
             await (
                 self._session.update(PortalUser)
@@ -459,6 +541,16 @@ class AdminUserHandler:
             )
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
+        else:
+            base = dict(old_row) if old_row else {"id": str(user_id)}
+            new_row = {**base, "is_deleted": True, "delete_reason": model.reason}
+            self._admin_log_handler.create_log(
+                OperationType.RECYCLE,
+                record_id=user_id,
+                operation_code=PortalUser.__tablename__,
+                old_data=old_row,
+                new_data=new_row,
+            )
 
     @distributed_trace()
     async def restore_user(self, model: AdminUserBulkAction) -> None:
@@ -479,6 +571,13 @@ class AdminUserHandler:
             )
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
+        else:
+            self._admin_log_handler.create_log(
+                OperationType.RESTORE,
+                operation_code=PortalUser.__tablename__,
+                old_data={"user_ids": [str(i) for i in model.ids]},
+                new_data={"is_deleted": False, "delete_reason": None},
+            )
 
     @distributed_trace()
     async def get_user_roles(self, user_id: UUID) -> AdminUserRoles:
@@ -533,6 +632,15 @@ class AdminUserHandler:
                 )
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
+        else:
+            if insert_role_ids or delete_role_ids:
+                self._admin_log_handler.create_log(
+                    OperationType.UPDATE,
+                    record_id=user_id,
+                    operation_code=PortalUserRole.__tablename__,
+                    old_data={"role_ids": [str(x) for x in sorted(original_roles)]},
+                    new_data={"role_ids": [str(x) for x in sorted(model.role_ids or [])]},
+                )
 
     @distributed_trace()
     async def change_password(self, user_id: UUID, model: AdminChangePassword) -> None:
@@ -564,6 +672,13 @@ class AdminUserHandler:
             .where(PortalUser.id == user_id)
             .execute()
         )
+        self._admin_log_handler.create_log(
+            OperationType.UPDATE,
+            record_id=user_id,
+            operation_code=PortalUser.__tablename__,
+            old_data={"event": "change_password"},
+            new_data={"password_updated": True},
+        )
         return None
 
     @distributed_trace()
@@ -584,4 +699,11 @@ class AdminUserHandler:
             )
             .where(PortalUser.id == user_id)
             .execute()
+        )
+        self._admin_log_handler.create_log(
+            OperationType.UPDATE,
+            record_id=user_id,
+            operation_code=PortalUser.__tablename__,
+            old_data={"event": "reset_password"},
+            new_data={"password_updated": True},
         )
