@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - main
+    tags-ignore:
+      - "*"
+    paths:
+      - "portal/**"
+      - "gunicorn.conf.py"
+      - "Dockerfile"
+      - "entrypoint.sh"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".github/workflows/*.yml"
 
 env:
   # Use docker.io for Docker Hub if empty
