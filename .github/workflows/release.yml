@@ -5,7 +5,6 @@ on:
     tags:
       - "*.*.*"
 
-
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
@@ -13,7 +12,6 @@ env:
   IMAGE_NAME: ${{ github.repository }}
   # Opts JS actions (e.g. softprops/action-gh-release) into Node 24; see action-gh-release release notes.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 
 jobs:
   build-docker:
@@ -56,10 +54,10 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-            context: .
-            push: true
-            tags: ${{ steps.meta.outputs.tags }}
-            labels: ${{ steps.meta.outputs.labels }}
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   update-service-prod:
     if: startsWith(github.ref, 'refs/tags/')
@@ -223,7 +221,7 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         with:
           release: ${{ github.ref_name }}
-          environment: production
+          environment: PROD
           set_commits: manual
           repo: ${{ github.repository }}
           commit: ${{ steps.sentry_commits.outputs.current_sha }}

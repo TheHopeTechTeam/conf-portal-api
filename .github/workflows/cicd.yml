@@ -165,7 +165,7 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         with:
           release: ${{ steps.meta.outputs.version }}
-          environment: stg
+          environment: STG
           set_commits: manual
           repo: ${{ github.repository }}
           commit: ${{ steps.sentry_commits.outputs.current_sha }}
@@ -181,5 +181,5 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         with:
           release: ${{ steps.meta.outputs.version }}
-          environment: stg
+          environment: STG
           set_commits: skip
