@@ -52,12 +52,12 @@ class AdminUserHandler:
         session: Session,
         redis_client: RedisPool,
         password_provider: PasswordProvider,
-        admin_log_handler: AdminLogHandler,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._password_provider = password_provider
-        self._admin_log_handler = admin_log_handler
+        self._log_handler = log_handler
         self._user_ctx: Optional[UserContext] = get_user_context()
 
     async def _get_user_audit_dict(self, user_id: UUID) -> Optional[dict[str, Any]]:
@@ -379,13 +379,13 @@ class AdminUserHandler:
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
         else:
-            self._admin_log_handler.create_log(
+            self._log_handler.create_log(
                 OperationType.CREATE,
                 record_id=user_id,
                 operation_code=PortalUser.__tablename__,
                 new_data=self._new_user_public_payload(user_id, model),
             )
-            self._admin_log_handler.create_log(
+            self._log_handler.create_log(
                 OperationType.CREATE,
                 record_id=user_id,
                 operation_code=PortalUserProfile.__tablename__,
@@ -440,14 +440,14 @@ class AdminUserHandler:
         else:
             new_row = await self._get_user_audit_dict(self._user_ctx.user_id)
             if old_row is not None and new_row is not None:
-                self._admin_log_handler.create_log(
+                self._log_handler.create_log(
                     OperationType.UPDATE,
                     record_id=self._user_ctx.user_id,
                     operation_code=PortalUser.__tablename__,
                     old_data=old_row,
                     new_data=new_row,
                 )
-                self._admin_log_handler.create_log(
+                self._log_handler.create_log(
                     OperationType.UPDATE,
                     record_id=self._user_ctx.user_id,
                     operation_code=PortalUserProfile.__tablename__,
@@ -508,14 +508,14 @@ class AdminUserHandler:
         else:
             new_row = await self._get_user_audit_dict(user_id)
             if old_row is not None and new_row is not None:
-                self._admin_log_handler.create_log(
+                self._log_handler.create_log(
                     OperationType.UPDATE,
                     record_id=user_id,
                     operation_code=PortalUser.__tablename__,
                     old_data=old_row,
                     new_data=new_row,
                 )
-                self._admin_log_handler.create_log(
+                self._log_handler.create_log(
                     OperationType.UPDATE,
                     record_id=user_id,
                     operation_code=PortalUserProfile.__tablename__,
@@ -544,7 +544,7 @@ class AdminUserHandler:
         else:
             base = dict(old_row) if old_row else {"id": str(user_id)}
             new_row = {**base, "is_deleted": True, "delete_reason": model.reason}
-            self._admin_log_handler.create_log(
+            self._log_handler.create_log(
                 OperationType.RECYCLE,
                 record_id=user_id,
                 operation_code=PortalUser.__tablename__,
@@ -572,7 +572,7 @@ class AdminUserHandler:
         except Exception as e:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
         else:
-            self._admin_log_handler.create_log(
+            self._log_handler.create_log(
                 OperationType.RESTORE,
                 operation_code=PortalUser.__tablename__,
                 old_data={"user_ids": [str(i) for i in model.ids]},
@@ -634,7 +634,7 @@ class AdminUserHandler:
             raise ApiBaseException(status_code=500, detail="Internal Server Error", debug_detail=str(e))
         else:
             if insert_role_ids or delete_role_ids:
-                self._admin_log_handler.create_log(
+                self._log_handler.create_log(
                     OperationType.UPDATE,
                     record_id=user_id,
                     operation_code=PortalUserRole.__tablename__,
@@ -672,7 +672,7 @@ class AdminUserHandler:
             .where(PortalUser.id == user_id)
             .execute()
         )
-        self._admin_log_handler.create_log(
+        self._log_handler.create_log(
             OperationType.UPDATE,
             record_id=user_id,
             operation_code=PortalUser.__tablename__,
@@ -700,7 +700,7 @@ class AdminUserHandler:
             .where(PortalUser.id == user_id)
             .execute()
         )
-        self._admin_log_handler.create_log(
+        self._log_handler.create_log(
             OperationType.UPDATE,
             record_id=user_id,
             operation_code=PortalUser.__tablename__,

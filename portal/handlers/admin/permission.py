@@ -2,7 +2,7 @@
 AdminPermissionHandler
 """
 import uuid
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -11,6 +11,8 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, ConflictErrorException
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import OperationType
 from portal.libs.consts.cache_keys import create_permission_key, CacheKeys, CacheExpiry
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -39,9 +41,17 @@ class AdminPermissionHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._log_handler = log_handler
+
+    async def _get_permission_audit_dict(self, permission_id: UUID) -> Optional[dict[str, Any]]:
+        permission = await self.get_permission_by_id(permission_id)
+        if not permission:
+            return None
+        return permission.model_dump(mode="json")
 
     @distributed_trace()
     async def init_user_permissions_cache(self, user: SUserSensitive, expire: int) -> Optional[list[str]]:
@@ -260,6 +270,15 @@ class AdminPermissionHandler:
                 debug_detail=str(e),
             )
         else:
+            self._log_handler.create_log(
+                OperationType.CREATE,
+                record_id=permission_id,
+                operation_code=PortalPermission.__tablename__,
+                new_data={
+                    **model.model_dump(mode="json", exclude_none=True),
+                    "id": str(permission_id),
+                },
+            )
             return UUIDBaseModel(id=permission_id)
 
     @distributed_trace()
@@ -270,6 +289,7 @@ class AdminPermissionHandler:
         :param model:
         :return:
         """
+        old_row = await self._get_permission_audit_dict(permission_id)
         try:
             result = await (
                 self._session.update(PortalPermission)
@@ -294,6 +314,16 @@ class AdminPermissionHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            new_row = await self._get_permission_audit_dict(permission_id)
+            if old_row is not None and new_row is not None:
+                self._log_handler.create_log(
+                    OperationType.UPDATE,
+                    record_id=permission_id,
+                    operation_code=PortalPermission.__tablename__,
+                    old_data=old_row,
+                    new_data=new_row,
+                )
 
     @distributed_trace()
     async def delete_permission(self, permission_id: UUID, model: DeleteBaseModel) -> None:
@@ -303,6 +333,7 @@ class AdminPermissionHandler:
         :param model:
         :return:
         """
+        old_row = await self._get_permission_audit_dict(permission_id)
         try:
             if model.permanent:
                 # Hard delete - permanently remove from database
@@ -335,6 +366,28 @@ class AdminPermissionHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            if model.permanent:
+                self._log_handler.create_log(
+                    OperationType.DELETE,
+                    record_id=permission_id,
+                    operation_code=PortalPermission.__tablename__,
+                    old_data=old_row,
+                    new_data={"deleted": True, "permanent": True},
+                )
+            else:
+                base = dict(old_row) if old_row else {"id": str(permission_id)}
+                self._log_handler.create_log(
+                    OperationType.RECYCLE,
+                    record_id=permission_id,
+                    operation_code=PortalPermission.__tablename__,
+                    old_data=old_row,
+                    new_data={
+                        **base,
+                        "is_deleted": True,
+                        "delete_reason": model.reason,
+                    },
+                )
 
     @distributed_trace()
     async def restore_permission(self, model: AdminPermissionBulkAction) -> None:
@@ -355,6 +408,13 @@ class AdminPermissionHandler:
                 status_code=500,
                 detail="Internal Server Error",
                 debug_detail=str(e),
+            )
+        else:
+            self._log_handler.create_log(
+                OperationType.RESTORE,
+                operation_code=PortalPermission.__tablename__,
+                old_data={"permission_ids": [str(item) for item in model.ids]},
+                new_data={"is_deleted": False, "delete_reason": None},
             )
 
     @distributed_trace()

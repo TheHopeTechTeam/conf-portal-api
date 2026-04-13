@@ -2,7 +2,7 @@
 AdminRoleHandler
 """
 import uuid
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -12,6 +12,8 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 from portal.config import settings
 from portal.exceptions.responses import ConflictErrorException, ApiBaseException
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import OperationType
 from portal.libs.consts.cache_keys import create_user_role_key
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -29,9 +31,17 @@ class AdminRoleHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._log_handler = log_handler
+
+    async def _get_role_audit_dict(self, role_id: UUID) -> Optional[dict[str, Any]]:
+        role = await self.get_role_by_id(role_id)
+        if not role:
+            return None
+        return role.model_dump(mode="json")
 
     @distributed_trace()
     async def init_user_roles_cache(self, user: SUserSensitive, expire: int) -> Optional[list[str]]:
@@ -250,6 +260,24 @@ class AdminRoleHandler:
                 debug_detail=str(e),
             )
         else:
+            self._log_handler.create_log(
+                OperationType.CREATE,
+                record_id=role_id,
+                operation_code=PortalRole.__tablename__,
+                new_data={
+                    **model.model_dump(mode="json", exclude_none=True, exclude={"permissions"}),
+                    "id": str(role_id),
+                },
+            )
+            self._log_handler.create_log(
+                OperationType.CREATE,
+                record_id=role_id,
+                operation_code=PortalRolePermission.__tablename__,
+                new_data={
+                    "role_id": str(role_id),
+                    "permission_ids": [str(item) for item in model.permissions],
+                },
+            )
             return UUIDBaseModel(id=role_id)
 
     @distributed_trace()
@@ -260,6 +288,12 @@ class AdminRoleHandler:
         :param model:
         :return:
         """
+        old_role_row = await self._get_role_audit_dict(role_id)
+        old_permission_ids = await (
+            self._session.select(PortalRolePermission.permission_id)
+            .where(PortalRolePermission.role_id == role_id)
+            .fetchvals()
+        )
         try:
             result = await (
                 self._session.insert(PortalRole)
@@ -274,17 +308,11 @@ class AdminRoleHandler:
                 .execute()
             )
 
-            permission_ids: list[UUID] = await (
-                self._session.select(PortalRolePermission.permission_id)
-                .where(PortalRolePermission.role_id == role_id)
-                .fetchvals()
-            )
-
             # Determine which permissions to add and which to delete by set difference
             new_permission_ids = set(model.permissions or [])
-            old_permission_ids = set(permission_ids)
-            insert_permission_ids = list(new_permission_ids - old_permission_ids)
-            delete_permission_ids = list(old_permission_ids - new_permission_ids)
+            old_permission_id_set = set(old_permission_ids)
+            insert_permission_ids = list(new_permission_ids - old_permission_id_set)
+            delete_permission_ids = list(old_permission_id_set - new_permission_ids)
 
             if insert_permission_ids:
                 await (
@@ -323,6 +351,29 @@ class AdminRoleHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            new_role_row = await self._get_role_audit_dict(role_id)
+            if old_role_row is not None and new_role_row is not None:
+                self._log_handler.create_log(
+                    OperationType.UPDATE,
+                    record_id=role_id,
+                    operation_code=PortalRole.__tablename__,
+                    old_data=old_role_row,
+                    new_data=new_role_row,
+                )
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=role_id,
+                operation_code=PortalRolePermission.__tablename__,
+                old_data={
+                    "role_id": str(role_id),
+                    "permission_ids": [str(item) for item in old_permission_ids],
+                },
+                new_data={
+                    "role_id": str(role_id),
+                    "permission_ids": [str(item) for item in model.permissions or []],
+                },
+            )
 
     @distributed_trace()
     async def delete_role(self, role_id: UUID, model: DeleteBaseModel) -> None:
@@ -332,6 +383,12 @@ class AdminRoleHandler:
         :param role_id:
         :return:
         """
+        old_role_row = await self._get_role_audit_dict(role_id)
+        old_permission_ids = await (
+            self._session.select(PortalRolePermission.permission_id)
+            .where(PortalRolePermission.role_id == role_id)
+            .fetchvals()
+        )
         try:
             if not model.permanent:
                 await (
@@ -358,6 +415,38 @@ class AdminRoleHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            if model.permanent:
+                self._log_handler.create_log(
+                    OperationType.DELETE,
+                    record_id=role_id,
+                    operation_code=PortalRole.__tablename__,
+                    old_data=old_role_row,
+                    new_data={"deleted": True, "permanent": True},
+                )
+                self._log_handler.create_log(
+                    OperationType.DELETE,
+                    record_id=role_id,
+                    operation_code=PortalRolePermission.__tablename__,
+                    old_data={
+                        "role_id": str(role_id),
+                        "permission_ids": [str(item) for item in old_permission_ids],
+                    },
+                    new_data={"role_id": str(role_id), "permission_ids": []},
+                )
+            else:
+                base = dict(old_role_row) if old_role_row else {"id": str(role_id)}
+                self._log_handler.create_log(
+                    OperationType.RECYCLE,
+                    record_id=role_id,
+                    operation_code=PortalRole.__tablename__,
+                    old_data=old_role_row,
+                    new_data={
+                        **base,
+                        "is_deleted": True,
+                        "delete_reason": model.reason,
+                    },
+                )
 
     @distributed_trace()
     async def restore_role(self, role_id: UUID) -> None:
@@ -366,6 +455,7 @@ class AdminRoleHandler:
         :param role_id:
         :return:
         """
+        old_role_row = await self._get_role_audit_dict(role_id)
         try:
             await (
                 self._session.update(PortalRole)
@@ -378,6 +468,15 @@ class AdminRoleHandler:
                 status_code=500,
                 detail="Internal Server Error",
                 debug_detail=str(e),
+            )
+        else:
+            new_role_row = await self._get_role_audit_dict(role_id)
+            self._log_handler.create_log(
+                OperationType.RESTORE,
+                record_id=role_id,
+                operation_code=PortalRole.__tablename__,
+                old_data=old_role_row,
+                new_data=new_role_row,
             )
 
     @distributed_trace()
@@ -420,4 +519,18 @@ class AdminRoleHandler:
                 status_code=500,
                 detail="Internal Server Error",
                 debug_detail=str(e),
+            )
+        else:
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=role_id,
+                operation_code=PortalRolePermission.__tablename__,
+                old_data={
+                    "role_id": str(role_id),
+                    "permission_ids": [str(item) for item in original_permissions],
+                },
+                new_data={
+                    "role_id": str(role_id),
+                    "permission_ids": [str(item) for item in model.permission_ids],
+                },
             )

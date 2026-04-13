@@ -218,16 +218,19 @@ class Container(containers.DeclarativeContainer):
         handlers.AdminPermissionHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
     admin_resource_handler = providers.Factory(
         handlers.AdminResourceHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
     admin_role_handler = providers.Factory(
         handlers.AdminRoleHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
     admin_testimony_handler = providers.Factory(
         handlers.AdminTestimonyHandler,
@@ -239,7 +242,7 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
         password_provider=password_provider,
-        admin_log_handler=admin_log_handler,
+        log_handler=admin_log_handler,
     )
     admin_auth_handler = providers.Factory(
         handlers.AdminAuthHandler,

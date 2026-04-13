@@ -3,6 +3,7 @@ Handler for admin resource
 """
 import asyncio
 import uuid
+from typing import Any, Optional
 
 import sqlalchemy as sa
 from asyncpg import UniqueViolationError
@@ -11,6 +12,8 @@ from sqlalchemy.orm import aliased
 
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, ConflictErrorException, UnauthorizedException, NotFoundException
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import OperationType
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -36,10 +39,19 @@ class AdminResourceHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._log_handler = log_handler
         self._user_ctx: UserContext = get_user_context()
+
+    async def _get_resource_audit_dict(self, resource_id: uuid.UUID) -> Optional[dict[str, Any]]:
+        try:
+            resource = await self.get_resource(resource_id=resource_id)
+        except NotFoundException:
+            return None
+        return resource.model_dump(mode="json")
 
     @distributed_trace()
     async def get_resource(self, resource_id: uuid.UUID) -> AdminResourceDetail:
@@ -109,6 +121,15 @@ class AdminResourceHandler:
                 debug_detail=str(e),
             )
         else:
+            self._log_handler.create_log(
+                OperationType.CREATE,
+                record_id=rid,
+                operation_code=PortalResource.__tablename__,
+                new_data={
+                    **model.model_dump(mode="json", exclude_none=True),
+                    "id": str(rid),
+                },
+            )
             return UUIDBaseModel(id=rid)
 
     @distributed_trace()
@@ -119,6 +140,7 @@ class AdminResourceHandler:
         :param model:
         :return:
         """
+        old_row = await self._get_resource_audit_dict(resource_id)
         try:
             await (
                 self._session.update(PortalResource)
@@ -132,6 +154,15 @@ class AdminResourceHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            new_row = await self._get_resource_audit_dict(resource_id)
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=resource_id,
+                operation_code=PortalResource.__tablename__,
+                old_data=old_row,
+                new_data=new_row,
+            )
 
     @distributed_trace()
     async def update_resource(self, resource_id: uuid.UUID, model: AdminResourceUpdate):
@@ -142,6 +173,7 @@ class AdminResourceHandler:
         :param model:
         :return:
         """
+        old_row = await self._get_resource_audit_dict(resource_id)
         try:
             result = await (
                 self._session.update(PortalResource)
@@ -165,6 +197,15 @@ class AdminResourceHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            new_row = await self._get_resource_audit_dict(resource_id)
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=resource_id,
+                operation_code=PortalResource.__tablename__,
+                old_data=old_row,
+                new_data=new_row,
+            )
 
     @distributed_trace()
     async def change_sequence(self, model: AdminResourceChangeSequence):
@@ -173,6 +214,8 @@ class AdminResourceHandler:
         :param model:
         :return:
         """
+        old_row = await self._get_resource_audit_dict(model.id)
+        old_another_row = await self._get_resource_audit_dict(model.another_id)
         try:
             await (
                 self._session.update(PortalResource)
@@ -192,6 +235,23 @@ class AdminResourceHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            new_row = await self._get_resource_audit_dict(model.id)
+            new_another_row = await self._get_resource_audit_dict(model.another_id)
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=model.id,
+                operation_code=PortalResource.__tablename__,
+                old_data=old_row,
+                new_data=new_row,
+            )
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=model.another_id,
+                operation_code=PortalResource.__tablename__,
+                old_data=old_another_row,
+                new_data=new_another_row,
+            )
 
     @distributed_trace()
     async def delete_resource(self, resource_id: uuid.UUID, model: DeleteBaseModel):
@@ -203,6 +263,7 @@ class AdminResourceHandler:
         :param model:
         :return:
         """
+        old_row = await self._get_resource_audit_dict(resource_id)
         try:
             if not model.permanent:
                 await (
@@ -219,6 +280,24 @@ class AdminResourceHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            if model.permanent:
+                self._log_handler.create_log(
+                    OperationType.DELETE,
+                    record_id=resource_id,
+                    operation_code=PortalResource.__tablename__,
+                    old_data=old_row,
+                    new_data={"deleted": True, "permanent": True},
+                )
+            else:
+                new_row = await self._get_resource_audit_dict(resource_id)
+                self._log_handler.create_log(
+                    OperationType.RECYCLE,
+                    record_id=resource_id,
+                    operation_code=PortalResource.__tablename__,
+                    old_data=old_row,
+                    new_data=new_row,
+                )
 
     @distributed_trace()
     async def restore_resource(self, resource_id: uuid.UUID):
@@ -229,6 +308,7 @@ class AdminResourceHandler:
         :param resource_id:
         :return:
         """
+        old_row = await self._get_resource_audit_dict(resource_id)
         try:
             await (
                 self._session.update(PortalResource)
@@ -241,6 +321,15 @@ class AdminResourceHandler:
                 status_code=500,
                 detail="Internal Server Error",
                 debug_detail=str(e),
+            )
+        else:
+            new_row = await self._get_resource_audit_dict(resource_id)
+            self._log_handler.create_log(
+                OperationType.RESTORE,
+                record_id=resource_id,
+                operation_code=PortalResource.__tablename__,
+                old_data=old_row,
+                new_data=new_row,
             )
 
     @staticmethod
