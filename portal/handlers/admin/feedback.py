@@ -9,6 +9,8 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ApiBaseException
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalFeedback
@@ -28,9 +30,11 @@ class AdminFeedbackHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._log_handler = log_handler
 
     @distributed_trace()
     async def get_feedback_pages(self, model: AdminFeedbackQuery) -> AdminFeedbackPages:
@@ -123,4 +127,11 @@ class AdminFeedbackHandler:
                 status_code=500,
                 detail="Internal Server Error",
                 debug_detail=str(e),
+            )
+        else:
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=feedback_id,
+                operation_code=PortalFeedback.__tablename__,
+                new_data=model.model_dump(mode="json"),
             )

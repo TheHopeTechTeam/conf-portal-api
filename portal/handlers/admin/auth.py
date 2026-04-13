@@ -11,7 +11,8 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import UnauthorizedException, ForbiddenException, BadRequestException
-from portal.libs.consts.enums import AccessTokenAudType
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import AccessTokenAudType, OperationType
 from portal.libs.contexts.request_context import RequestContext, get_request_context
 from portal.libs.contexts.user_context import get_user_context, UserContext
 from portal.libs.database import Session, RedisPool
@@ -62,6 +63,7 @@ class AdminAuthHandler(PasswordValidator):
         admin_permission_handler: AdminPermissionHandler,
         admin_role_handler: AdminRoleHandler,
         admin_user_handler: AdminUserHandler,
+        log_handler: AdminLogHandler,
     ):
         self._expires_in = 60 * 60 * 24  # 24 hours
         # db
@@ -77,6 +79,7 @@ class AdminAuthHandler(PasswordValidator):
         self._admin_permission_handler = admin_permission_handler
         self._admin_role_handler = admin_role_handler
         self._admin_user_handler = admin_user_handler
+        self._log_handler = log_handler
         # context
         self._user_ctx: Optional[UserContext] = get_user_context()
         self._req_ctx: Optional[RequestContext] = get_request_context()
@@ -139,6 +142,12 @@ class AdminAuthHandler(PasswordValidator):
         # Update last login
         last_login_at = datetime.now(timezone.utc)
         await self.update_last_login(user.id, last_login_at)
+        self._log_handler.create_log(
+            OperationType.LOGIN,
+            record_id=user.id,
+            operation_code=PortalUser.__tablename__,
+            new_data={"event": "admin_login", "last_login_at": last_login_at.isoformat()},
+        )
 
         # Generate family id for this login chain
         family_id = uuid4()
@@ -203,7 +212,11 @@ class AdminAuthHandler(PasswordValidator):
         :return:
         """
         try:
-            refresh_token, rt_data = await self._refresh_token_provider.rotate(refresh_token=refresh_data.refresh_token)  # type: str, RefreshTokenData
+            refresh_token: str
+            rt_data: RefreshTokenData
+            refresh_token, rt_data = await self._refresh_token_provider.rotate(
+                refresh_token=refresh_data.refresh_token
+            )
         except Exception as exc:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
@@ -283,6 +296,13 @@ class AdminAuthHandler(PasswordValidator):
             # Revoke refresh token (and family)
             if refresh_token:
                 await self._refresh_token_provider.revoke_by_token(refresh_token, revoke_family=True)
+            if self._user_ctx and self._user_ctx.user_id:
+                self._log_handler.create_log(
+                    OperationType.LOGOUT,
+                    record_id=self._user_ctx.user_id,
+                    operation_code=PortalUser.__tablename__,
+                    new_data={"event": "admin_logout"},
+                )
             return True
         except Exception as e:
             logger.error(f"Error logging out: {e}")

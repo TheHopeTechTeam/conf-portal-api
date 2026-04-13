@@ -10,6 +10,8 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalEventSchedule, PortalConference
@@ -24,9 +26,11 @@ class AdminEventInfoHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._log_handler = log_handler
 
     @distributed_trace()
     async def get_event_info_list(self, conference_id: uuid.UUID) -> AdminEventInfoList:
@@ -120,6 +124,12 @@ class AdminEventInfoHandler:
                 debug_detail=str(e),
             )
         else:
+            self._log_handler.create_log(
+                OperationType.CREATE,
+                record_id=event_id,
+                operation_code=PortalEventSchedule.__tablename__,
+                new_data={**model.model_dump(mode="json", exclude_none=True), "id": str(event_id)},
+            )
             return UUIDBaseModel(id=event_id)
 
     @distributed_trace()
@@ -157,6 +167,13 @@ class AdminEventInfoHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=event_id,
+                operation_code=PortalEventSchedule.__tablename__,
+                new_data=model.model_dump(mode="json"),
+            )
 
     @distributed_trace()
     async def delete_event_info(self, event_id: uuid.UUID) -> None:
@@ -176,4 +193,11 @@ class AdminEventInfoHandler:
                 status_code=500,
                 detail="Internal Server Error",
                 debug_detail=str(e),
+            )
+        else:
+            self._log_handler.create_log(
+                OperationType.DELETE,
+                record_id=event_id,
+                operation_code=PortalEventSchedule.__tablename__,
+                new_data={"deleted": True, "permanent": True},
             )

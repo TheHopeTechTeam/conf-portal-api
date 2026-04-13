@@ -21,8 +21,9 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import BadRequestException, ApiBaseException, ConflictErrorException
+from portal.handlers.admin.log import AdminLogHandler
 from portal.libs.consts.cache_keys import CacheKeys, CacheExpiry
-from portal.libs.consts.enums import FileStatus, FileUploadSource
+from portal.libs.consts.enums import FileStatus, FileUploadSource, OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
@@ -51,9 +52,11 @@ class AdminFileHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._log_handler = log_handler
         self._s3_client = boto3.client(
             "s3",
             region_name=settings.AWS_S3_REGION_NAME,
@@ -245,6 +248,19 @@ class AdminFileHandler:
                 debug_detail=str(e)
             )
         else:
+            self._log_handler.create_log(
+                OperationType.CREATE,
+                record_id=file_id,
+                operation_code=PortalFile.__tablename__,
+                new_data={
+                    "id": str(file_id),
+                    "original_name": original_filename,
+                    "content_type": content_type,
+                    "size_bytes": file_size,
+                    "source": upload_source.value,
+                    "is_public": is_public,
+                },
+            )
             return AdminFileUploadResponseModel(id=file_id)
 
     @distributed_trace()
@@ -626,6 +642,12 @@ class AdminFileHandler:
                 .values(status=FileStatus.DELETED)
                 .where(PortalFile.key.in_(success_keys))
                 .execute()
+            )
+            self._log_handler.create_log(
+                OperationType.DELETE,
+                operation_code=PortalFile.__tablename__,
+                old_data={"file_keys": success_keys},
+                new_data={"status": FileStatus.DELETED.value},
             )
         return AdminBulkActionResponseModel(
             success_count=len(success_keys),

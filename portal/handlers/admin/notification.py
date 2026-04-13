@@ -7,11 +7,13 @@ import sqlalchemy as sa
 
 from portal.exceptions.responses.base import ApiBaseException
 from portal.libs.consts.enums import NotificationMethod, NotificationType, NotificationStatus
+from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.events.types import NotificationCreatedEvent
 from portal.libs.events.publisher import publish_event_in_background
 from portal.libs.logger import logger
+from portal.handlers.admin.log import AdminLogHandler
 from portal.models import (
     PortalNotification,
     PortalNotificationHistory,
@@ -38,8 +40,10 @@ class AdminNotificationHandler:
     def __init__(
         self,
         session: Session,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
+        self._log_handler = log_handler
 
     @distributed_trace()
     async def create_notification(self, model: AdminNotificationCreate) -> UUIDBaseModel:
@@ -85,6 +89,12 @@ class AdminNotificationHandler:
         publish_event_in_background(event=NotificationCreatedEvent(notification_id=notification_id, model=model))
 
         logger.info(f"Notification {notification_id} created and event published for sending")
+        self._log_handler.create_log(
+            OperationType.CREATE,
+            record_id=notification_id,
+            operation_code=PortalNotification.__tablename__,
+            new_data={**model.model_dump(mode="json"), "id": str(notification_id)},
+        )
 
         return UUIDBaseModel(id=notification_id)
 

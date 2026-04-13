@@ -11,6 +11,8 @@ from redis.asyncio import Redis
 
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import PortalWorkshopRegistration, PortalWorkshop, PortalUser, PortalUserProfile
@@ -32,9 +34,11 @@ class AdminWorkshopRegistrationHandler:
         self,
         session: Session,
         redis_client: RedisPool,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
+        self._log_handler = log_handler
 
     @distributed_trace()
     async def get_workshop_registration_pages(self, query_model: AdminWorkshopRegistrationQuery) -> AdminWorkshopRegistrationPages:
@@ -157,6 +161,16 @@ class AdminWorkshopRegistrationHandler:
                 debug_detail=str(e),
             )
         else:
+            self._log_handler.create_log(
+                OperationType.CREATE,
+                record_id=registration_id,
+                operation_code=PortalWorkshopRegistration.__tablename__,
+                new_data={
+                    "id": str(registration_id),
+                    "workshop_id": str(model.workshop_id),
+                    "user_id": str(model.user_id),
+                },
+            )
             return UUIDBaseModel(id=registration_id)
 
     @distributed_trace()
@@ -197,6 +211,13 @@ class AdminWorkshopRegistrationHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=registration_id,
+                operation_code=PortalWorkshopRegistration.__tablename__,
+                new_data={"unregistered": True},
+            )
 
     @distributed_trace()
     async def delete_workshop_registration(self, registration_id: uuid.UUID, model: DeleteBaseModel) -> None:
@@ -226,6 +247,21 @@ class AdminWorkshopRegistrationHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            if model.permanent:
+                self._log_handler.create_log(
+                    OperationType.DELETE,
+                    record_id=registration_id,
+                    operation_code=PortalWorkshopRegistration.__tablename__,
+                    new_data={"deleted": True, "permanent": True},
+                )
+            else:
+                self._log_handler.create_log(
+                    OperationType.RECYCLE,
+                    record_id=registration_id,
+                    operation_code=PortalWorkshopRegistration.__tablename__,
+                    new_data={"is_deleted": True, "delete_reason": model.reason},
+                )
 
 
 

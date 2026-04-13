@@ -109,6 +109,7 @@ class Container(containers.DeclarativeContainer):
         handlers.AdminFileHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
 
     # [General]
@@ -186,33 +187,39 @@ class Container(containers.DeclarativeContainer):
         handlers.AdminConferenceHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
     admin_event_info_handler = providers.Factory(
         handlers.AdminEventInfoHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
     admin_faq_handler = providers.Factory(
         handlers.AdminFaqHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
     admin_feedback_handler = providers.Factory(
         handlers.AdminFeedbackHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
     admin_instructor_handler = providers.Factory(
         handlers.AdminInstructorHandler,
         session=request_session,
         redis_client=redis_client,
         file_handler=admin_file_handler,
+        log_handler=admin_log_handler,
     )
     admin_location_handler = providers.Factory(
         handlers.AdminLocationHandler,
         session=request_session,
         redis_client=redis_client,
         file_handler=admin_file_handler,
+        log_handler=admin_log_handler,
     )
     admin_permission_handler = providers.Factory(
         handlers.AdminPermissionHandler,
@@ -256,6 +263,7 @@ class Container(containers.DeclarativeContainer):
         refresh_token_provider=refresh_token_provider,
         admin_role_handler=admin_role_handler,
         admin_user_handler=admin_user_handler,
+        log_handler=admin_log_handler,
     )
     admin_verb_handler = providers.Factory(
         handlers.AdminVerbHandler,
@@ -267,15 +275,18 @@ class Container(containers.DeclarativeContainer):
         session=request_session,
         redis_client=redis_client,
         file_handler=admin_file_handler,
+        log_handler=admin_log_handler,
     )
     admin_workshop_registration_handler = providers.Factory(
         handlers.AdminWorkshopRegistrationHandler,
         session=request_session,
         redis_client=redis_client,
+        log_handler=admin_log_handler,
     )
     admin_notification_handler = providers.Factory(
         handlers.AdminNotificationHandler,
         session=request_session,
+        log_handler=admin_log_handler,
     )
 
     conf_client_event_handler = providers.Factory(

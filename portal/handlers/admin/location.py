@@ -11,6 +11,8 @@ from redis.asyncio import Redis
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.handlers import AdminFileHandler
+from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
@@ -36,10 +38,12 @@ class AdminLocationHandler:
         session: Session,
         redis_client: RedisPool,
         file_handler: AdminFileHandler,
+        log_handler: AdminLogHandler,
     ):
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
+        self._log_handler = log_handler
 
     @distributed_trace()
     async def get_location_pages(self, model: AdminLocationQuery) -> AdminLocationPages:
@@ -168,6 +172,12 @@ class AdminLocationHandler:
                 debug_detail=str(e),
             )
         else:
+            self._log_handler.create_log(
+                OperationType.CREATE,
+                record_id=location_id,
+                operation_code=PortalLocation.__tablename__,
+                new_data={**model.model_dump(mode="json", exclude_none=True, exclude={"file_ids"}), "id": str(location_id)},
+            )
             return UUIDBaseModel(id=location_id)
 
     @distributed_trace()
@@ -207,6 +217,13 @@ class AdminLocationHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            self._log_handler.create_log(
+                OperationType.UPDATE,
+                record_id=location_id,
+                operation_code=PortalLocation.__tablename__,
+                new_data=model.model_dump(mode="json", exclude_none=True, exclude={"file_ids"}),
+            )
 
     @distributed_trace()
     async def delete_location(self, location_id: uuid.UUID, model: DeleteBaseModel) -> None:
@@ -236,6 +253,21 @@ class AdminLocationHandler:
                 detail="Internal Server Error",
                 debug_detail=str(e),
             )
+        else:
+            if model.permanent:
+                self._log_handler.create_log(
+                    OperationType.DELETE,
+                    record_id=location_id,
+                    operation_code=PortalLocation.__tablename__,
+                    new_data={"deleted": True, "permanent": True},
+                )
+            else:
+                self._log_handler.create_log(
+                    OperationType.RECYCLE,
+                    record_id=location_id,
+                    operation_code=PortalLocation.__tablename__,
+                    new_data={"is_deleted": True, "delete_reason": model.reason},
+                )
 
     @distributed_trace()
     async def restore_locations(self, model: BulkAction) -> None:
@@ -256,4 +288,11 @@ class AdminLocationHandler:
                 status_code=500,
                 detail="Internal Server Error",
                 debug_detail=str(e),
+            )
+        else:
+            self._log_handler.create_log(
+                OperationType.RESTORE,
+                operation_code=PortalLocation.__tablename__,
+                old_data={"location_ids": [str(item) for item in model.ids]},
+                new_data={"is_deleted": False},
             )
