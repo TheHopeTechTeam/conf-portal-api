@@ -508,8 +508,8 @@ For detailed usage instructions, refer to `docs/auth_router_readme.md`.
 
 **GitHub Actions secrets for Sentry releases:** add **`SENTRY_AUTH_TOKEN`**, **`SENTRY_ORG`** (org **slug**), and **`SENTRY_PROJECT`** (project **slug**) to the repo; both workflows below use them. Self-hosted Sentry also needs **`SENTRY_URL`** on those steps’ `env`.
 
-- **`release.yml`** (`sentry-release`): after **GitHub Release**, **`getsentry/action-release@v3`** with **`fetch-depth: 0`**, **`release`** = pushed semver tag (for example `0.2.16`), **`environment: production`** — must match prod **`VERSION`** / Sentry `release`.
-- **`cicd.yml`** (`sentry-release-stg`): after **STG deploy**, same action with **`release`** = **`steps.meta.outputs.version`** (short SHA image tag), **`environment: stg`** — must match STG **`VERSION`** / Sentry `release`.
+- **`release.yml`** (`sentry-release`): after **GitHub Release**, **`getsentry/action-release@v3`** with **`fetch-depth: 0`**, **`release`** = pushed semver tag (for example `0.2.16`), **`environment: production`**. Commits use **`set_commits: manual`**: previous commit = peeled **prior `x.y.z` tag** when one exists, otherwise the **repository root** commit so the first semver tag still gets a full commit range. (Avoids **`auto`**, which often misses semver-to-semver ranges when Sentry’s “last release” does not line up with git.)
+- **`cicd.yml`** (`sentry-release-stg`): after **STG deploy**, **`getsentry/action-release@v3`** with **`release`** = **`steps.meta.outputs.version`** (short SHA image tag), **`environment: stg`**, **`set_commits: auto`** (each push deploys; no per-push manual range). Uses **`fetch-depth: 0`**, **`ignore_missing`**, and **`ignore_empty`** to reduce noise when Sentry cannot infer a commit range.
 
 1. Set production environment variables
 2. Configure database and Redis

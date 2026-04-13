@@ -115,7 +115,7 @@ jobs:
     if: github.ref == format('refs/heads/{0}', 'main')
     needs: deploy-stg
     runs-on: ubuntu-latest
-    name: Sentry release STG (set commits)
+    name: Sentry release STG
     steps:
       - uses: actions/checkout@v5
         with:
@@ -138,7 +138,8 @@ jobs:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         with:
-          # Must match Render `VERSION` / `APP_VERSION` (Docker image tag from metadata).
           release: ${{ steps.meta.outputs.version }}
           environment: stg
           set_commits: auto
+          ignore_missing: true
+          ignore_empty: true
