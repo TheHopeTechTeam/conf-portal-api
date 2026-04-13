@@ -9,6 +9,7 @@ from .admin.faq import AdminFaqHandler
 from .admin.feedback import AdminFeedbackHandler
 from .admin.file import AdminFileHandler
 from .admin.instructor import AdminInstructorHandler
+from .admin.log import AdminLogHandler
 from .admin.location import AdminLocationHandler
 from .admin.permission import AdminPermissionHandler
 from .admin.resource import AdminResourceHandler
@@ -43,6 +44,7 @@ __all__ = [
     "AdminFeedbackHandler",
     "AdminFileHandler",
     "AdminInstructorHandler",
+    "AdminLogHandler",
     "AdminLocationHandler",
     "AdminPermissionHandler",
     "AdminResourceHandler",

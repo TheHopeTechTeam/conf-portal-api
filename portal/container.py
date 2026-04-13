@@ -7,6 +7,7 @@ from dependency_injector import containers, providers
 from portal import handlers
 from portal.config import settings
 from portal.handlers.events import (
+    AdminOperationLogEventHandler,
     NotificationCreatedEventHandler,
     SendSignInLinkEventHandler,
     TicketTypeSyncEventHandler,
@@ -16,6 +17,7 @@ from portal.libs.database import RedisPool, PostgresConnection, Session
 from portal.libs.database.session_proxy import SessionProxy
 from portal.libs.events.bus import EventBus
 from portal.libs.events.types import (
+    AdminOperationLogEvent,
     NotificationCreatedEvent,
     SendSignInLinkEvent,
     TicketTypeSyncEvent,
@@ -266,6 +268,9 @@ class Container(containers.DeclarativeContainer):
         handlers.AdminNotificationHandler,
         session=request_session,
     )
+    admin_log_handler = providers.Factory(
+        handlers.AdminLogHandler,
+    )
 
     conf_client_event_handler = providers.Factory(
         handlers.ConfClientEventHandler,
@@ -300,6 +305,10 @@ class Container(containers.DeclarativeContainer):
         thehope_ticket_provider=thehope_ticket_provider,
         redis_client=redis_client,
     )
+    admin_operation_log_event_handler = providers.Factory(
+        AdminOperationLogEventHandler,
+        session=request_session,
+    )
 
     @staticmethod
     def register_event_handlers(event_bus_instance: EventBus, container: "Container") -> None:
@@ -320,4 +329,7 @@ class Container(containers.DeclarativeContainer):
         # Register ticket type sync event handler
         event_bus_instance.subscribe(
             TicketTypeSyncEvent, container.ticket_type_sync_event_handler()
+        )
+        event_bus_instance.subscribe(
+            AdminOperationLogEvent, container.admin_operation_log_event_handler()
         )
