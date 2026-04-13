@@ -10,6 +10,7 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-docker:
@@ -109,3 +110,35 @@ jobs:
           curl --location --request POST 'https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID_STG }}/deploys' \
             --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
             --header 'Content-Type: application/json'
+
+  sentry-release-stg:
+    if: github.ref == format('refs/heads/{0}', 'main')
+    needs: deploy-stg
+    runs-on: ubuntu-latest
+    name: Sentry release STG (set commits)
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+          tags: |
+            type=sha,prefix=,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+
+      - name: Create Sentry release
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          # Must match Render `VERSION` / `APP_VERSION` (Docker image tag from metadata).
+          release: ${{ steps.meta.outputs.version }}
+          environment: stg
+          set_commits: auto

@@ -506,6 +506,11 @@ For detailed usage instructions, refer to `docs/auth_router_readme.md`.
 
 `CHANGELOG.md` is the human-maintained summary; auto-generated notes list merged PRs after it.
 
+**GitHub Actions secrets for Sentry releases:** add **`SENTRY_AUTH_TOKEN`**, **`SENTRY_ORG`** (org **slug**), and **`SENTRY_PROJECT`** (project **slug**) to the repo; both workflows below use them. Self-hosted Sentry also needs **`SENTRY_URL`** on those steps’ `env`.
+
+- **`release.yml`** (`sentry-release`): after **GitHub Release**, **`getsentry/action-release@v3`** with **`fetch-depth: 0`**, **`release`** = pushed semver tag (for example `0.2.16`), **`environment: production`** — must match prod **`VERSION`** / Sentry `release`.
+- **`cicd.yml`** (`sentry-release-stg`): after **STG deploy**, same action with **`release`** = **`steps.meta.outputs.version`** (short SHA image tag), **`environment: stg`** — must match STG **`VERSION`** / Sentry `release`.
+
 1. Set production environment variables
 2. Configure database and Redis
 3. Set up Firebase credentials

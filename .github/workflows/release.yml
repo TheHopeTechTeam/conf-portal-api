@@ -60,6 +60,7 @@ jobs:
             push: true
             tags: ${{ steps.meta.outputs.tags }}
             labels: ${{ steps.meta.outputs.labels }}
+
   update-service-prod:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build-docker
@@ -181,3 +182,25 @@ jobs:
           body_path: release_body.md
           generate_release_notes: true
           make_latest: true
+
+  sentry-release:
+    name: Sentry release (set commits)
+    if: github.ref_type == 'tag'
+    needs: github-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Create Sentry release
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          # Must match `sentry_sdk.init(release=...)` / `APP_VERSION` (semver tag without `v`).
+          release: ${{ github.ref_name }}
+          environment: production
+          set_commits: auto
