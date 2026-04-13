@@ -1,7 +1,7 @@
 """
 Root router.
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from portal.config import settings
 from portal.libs.contexts.request_session_context import get_request_session
@@ -34,7 +34,7 @@ if settings.IS_DEV:
 
         1. In a first terminal, start a **long** sleep (clamped 1..300), e.g.::
 
-               curl -sS 'http://127.0.0.1:8000/api/internal/dev/db-pg-sleep?seconds=120'
+               curl -v 'http://127.0.0.1:8000/api/internal/dev/db-pg-sleep?seconds=120'
 
            Leave it blocking until step 4.
 
@@ -68,6 +68,27 @@ if settings.IS_DEV:
             )
         await session.fetchval("SELECT pg_sleep($1)", float(bounded))
         return {"slept_seconds": bounded}
+
+    @router.get(
+        path="/internal/dev/receive-until-disconnect",
+        operation_id="dev_receive_until_disconnect",
+        include_in_schema=False,
+    )
+    async def dev_receive_until_disconnect(request: Request):
+        """
+        Dev-only: keep calling ``await request.receive()`` until
+        ``{"type": "http.disconnect"}`` so ``HttpDisconnectProbeMiddleware`` can log
+        ``event=http_disconnect`` when you abort the client.
+
+        Example::
+
+            curl -N 'http://127.0.0.1:8000/api/internal/dev/receive-until-disconnect'
+            # Ctrl+C curl while blocking; check server logs for http_disconnect.
+        """
+        while True:
+            message = await request.receive()
+            if message.get("type") == "http.disconnect":
+                return {"ok": True, "message": "saw http.disconnect"}
 
 
 @router.get(

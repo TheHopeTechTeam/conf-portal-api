@@ -35,7 +35,11 @@ from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
 from portal.libs.events.publisher import set_global_container
 from portal.libs.utils.lifespan import lifespan
-from portal.middlewares import CoreRequestMiddleware, AuthMiddleware
+from portal.middlewares import (
+    AuthMiddleware,
+    CoreRequestMiddleware,
+    HttpDisconnectProbeMiddleware,
+)
 from portal.routers import admin_router, api_router
 
 __all__ = ["app"]
@@ -94,9 +98,10 @@ def register_middleware(application: FastAPI) -> None:
     """
     register middleware
     Middleware order (from outer to inner, executed in reverse order):
-    1. CORSMiddleware - Handle CORS (outermost, executed last)
-    2. CoreRequestMiddleware - Setup request context and database session
-    3. AuthMiddleware - Verify token and set UserContext (innermost, executed first)
+    1. HttpDisconnectProbeMiddleware - Log http.disconnect on receive (outermost)
+    2. CORSMiddleware - Handle CORS
+    3. CoreRequestMiddleware - Setup request context and database session
+    4. AuthMiddleware - Verify token and set UserContext (innermost, executed first)
 
     Note: AuthMiddleware executes after CoreRequestMiddleware to ensure database session is available.
     Both authentication (token verification) and authorization (permission checking) are handled in AuthMiddleware.
@@ -104,7 +109,7 @@ def register_middleware(application: FastAPI) -> None:
     :param application:
     :return:
     """
-    # CORS middleware should be outermost (added first, executed last)
+    # Last add_middleware wraps outermost on the request path (receive first).
     application.add_middleware(AuthMiddleware)
     application.add_middleware(CoreRequestMiddleware)
     application.add_middleware(
@@ -115,6 +120,7 @@ def register_middleware(application: FastAPI) -> None:
         allow_headers=["*"],
         allow_origin_regex=settings.CORS_ALLOW_ORIGINS_REGEX,
     )
+    application.add_middleware(HttpDisconnectProbeMiddleware)
 
 
 def init_firebase():

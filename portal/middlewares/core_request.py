@@ -18,6 +18,7 @@ from portal.libs.contexts.request_session_context import (
     set_request_session,
     reset_request_session,
 )
+from portal.libs.logger import logger
 
 
 def _resolve_ip(request: Request) -> str | None:
@@ -36,6 +37,7 @@ class CoreRequestMiddleware(BaseHTTPMiddleware):
         container: Container = request.app.container
         db_session = container.db_session()
         session_ctx_token = set_request_session(db_session)
+        request_id = str(uuid.uuid4())
         try:
             # initialize request context
             req_ctx_token = set_request_context(
@@ -47,11 +49,12 @@ class CoreRequestMiddleware(BaseHTTPMiddleware):
                     host=(request.headers.get("host") or request.url.hostname),
                     url=str(request.url),
                     path=request.url.path,
-                    request_id=str(uuid.uuid4()),
+                    request_id=request_id,
                 )
             )
             response = await call_next(request)
         except Exception as e:
+            logger.warning(f"CoreRequestMiddleware: {e}, request_id: {request_id}")
             await safe_rollback_session(db_session)
             if is_transient_asyncpg_connection_error(e):
                 return transient_db_503_json_response(request, e)
