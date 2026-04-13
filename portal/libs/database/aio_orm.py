@@ -669,27 +669,6 @@ def condition_clause(conditional_exp: any, criterion):
 _TRANSIENT_DB_IO_RETRIES = 2
 
 
-def _log_db_transient_retry(op: str, attempt_index: int, exc: BaseException) -> None:
-    logger.warning(
-        "db_io_transient_retry op=%s attempt=%s/%s exc_type=%s exc=%r",
-        op,
-        attempt_index + 1,
-        _TRANSIENT_DB_IO_RETRIES,
-        type(exc).__name__,
-        exc,
-    )
-
-
-def _log_db_transient_exhausted(op: str, exc: BaseException) -> None:
-    logger.warning(
-        "db_io_transient_exhausted op=%s attempts=%s exc_type=%s exc=%r",
-        op,
-        _TRANSIENT_DB_IO_RETRIES,
-        type(exc).__name__,
-        exc,
-    )
-
-
 class ISession:
     def _proxy_id(self) -> int:
         pass
@@ -880,11 +859,8 @@ class Session(ISession):
                         pass
                     is_transient = is_transient_asyncpg_connection_error(exc)
                     if attempt + 1 < _TRANSIENT_DB_IO_RETRIES and is_transient:
-                        _log_db_transient_retry("execute", attempt, exc)
                         await self._discard_broken_connection_unlocked()
                         continue
-                    if is_transient:
-                        _log_db_transient_exhausted("execute", exc)
                     raise
         finally:
             self._locker.release()
@@ -980,12 +956,9 @@ class Session(ISession):
                     pass
                 is_transient = is_transient_asyncpg_connection_error(exc)
                 if attempt + 1 < _TRANSIENT_DB_IO_RETRIES and is_transient:
-                    _log_db_transient_retry("fetchvals", attempt, exc)
                     async with self._locker:
                         await self._discard_broken_connection_unlocked()
                     continue
-                if is_transient:
-                    _log_db_transient_exhausted("fetchvals", exc)
                 raise
 
     async def fetchdict(
@@ -1051,11 +1024,8 @@ class Session(ISession):
                         pass
                     is_transient = is_transient_asyncpg_connection_error(exc)
                     if attempt + 1 < _TRANSIENT_DB_IO_RETRIES and is_transient:
-                        _log_db_transient_retry(f"_fetch:{method.value}", attempt, exc)
                         await self._discard_broken_connection_unlocked()
                         continue
-                    if is_transient:
-                        _log_db_transient_exhausted(f"_fetch:{method.value}", exc)
                     raise
         finally:
             self._locker.release()
