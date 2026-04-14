@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.20] - 2026-04-14
+
+### Summary
+
+Stabilizes admin audit logging by expanding `create_log` coverage across admin write handlers, aligning log metadata conventions, and fixing JSONB binding for operation log persistence. This release also adds supporting CI/release refinements and documentation updates.
+
+### Added
+
+- **Admin audit logging coverage**: Added `create_log` integration to additional admin write handlers, including conference, event info, FAQ/category, feedback, instructor, location, workshop, workshop registration, notification, auth, and file operations.
+- **Admin operation log event type**: Added dedicated event payload type for admin operation logging and wired handler-based persistence flow.
+- **Audit payload helpers**: Added utility helpers to normalize payloads and compute shallow changed fields for audit logs.
+
+### Changed
+
+- **Versioning/docs**: Added and updated release documentation and changelog content for current release flow.
+- **Audit metadata**:
+  - `operation_code` now follows model table names (`__tablename__`) consistently.
+  - `operation_type` storage is string-based.
+  - `create_log` uses request context for `ip_address` and `user_agent`.
+  - Admin handler DI uses `log_handler` naming consistently.
+- **Admin log dispatch path**: `AdminLogHandler.create_log` uses synchronous invocation for event publishing with failure-suppression behavior to avoid breaking callers.
+- **CI/CD workflows**: Updated STG/release workflow conditions and Sentry release handling behavior.
+
+### Fixed
+
+- **JSONB parameter binding (`AdminOperationLogEventHandler`)**: Serialize `old_data`, `new_data`, and `changed_fields` before DB insert to prevent asyncpg type errors such as `expected str, got dict`.
+- **Typing cleanup (`AdminAuthHandler.refresh_token`)**: Replaced deprecated inline type comment usage with proper type annotations and import alignment.
+
+### Breaking changes
+
+None.
+
 ## [0.2.19] - 2026-04-13
 
 ### Summary
