@@ -1,6 +1,7 @@
 """
 Tests for admin operation log event handler and AdminLogHandler wiring.
 """
+import json
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -51,9 +52,9 @@ async def test_admin_operation_log_event_handler_inserts_portal_log():
     assert kwargs["operation_type"] == OperationType.UPDATE.value
     assert kwargs["record_id"] == record_id
     assert kwargs["operation_code"] == "portal_user"
-    assert kwargs["old_data"] == {"name": "a"}
-    assert kwargs["new_data"] == {"name": "b"}
-    assert kwargs["changed_fields"] == [{"field": "name", "old": "a", "new": "b"}]
+    assert json.loads(kwargs["old_data"]) == {"name": "a"}
+    assert json.loads(kwargs["new_data"]) == {"name": "b"}
+    assert json.loads(kwargs["changed_fields"]) == [{"field": "name", "old": "a", "new": "b"}]
     assert kwargs["ip_address"] == "203.0.113.1"
     assert kwargs["user_agent"] == "pytest"
     assert kwargs["created_by"] == "admin_user"

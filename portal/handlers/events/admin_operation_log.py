@@ -1,7 +1,8 @@
 """
 Handler for AdminOperationLogEvent: insert PortalLog row.
 """
-from typing import Optional
+import json
+from typing import Any, Optional
 from uuid import UUID
 
 from portal.libs.contexts.user_context import get_user_context
@@ -35,9 +36,9 @@ class AdminOperationLogEventHandler(EventHandler):
                 record_id=event.record_id,
                 operation_type=event.operation_type.value,
                 operation_code=event.operation_code,
-                old_data=event.old_data,
-                new_data=event.new_data,
-                changed_fields=event.changed_fields,
+                old_data=self._to_jsonb_arg(event.old_data),
+                new_data=self._to_jsonb_arg(event.new_data),
+                changed_fields=self._to_jsonb_arg(event.changed_fields),
                 ip_address=event.ip_address,
                 user_agent=event.user_agent,
                 created_by=created_by,
@@ -45,6 +46,14 @@ class AdminOperationLogEventHandler(EventHandler):
             )
             .execute()
         )
+
+    @staticmethod
+    def _to_jsonb_arg(value: Optional[Any]) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return json.dumps(value)
 
     def _resolve_actor(self, event: AdminOperationLogEvent) -> tuple[str, Optional[UUID]]:
         created_by = event.created_by
