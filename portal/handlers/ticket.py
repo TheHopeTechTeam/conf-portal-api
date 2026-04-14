@@ -1,6 +1,7 @@
 """
 TicketHandler: user ticket data from TheHope ticket API (no local PortalUserTicket storage).
 """
+import hashlib
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -8,6 +9,7 @@ from uuid import UUID
 import sqlalchemy as sa
 
 from portal.exceptions.responses import ForbiddenException
+from portal.handlers.conference import ConferenceHandler
 from portal.libs.consts.ticket_type_codes import TICKET_TYPE_CODE_INTERPRETATION_RECEIVER
 from portal.libs.contexts.user_context import get_user_context
 from portal.libs.database import Session
@@ -44,9 +46,79 @@ class TicketHandler:
         self,
         session: Session,
         thehope_ticket_provider: TheHopeTicketProvider,
+        conference_handler: ConferenceHandler,
     ):
         self._session = session
         self._thehope_ticket_provider = thehope_ticket_provider
+        self._conference_handler = conference_handler
+
+    @staticmethod
+    def _registration_digits_from_ticket_id(ticket_id: UUID, year_two_digits: int) -> str:
+        """
+        Return exactly 12 decimal digits: 2-digit conference year + 10-digit derived serial.
+        Deterministic: lowercase UUID, SHA-256, first 15 hex to int, mod 10^10 (same rule as ticketing clients).
+        :param ticket_id: Ticket UUID (same string as external ticket id).
+        :param year_two_digits: Conference year mod 100 (e.g. 26 for 2026).
+        :return: 12-character numeric string, no separators.
+        """
+        serial_length = 10
+        hash_hex_prefix_length = 15
+        total_digits = 12
+        year_mod = int(year_two_digits) % 100
+        year_prefix = str(year_mod).zfill(2)
+        normalized_uuid = str(ticket_id).lower()
+        hash_hex = hashlib.sha256(normalized_uuid.encode("utf-8")).hexdigest()
+        decimal = int(hash_hex[:hash_hex_prefix_length], 16)
+        divisor = 10**serial_length
+        serial = str(decimal % divisor).zfill(serial_length)
+        digits = f"{year_prefix}{serial}"
+        if len(digits) != total_digits:
+            raise ValueError("registration id digit length invariant failed")
+        return digits
+
+    @staticmethod
+    def _format_registration_number_display(twelve_digit: str) -> str:
+        """
+        Format 12 digits as XXX-XXXXX-XXXX for display (QR / UI).
+        :param twelve_digit: 12 decimal digits from _registration_digits_from_ticket_id.
+        :return: Dashed display string.
+        """
+        total_digits = 12
+        if len(twelve_digit) != total_digits or not twelve_digit.isdigit():
+            raise ValueError("twelve_digit must be 12 decimal digits")
+        return f"{twelve_digit[:3]}-{twelve_digit[3:8]}-{twelve_digit[8:12]}"
+
+    @staticmethod
+    def _registration_number_from_ticket_id(ticket_id: UUID, year_two_digits: int) -> str:
+        """
+        Full display registration number for API responses.
+        :param ticket_id: Ticket UUID.
+        :param year_two_digits: Conference year mod 100.
+        :return: Dashed registration number.
+        """
+        return TicketHandler._format_registration_number_display(
+            TicketHandler._registration_digits_from_ticket_id(ticket_id, year_two_digits)
+        )
+
+    @distributed_trace()
+    async def _registration_year_two_digits_from_active_conference(self) -> Optional[int]:
+        """
+        Year mod 100 from the active conference start_date (same source as ConferenceHandler.get_active_conference).
+        :return: None when no active conference or loading it fails.
+        """
+        try:
+            conference = await self._conference_handler.get_active_conference()
+        except ValueError:
+            return None
+        except Exception as e:
+            logger.exception(
+                "_registration_year_two_digits_from_active_conference: get_active_conference failed",
+                extra={"error": str(e)},
+            )
+            return None
+        if conference.start_date is None:
+            return None
+        return conference.start_date.year % 100
 
     @distributed_trace()
     async def sync_ticket_user_name(self, user_id: UUID, email: str) -> None:
@@ -110,12 +182,18 @@ class TicketHandler:
                     },
                 )
 
-    async def get_user_ticket_by_email(self, email: str) -> Optional[TicketBase]:
+    async def get_user_ticket_by_email(
+        self,
+        email: str,
+        *,
+        registration_year_two_digits: Optional[int] = None,
+    ) -> Optional[TicketBase]:
         """
         Build the portal-facing primary ticket summary from TheHope tickets for the given email.
         Requires at least one non-interpretation-receiver ticket that is redeemed and consented.
         Also derives interpretation receiver (口譯機) flags from the external ticket list.
         :param email: Ticket holder email as stored in the ticket system.
+        :param registration_year_two_digits: Optional two-digit conference year for registration_number; when None, derived from ConferenceHandler.get_active_conference().start_date.
         :return: TicketBase when a valid redeemed primary pass exists; None if no tickets, not redeemed, parse error, or consent missing.
         """
         try:
@@ -182,6 +260,16 @@ class TicketHandler:
                     },
                 )
                 return None
+            ticket_uuid = ticket_base_data.get("id")
+            if ticket_uuid is not None:
+                year_two_digits = registration_year_two_digits
+                if year_two_digits is None:
+                    year_two_digits = await self._registration_year_two_digits_from_active_conference()
+                if year_two_digits is not None:
+                    ticket_base_data["registration_number"] = self._registration_number_from_ticket_id(
+                        ticket_uuid,
+                        year_two_digits,
+                    )
             return TicketBase.model_validate(ticket_base_data)
         except Exception as e:
             logger.exception(
@@ -271,19 +359,33 @@ class TicketHandler:
             )
             return "尚未報名工作坊"
 
-    def _ticket_base_from_thehope_ticket(self, ticket: TheHopeTicket) -> Optional[TicketBase]:
+    def _ticket_base_from_thehope_ticket(
+        self,
+        ticket: TheHopeTicket,
+        registration_year_two_digits: Optional[int],
+    ) -> Optional[TicketBase]:
         """
         Map one TheHope ticket document to TicketBase (e.g. check-in UI when get_user_ticket_by_email returns None).
         Interpretation receiver addon fields are defaulted; callers may overwrite them after merging email-wide data.
         :param ticket: Parsed ticket from TheHope API (typically the QR-scanned ticket).
+        :param registration_year_two_digits: Two-digit year for registration_number; None skips the field.
         :return: TicketBase built from that ticket only, or None if mapping fails (error is logged).
         """
         try:
             tt = ticket.ticket_type
             meta = tt.meta or {}
-            code = meta.get("conf_code") or ""
+            code = meta.get("conf_code")
+            registration_number = None
+            if registration_year_two_digits is not None:
+                registration_number = self._registration_number_from_ticket_id(
+                    ticket.id,
+                    registration_year_two_digits,
+                )
+            if not code:
+                return None
             return TicketBase(
                 id=ticket.id,
+                registration_number=registration_number,
                 order_id=ticket.order,
                 is_checked_in=bool(ticket.is_checked_in) if ticket.is_checked_in is not None else False,
                 is_redeemed=bool(ticket.is_redeemed) if ticket.is_redeemed is not None else False,
@@ -291,8 +393,8 @@ class TicketHandler:
                 belong_church=ticket.user.location,
                 type=TicketType(
                     id=tt.id,
-                    name=tt.name or "",
-                    code=code or "UNKNOWN",
+                    name=tt.name,
+                    code=code,
                 ),
                 has_interpretation_receiver=False,
                 interpretation_receiver_checked_in=None,
@@ -435,9 +537,9 @@ class TicketHandler:
                 },
             )
             return await self._build_check_in_response(
-                ticket_id=ticket_id,
+                ticket=ticket,
                 success=False,
-                message="此票卷尚未取票"
+                message="此票卷尚未取票",
             )
         if is_checked_in:
             logger.info(
@@ -445,20 +547,20 @@ class TicketHandler:
                 extra={"ticket_id": str(ticket_id), "operator_user_id": operator_user_id},
             )
             return await self._build_check_in_response(
-                ticket_id=ticket_id,
+                ticket=ticket,
                 success=False,
-                message="此票券已完成報到"
+                message="此票券已完成報到",
             )
 
         try:
-            await self._thehope_ticket_provider.check_in_ticket(ticket_id)
+            checked_in_result = await self._thehope_ticket_provider.check_in_ticket(ticket_id)
         except Exception as e:
             logger.exception(
                 "check_in_ticket: external check_in_ticket API failed",
                 extra={"ticket_id": str(ticket_id), "operator_user_id": operator_user_id, "error": str(e)},
             )
             return await self._build_check_in_response(
-                ticket_id=ticket_id,
+                ticket=ticket,
                 success=False,
                 message="報到失敗，請稍後再試",
             )
@@ -467,9 +569,9 @@ class TicketHandler:
             extra={"ticket_id": str(ticket_id), "operator_user_id": operator_user_id},
         )
         return await self._build_check_in_response(
-            ticket_id=ticket_id,
+            ticket=checked_in_result.doc,
             success=True,
-            message="報到成功"
+            message="報到成功",
         )
 
     async def _check_in_interpretation_receiver_by_main_ticket_id(
@@ -497,7 +599,7 @@ class TicketHandler:
             return CheckInResponse(success=False, message="系統查無此票券資訊")
         if self._is_interpretation_receiver_ticket(main_ticket):
             return await self._build_check_in_response(
-                ticket_id=main_ticket_id,
+                ticket=main_ticket,
                 success=False,
                 message="請掃描主票 QR 辦理口譯機領取",
                 include_workshop_status=False,
@@ -505,7 +607,7 @@ class TicketHandler:
         member_email = main_ticket.user.email if main_ticket.user else None
         if not member_email:
             return await self._build_check_in_response(
-                ticket_id=main_ticket_id,
+                ticket=main_ticket,
                 success=False,
                 message="無法確認持有人，票務系統缺少報名者電子郵件",
                 include_workshop_status=False,
@@ -517,7 +619,7 @@ class TicketHandler:
                 extra={"main_ticket_id": str(main_ticket_id), "holder_email": member_email},
             )
             return await self._build_check_in_response(
-                ticket_id=main_ticket_id,
+                ticket=main_ticket,
                 success=False,
                 message="此票卷沒有加購口譯機",
                 include_workshop_status=False,
@@ -530,14 +632,14 @@ class TicketHandler:
                 extra={"main_ticket_id": str(main_ticket_id), "ir_ticket_id": str(ir_id), "error": str(e)},
             )
             return await self._build_check_in_response(
-                ticket_id=main_ticket_id,
+                ticket=main_ticket,
                 success=False,
                 message="口譯機票券資料異常",
                 include_workshop_status=False,
             )
         if ir_ticket is None:
             return await self._build_check_in_response(
-                ticket_id=main_ticket_id,
+                ticket=main_ticket,
                 success=False,
                 message="口譯機票券資料異常",
                 include_workshop_status=False,
@@ -549,7 +651,7 @@ class TicketHandler:
                 extra={"main_ticket_id": str(main_ticket_id), "ir_ticket_id": str(ir_id)},
             )
             return await self._build_check_in_response(
-                ticket_id=main_ticket_id,
+                ticket=main_ticket,
                 success=False,
                 message="此票卷已經兌換過口譯機",
                 include_workshop_status=False,
@@ -562,7 +664,7 @@ class TicketHandler:
                 extra={"main_ticket_id": str(main_ticket_id), "ir_ticket_id": str(ir_id), "error": str(e)},
             )
             return await self._build_check_in_response(
-                ticket_id=main_ticket_id,
+                ticket=main_ticket,
                 success=False,
                 message="兌換失敗，請稍後再試",
                 include_workshop_status=False,
@@ -572,7 +674,7 @@ class TicketHandler:
             extra={"main_ticket_id": str(main_ticket_id), "ir_ticket_id": str(ir_id)},
         )
         return await self._build_check_in_response(
-            ticket_id=main_ticket_id,
+            ticket=main_ticket,
             success=True,
             message="兌換成功",
             include_workshop_status=False,
@@ -580,37 +682,29 @@ class TicketHandler:
 
     async def _build_check_in_response(
         self,
-        ticket_id: UUID,
+        ticket: TheHopeTicket,
         success: bool,
         message: str,
         include_workshop_status: bool = True,
     ) -> CheckInResponse:
         """
-        Assemble check-in API payload: ticket snapshot from TheHope (by id and by email), portal profile when linked, and workshop summary.
-        Ticket fields come from get_user_ticket_by_email when eligible, otherwise from the single ticket returned for ticket_id.
-        :param ticket_id: Ticket UUID used to load holder and scanned ticket state from TheHope (often the main pass id).
+        Assemble check-in API payload: ticket snapshot from TheHope (already loaded by caller), portal profile when linked, and workshop summary.
+        Ticket fields come from get_user_ticket_by_email when eligible, otherwise from the provided ticket object.
+        :param ticket: Ticket from TheHope API; caller must ensure ticket data is already loaded.
         :param success: Whether the check-in or IR redeem operation succeeded.
         :param message: User-facing status text for the client.
         :param include_workshop_status: If True and a portal user exists for the holder email, attach workshop registration summary.
         :return: CheckInResponse with email, display name, optional ticket, and optional workshop_registration_status.
         """
-        try:
-            external = await self._thehope_ticket_provider.get_ticket_by_id(ticket_id)
-        except Exception as e:
-            logger.exception(
-                "_build_check_in_response: get_ticket_by_id failed",
-                extra={"ticket_id": str(ticket_id), "success": success, "message": message, "error": str(e)},
-            )
-            return CheckInResponse(success=success, message=message)
-
-        if not external or not external.user:
+        ticket_id = ticket.id
+        if not ticket.user:
             logger.warning(
                 "_build_check_in_response: missing ticket or user on external doc",
                 extra={"ticket_id": str(ticket_id), "success": success},
             )
             return CheckInResponse(success=success, message=message)
 
-        member_email = external.user.email
+        member_email = ticket.user.email
         if not member_email:
             logger.warning(
                 "_build_check_in_response: external ticket has no member email",
@@ -640,17 +734,25 @@ class TicketHandler:
             row = None
 
         email_out = row["email"] if row else member_email
-        display_name_out = row["display_name"] if row else (external.user.name or None)
+        display_name_out = row["display_name"] if row else (ticket.user.name or None)
 
         try:
-            ticket_base = await self.get_user_ticket_by_email(member_email)
+            registration_year = await self._registration_year_two_digits_from_active_conference()
+            ticket_base = await self.get_user_ticket_by_email(
+                member_email,
+                registration_year_two_digits=registration_year,
+            )
             if not ticket_base:
-                ticket_base = self._ticket_base_from_thehope_ticket(external)
+                ticket_base = self._ticket_base_from_thehope_ticket(
+                    ticket,
+                    registration_year_two_digits=registration_year,
+                )
             if not ticket_base:
                 logger.warning(
                     "_build_check_in_response: no TicketBase after email and single-ticket mapping",
                     extra={"ticket_id": str(ticket_id), "holder_email": member_email},
                 )
+                raise ValueError("no TicketBase after email and single-ticket mapping")
 
             has_ir, ir_checked_in = await self._interpretation_receiver_flags_from_email(member_email)
             if ticket_base:

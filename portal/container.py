@@ -145,6 +145,7 @@ class Container(containers.DeclarativeContainer):
         handlers.TicketHandler,
         session=request_session,
         thehope_ticket_provider=thehope_ticket_provider,
+        conference_handler=conference_handler,
     )
     notification_handler = providers.Factory(
         handlers.NotificationHandler,

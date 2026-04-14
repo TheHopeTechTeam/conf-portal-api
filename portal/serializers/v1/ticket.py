@@ -34,6 +34,7 @@ class TicketBase(UUIDBaseModel, JSONStringMixinModel):
     """
     Ticket
     """
+    registration_number: Optional[str] = Field(None, description="Registration number", serialization_alias="registrationNumber")
     type: TicketType = Field(..., description="Ticket type")
     has_interpretation_receiver: Optional[bool] = Field(
         None,
