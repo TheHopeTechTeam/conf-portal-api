@@ -62,9 +62,12 @@ def setup_tracing():
         path = urlparse(url).path or ""
         if not path:
             return event
+        if path.startswith("/admin"):
+            event["tags"] = {"is_admin": "true"}
+        else:
+            event["tags"] = {"is_admin": "false"}
 
         event["transaction"] = path.strip()
-        event.setdefault("transaction_info", {})["source"] = "url"
         return event
 
     sentry_sdk.init(
