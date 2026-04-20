@@ -224,7 +224,7 @@ class TicketHandler:
                     ticket_base_data["has_interpretation_receiver"] = True
                     if ticket.is_checked_in and ticket.user.consented_at is not None:
                         ticket_base_data["interpretation_receiver_checked_in"] = True
-                    break
+                    continue
                 else:
                     ticket_base_data["id"] = ticket.id
                     order_id: Optional[UUID] = None
@@ -251,7 +251,7 @@ class TicketHandler:
                         ticket_base_data["type"] = None
 
             if not is_actual_redeemed:
-                logger.info(
+                logger.warning(
                     "get_user_ticket_by_email: no redeemed primary pass after scan",
                     extra={
                         "holder_email": email,
