@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.21] - 2026-04-20
+
+### Summary
+
+Improves Sentry observability for mounted admin routes, introduces deterministic ticket registration number generation for check-in and ticket/user payloads, and adds a lightweight admin workshop list API for selector/query use cases. This release adds middleware-side Sentry event normalization plus TicketHandler-based registration number derivation (from ticket UUID and active conference year), along with API serializer exposure, unit tests, a follow-up ticket scan logic fix, and `GET /admin/api/v1/workshop/list` support.
+
+### Changed
+
+- **Sentry request event processing (`portal/middlewares/core_request.py`)**: Added request-scoped event normalization for mounted admin routes, including URL/path corrections and richer ASGI scope metadata in event `extra`.
+- **Sentry admin route tagging (`portal/main.py`)**: Added admin path tagging (`is_admin`) to improve event grouping and filtering for admin traffic.
+- **Ticket check-in response assembly (`portal/handlers/ticket.py`)**: Refactored check-in payload building to use the current ticket object from earlier steps (including check-in update response docs) instead of re-fetching by id.
+- **Ticket registration-year source (`portal/handlers/ticket.py`, `portal/handlers/conference.py`, `portal/container.py`)**: Registration year derivation is now obtained through injected `ConferenceHandler` active-conference flow, and ticket handler wiring was updated accordingly.
+- **Environment/config cleanup (`example.env`, `portal/config.py`)**: Removed static registration-year env configuration in favor of active-conference date derivation.
+
+### Added
+
+- **Ticket registration number field (`portal/serializers/v1/ticket.py`)**: Added `registration_number` (`registrationNumber`) to `TicketBase` for API clients.
+- **Deterministic registration number generation (`portal/handlers/ticket.py`)**:
+  - Added private helper methods to generate a 12-digit registration number from `ticket_id` using SHA-256 derivation and active conference year prefix.
+  - Added display formatting to `XXX-XXXXX-XXXX`.
+- **Registration number tests (`tests/handlers/test_ticket_registration_number.py`)**: Added deterministic and format validation tests, including the README sample UUID case.
+- **Admin workshop list API (`portal/routers/apis/v1/admin/workshop.py`, `portal/handlers/admin/workshop.py`, `portal/serializers/v1/admin/workshop.py`)**:
+  - Added `GET /admin/api/v1/workshop/list` endpoint for lightweight workshop selector usage.
+  - Added `AdminWorkshopList` response serializer with `items` collection based on `AdminWorkshopBase` (`id`, `title`).
+  - Added handler query flow that returns non-deleted workshops ordered by `sequence` and `start_datetime`.
+
+### Fixed
+
+- **Ticket scan evaluation flow (`portal/handlers/ticket.py`)**: Changed loop control from `break` to `continue` while scanning TheHope ticket lists so non-primary/invalid entries do not prematurely stop evaluation of remaining tickets.
+- **No redeemed pass diagnostics (`portal/handlers/ticket.py`)**: Raised log severity from `info` to `warning` when no redeemed primary pass is found after scanning ticket docs, improving operational visibility.
+
+### Breaking changes
+
+None.
+
 ## [0.2.20] - 2026-04-14
 
 ### Summary
