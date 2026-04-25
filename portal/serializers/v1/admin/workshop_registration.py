@@ -18,7 +18,6 @@ class AdminWorkshopRegistrationQuery(GenericQueryBaseModel):
     Workshop Registration query model
     """
     workshop_id: Optional[UUID] = Field(default=None, description="Workshop ID")
-    is_registered: Optional[bool] = Field(default=True, description="Is registered (unregistered_at is None)")
 
 
 class AdminWorkshopRegistrationItem(UUIDBaseModel):

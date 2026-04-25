@@ -71,6 +71,11 @@ class AdminWorkshopPages(PaginationBaseResponseModel):
     next_item: Optional[AdminWorkshopSequenceItem] = Field(None, serialization_alias="nextItem", description="Next workshop item")
 
 
+class AdminWorkshopList(BaseModel):
+    """Workshop list"""
+    items: Optional[list[AdminWorkshopBase]] = Field(..., description="Items")
+
+
 class AdminWorkshopCreate(BaseModel):
     """Workshop create"""
     title: str = Field(..., description="Title")

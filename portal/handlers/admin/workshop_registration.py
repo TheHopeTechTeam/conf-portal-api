@@ -62,13 +62,6 @@ class AdminWorkshopRegistrationHandler:
             .where(PortalWorkshopRegistration.is_deleted == query_model.deleted)
             .where(query_model.workshop_id is not None, lambda: PortalWorkshopRegistration.workshop_id == query_model.workshop_id)
             .where(
-                query_model.is_registered is not None,
-                lambda: (
-                    PortalWorkshopRegistration.unregistered_at.is_(None) if query_model.is_registered
-                    else PortalWorkshopRegistration.unregistered_at.isnot(None)
-                )
-            )
-            .where(
                 query_model.keyword,
                 lambda: sa.or_(
                     PortalWorkshop.title.ilike(f"%{query_model.keyword}%"),

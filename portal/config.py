@@ -162,6 +162,7 @@ class Configuration(BaseSettings):
     # [The Hope Ticket System]
     THEHOPE_TICKET_SYSTEM_URL: str = os.getenv(key="THE_HOPE_TICKET_SYSTEM_URL")
     THEHOPE_TICKET_SYSTEM_API_KEY: str = os.getenv(key="THE_HOPE_TICKET_SYSTEM_API_KEY")
+    THEHOPE_TICKET_SYSTEM_SYNC: bool = os.getenv(key="THE_HOPE_TICKET_SYSTEM_SYNC", default=True)
 
 
     @model_validator(mode="after")

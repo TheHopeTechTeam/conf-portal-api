@@ -32,9 +32,10 @@ async def lifespan(app: FastAPI):
             Container.register_event_handlers(event_bus, container)
             logger.info("Event handlers registered")
             logger.info("-" * 100)
-            # Sync ticket types from ticket system on startup (fire-and-forget)
-            publish_event_in_background(TicketTypeSyncEvent())
-            logger.info("Ticket type sync event published on startup")
+            if settings.THEHOPE_TICKET_SYSTEM_SYNC:
+                # Sync ticket types from ticket system on startup (fire-and-forget)
+                publish_event_in_background(TicketTypeSyncEvent())
+                logger.info("Ticket type sync event published on startup")
         except Exception as e:
             logger.warning("Failed to register event handlers: %s", e)
 

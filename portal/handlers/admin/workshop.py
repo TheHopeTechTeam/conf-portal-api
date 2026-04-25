@@ -23,9 +23,11 @@ from portal.serializers.mixins import DeleteBaseModel
 from portal.serializers.mixins.base import BulkAction
 from portal.serializers.v1.admin.workshop import (
     AdminWorkshopQuery,
+    AdminWorkshopBase,
     AdminWorkshopDetail,
     AdminWorkshopPageItem,
     AdminWorkshopPages,
+    AdminWorkshopList,
     AdminWorkshopCreate,
     AdminWorkshopUpdate,
     AdminWorkshopChangeSequence,
@@ -51,6 +53,23 @@ class AdminWorkshopHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
         self._log_handler = log_handler
+
+    @distributed_trace()
+    async def get_workshop_list(self) -> AdminWorkshopList:
+        """
+        Get workshop list for selector usage.
+        :return:
+        """
+        items = await (
+            self._session.select(
+                PortalWorkshop.id,
+                PortalWorkshop.title,
+            )
+            .where(PortalWorkshop.is_deleted == False)
+            .order_by(PortalWorkshop.sequence, PortalWorkshop.start_datetime)
+            .fetch(as_model=AdminWorkshopBase)
+        )
+        return AdminWorkshopList(items=items)
 
     @distributed_trace()
     async def get_workshop_pages(self, query_model: AdminWorkshopQuery) -> AdminWorkshopPages:

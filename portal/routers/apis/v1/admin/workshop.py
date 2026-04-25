@@ -18,6 +18,7 @@ from portal.serializers.v1.admin.workshop import (
     AdminWorkshopQuery,
     AdminWorkshopDetail,
     AdminWorkshopPages,
+    AdminWorkshopList,
     AdminWorkshopCreate,
     AdminWorkshopUpdate,
     AdminWorkshopChangeSequence,
@@ -48,6 +49,26 @@ async def get_workshop_pages(
     :return:
     """
     return await admin_workshop_handler.get_workshop_pages(query_model=query_model)
+
+
+@router.get(
+    path="/list",
+    status_code=status.HTTP_200_OK,
+    response_model=AdminWorkshopList,
+    permissions=[
+        Permission.WORKSHOP_WORKSHOPS.read
+    ]
+)
+@inject
+async def get_workshop_list(
+    admin_workshop_handler: AdminWorkshopHandler = Depends(Provide[Container.admin_workshop_handler])
+):
+    """
+    Get workshop list
+    :param admin_workshop_handler:
+    :return:
+    """
+    return await admin_workshop_handler.get_workshop_list()
 
 
 @router.get(
