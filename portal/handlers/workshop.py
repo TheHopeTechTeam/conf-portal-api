@@ -14,7 +14,7 @@ from redis.asyncio import Redis
 import pydantic
 
 from portal.config import settings
-from portal.exceptions.responses import NotFoundException, ConflictErrorException, BadRequestException
+from portal.exceptions.responses import NotFoundException, ConflictErrorException, BadRequestException, UnauthorizedException
 from portal.handlers import AdminFileHandler
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
@@ -53,7 +53,7 @@ class WorkshopHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
-        self._user_ctx: UserContext = get_user_context()
+        self._user_ctx: Optional[UserContext] = get_user_context()
 
     @distributed_trace()
     async def get_pass_session_workshops_for_user(
@@ -167,7 +167,7 @@ class WorkshopHandler:
                 PortalWorkshop.slido_url,
                 PortalWorkshop.participants_limit,
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, sa.text("true")),
+                    (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, sa.text("true")),
                     else_=sa.text("false")
                 ).label("is_full"),
                 PortalWorkshop.timezone
@@ -262,7 +262,7 @@ class WorkshopHandler:
                         sa.null()
                     ).label("location"),
                     sa.case(
-                        (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, sa.text("true")),
+                        (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, sa.text("true")),
                         else_=sa.text("false")
                     ).label("is_full"),
                     sa.func.coalesce(
@@ -392,6 +392,8 @@ class WorkshopHandler:
         :param workshop_id:
         :return:
         """
+        if not self._user_ctx:
+            raise UnauthorizedException(detail="Unauthorized.")
         if await self.check_has_registered_at_timeslot(workshop_id=workshop_id):
             raise ConflictErrorException(detail="You have already registered for this workshop.")
         if await self.check_workshop_is_full(workshop_id=workshop_id):
@@ -530,7 +532,7 @@ class WorkshopHandler:
                 PortalWorkshop.slido_url,
                 PortalWorkshop.participants_limit,
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) > PortalWorkshop.participants_limit, sa.text("true")),
+                    (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, sa.text("true")),
                     else_=sa.text("false")
                 ).label("is_full"),
                 PortalWorkshop.timezone,
