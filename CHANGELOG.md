@@ -6,7 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.2.21] - 2026-04-20
+## [0.2.22] - 2026-04-26
+
+### Summary
+
+Hardens workshop registration authorization and corrects workshop full-capacity evaluation by treating participant limits as inclusive. This release also makes handler user-context initialization explicitly optional while enforcing authorization before registration writes.
+
+### Changed
+
+- **Workshop handler user context typing (`portal/handlers/workshop.py`)**: Updated `self._user_ctx` to `Optional[UserContext]` during initialization to reflect context availability semantics.
+- **Workshop full-status SQL logic (`portal/handlers/workshop.py`)**: Updated workshop `is_full` calculations from `count > participants_limit` to `count >= participants_limit` in workshop list/detail query flows to correctly mark full workshops at exact capacity.
+
+### Fixed
+
+- **Registration authorization guard (`portal/handlers/workshop.py`)**: Added an explicit `UnauthorizedException` check before registration creation when user context is missing, preventing unauthenticated registration writes.
+
+### Breaking changes
+
+None.
+
+## [0.2.21] - 2026-04-25
 
 ### Summary
 
