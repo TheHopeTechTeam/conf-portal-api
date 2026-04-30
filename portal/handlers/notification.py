@@ -38,7 +38,7 @@ class NotificationHandler:
         :return: List of notification history items with notification content and read status.
         """
         user_id = self._require_user_id()
-        items = await (
+        distinct_notification_subquery = (
             self._session.select(
                 PortalNotificationHistory.id,
                 PortalNotificationHistory.is_read,
@@ -48,21 +48,32 @@ class NotificationHandler:
                 PortalNotification.url,
             )
             .select_from(PortalNotificationHistory)
-            .join(
-                PortalFcmDevice,
-                PortalNotificationHistory.device_id == PortalFcmDevice.id,
-            )
-            .join(
-                PortalFcmUserDevice,
-                PortalFcmDevice.id == PortalFcmUserDevice.device_id,
-            )
-            .join(
-                PortalNotification,
-                PortalNotificationHistory.notification_id == PortalNotification.id,
-            )
+            .join(PortalFcmDevice, PortalNotificationHistory.device_id == PortalFcmDevice.id)
+            .join(PortalFcmUserDevice, PortalFcmDevice.id == PortalFcmUserDevice.device_id)
+            .join(PortalNotification, PortalNotificationHistory.notification_id == PortalNotification.id)
             .where(PortalFcmUserDevice.user_id == user_id)
             .where(PortalNotificationHistory.is_deleted == False)
-            .order_by(PortalNotificationHistory.created_at.desc())
+            .distinct(PortalNotificationHistory.notification_id)
+            .order_by(
+                [
+                    PortalNotificationHistory.notification_id,
+                    PortalNotificationHistory.created_at.desc(),
+                    PortalNotificationHistory.id.desc(),
+                ]
+            )
+            .subquery()
+        )
+
+        items = await (
+            self._session.select(
+                distinct_notification_subquery.c.id,
+                distinct_notification_subquery.c.is_read,
+                distinct_notification_subquery.c.created_at,
+                distinct_notification_subquery.c.title,
+                distinct_notification_subquery.c.message,
+                distinct_notification_subquery.c.url,
+            )
+            .order_by(distinct_notification_subquery.c.created_at.desc())
             .fetch(as_model=UserNotificationItem)
         )
         return UserNotificationList(items=items)
