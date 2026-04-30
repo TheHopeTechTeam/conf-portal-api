@@ -167,7 +167,13 @@ class WorkshopHandler:
                 PortalWorkshop.slido_url,
                 PortalWorkshop.participants_limit,
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, sa.text("true")),
+                    (
+                        sa.and_(
+                            sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit,
+                            PortalWorkshopRegistration.unregistered_at.is_(None),
+                            PortalWorkshopRegistration.is_deleted == sa.false(),
+                        ), sa.text("true")
+                    ),
                     else_=sa.text("false")
                 ).label("is_full"),
                 PortalWorkshop.timezone
@@ -176,6 +182,7 @@ class WorkshopHandler:
                 PortalWorkshopRegistration, sa.and_(
                     PortalWorkshop.id == PortalWorkshopRegistration.workshop_id,
                     PortalWorkshopRegistration.unregistered_at.is_(None),
+                    PortalWorkshopRegistration.is_deleted == sa.false(),
                 )
             )
             .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
@@ -187,7 +194,9 @@ class WorkshopHandler:
                 PortalWorkshop.id,
                 PortalLocation.id,
                 PortalWorkshop.participants_limit,
-                PortalWorkshop.start_datetime
+                PortalWorkshop.start_datetime,
+                PortalWorkshopRegistration.unregistered_at,
+                PortalWorkshopRegistration.is_deleted,
             )
             .order_by(PortalWorkshop.start_datetime)
             .fetch(as_model=WorkshopBase)
@@ -262,7 +271,13 @@ class WorkshopHandler:
                         sa.null()
                     ).label("location"),
                     sa.case(
-                        (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, sa.text("true")),
+                        (
+                            sa.and_(
+                                sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit,
+                                PortalWorkshopRegistration.unregistered_at.is_(None),
+                                PortalWorkshopRegistration.is_deleted == sa.false(),
+                            ), sa.text("true")
+                        ),
                         else_=sa.text("false")
                     ).label("is_full"),
                     sa.func.coalesce(
@@ -286,6 +301,7 @@ class WorkshopHandler:
                     sa.and_(
                         PortalWorkshop.id == PortalWorkshopRegistration.workshop_id,
                         PortalWorkshopRegistration.unregistered_at.is_(None),
+                        PortalWorkshopRegistration.is_deleted == sa.false(),
                     )
                 )
                 .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
@@ -298,14 +314,17 @@ class WorkshopHandler:
                 )
                 .outerjoin(PortalInstructor, PortalInstructor.id == PortalWorkshopInstructor.instructor_id)
                 .where(PortalWorkshop.id == workshop_id)
-                .where(PortalWorkshop.is_deleted == False)
-                .where(PortalLocation.is_deleted == False)
+                .where(PortalWorkshop.is_deleted == sa.false())
+                .where(PortalLocation.is_deleted == sa.false())
+                .where(PortalWorkshopRegistration.is_deleted == sa.false())
                 .group_by(
                     PortalWorkshop.id,
                     PortalWorkshop.participants_limit,
                     PortalWorkshop.start_datetime,
                     PortalLocation.id,
                     PortalInstructor.id,
+                    PortalWorkshopRegistration.unregistered_at,
+                    PortalWorkshopRegistration.is_deleted,
                 )
                 .order_by(PortalWorkshop.start_datetime)
                 .fetchrow(as_model=WorkshopDetail)
@@ -349,7 +368,7 @@ class WorkshopHandler:
                 PortalWorkshop.timezone
             )
             .where(PortalWorkshop.id == workshop_id)
-            .where(PortalWorkshop.is_deleted == False)
+            .where(PortalWorkshop.is_deleted == sa.false())
             .fetchrow(as_model=WorkshopTime)
         )
         if not workshop:
@@ -364,7 +383,7 @@ class WorkshopHandler:
             .join(PortalWorkshop, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
             .where(PortalWorkshopRegistration.user_id == self._user_ctx.user_id)
             .where(PortalWorkshopRegistration.unregistered_at.is_(None))
-            .where(PortalWorkshop.is_deleted == False)
+            .where(PortalWorkshop.is_deleted == sa.false())
             .where(
                 sa.or_(
                     sa.and_(
@@ -463,9 +482,10 @@ class WorkshopHandler:
                 ).label("is_registered")
             )
             .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
-            .where(PortalWorkshop.is_deleted == False)
+            .where(PortalWorkshop.is_deleted == sa.false())
             .where(PortalWorkshopRegistration.user_id == self._user_ctx.user_id)
             .where(PortalWorkshopRegistration.unregistered_at.is_(None))
+            .where(PortalWorkshopRegistration.is_deleted == sa.false())
             .group_by(
                 PortalWorkshop.id
             )
@@ -486,15 +506,26 @@ class WorkshopHandler:
         is_full: bool = await (
             self._session.select(
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, sa.text("true")),
+                    (
+                        sa.and_(
+                            sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit,
+                            PortalWorkshopRegistration.unregistered_at.is_(None),
+                            PortalWorkshopRegistration.is_deleted == sa.false(),
+                        ), sa.text("true")
+                    ),
                     else_=sa.text("false")
-                ).label("is_full")
+                ).label("is_full"),
             )
             .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
             .where(PortalWorkshop.id == workshop_id)
-            .where(PortalWorkshop.is_deleted == False)
+            .where(PortalWorkshop.is_deleted == sa.false())
             .where(PortalWorkshopRegistration.unregistered_at.is_(None))
-            .group_by(PortalWorkshop.participants_limit)
+            .where(PortalWorkshopRegistration.is_deleted == sa.false())
+            .group_by(
+                PortalWorkshop.participants_limit,
+                PortalWorkshopRegistration.unregistered_at,
+                PortalWorkshopRegistration.is_deleted,
+            )
             .fetchval()
         )
         return is_full
@@ -532,7 +563,13 @@ class WorkshopHandler:
                 PortalWorkshop.slido_url,
                 PortalWorkshop.participants_limit,
                 sa.case(
-                    (sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit, sa.text("true")),
+                    (
+                        sa.and_(
+                            sa.func.count(PortalWorkshopRegistration.id) >= PortalWorkshop.participants_limit,
+                            PortalWorkshopRegistration.unregistered_at.is_(None),
+                            PortalWorkshopRegistration.is_deleted == sa.false(),
+                        ), sa.text("true")
+                    ),
                     else_=sa.text("false")
                 ).label("is_full"),
                 PortalWorkshop.timezone,
@@ -543,16 +580,18 @@ class WorkshopHandler:
             )
             .outerjoin(PortalWorkshopRegistration, PortalWorkshop.id == PortalWorkshopRegistration.workshop_id)
             .outerjoin(PortalLocation, PortalWorkshop.location_id == PortalLocation.id)
-            .where(PortalWorkshop.is_deleted == False)
-            .where(PortalLocation.is_deleted == False)
+            .where(PortalWorkshop.is_deleted == sa.false())
+            .where(PortalLocation.is_deleted == sa.false())
             .where(PortalWorkshopRegistration.unregistered_at.is_(None))
             .where(PortalWorkshopRegistration.user_id == self._user_ctx.user_id)
+            .where(PortalWorkshopRegistration.is_deleted == sa.false())
             .group_by(
                 PortalWorkshop.id,
                 PortalLocation.id,
                 PortalWorkshop.participants_limit,
                 PortalWorkshop.start_datetime,
-                PortalWorkshopRegistration.unregistered_at
+                PortalWorkshopRegistration.unregistered_at,
+                PortalWorkshopRegistration.is_deleted,
             )
             .order_by(PortalWorkshop.start_datetime)
             .fetch(as_model=WorkshopRegistered)

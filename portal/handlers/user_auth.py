@@ -67,7 +67,7 @@ class UserAuthHandler:
         user: Optional[SUserThirdParty] = await self._user_handler.get_user_tp_detail_by_email(email=model.email)
         if not user:
             raise NotFoundException(detail="User not found")
-        device_id = await self.fcm_device_handler.bind_user_device(user_id=user.id, device_key=model.device_id)
+        device_id = model.device_id or uuid.uuid4()
         user_info = UserInfo(
             id=user.id,
             phone_number=user.phone_number,
