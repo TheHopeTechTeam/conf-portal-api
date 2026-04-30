@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.24] - 2026-04-30
+
+### Summary
+
+Refines workshop full-capacity evaluation to consistently count only active registrations (`unregistered_at IS NULL` and `is_deleted = false`) across workshop schedule, workshop detail, workshop full-check, and my-workshops query flows. This reduces false full-status results caused by withdrawn or soft-deleted registration rows.
+
+### Changed
+
+- **Workshop full-status query conditions (`portal/handlers/workshop.py`)**:
+  - Updated `is_full` case expressions to include explicit active-registration constraints (`unregistered_at IS NULL`, `is_deleted = false`) alongside the participant-limit comparison.
+  - Aligned workshop registration join/filter conditions in affected query flows so capacity counts and full-status flags use the same registration eligibility definition.
+
+### Breaking changes
+
+None.
+
 ## [0.2.23] - 2026-04-30
 
 ### Summary
