@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.23] - 2026-04-30
+
+### Summary
+
+Improves user notification query efficiency and result stability by deduplicating notification history at query time, and refines ticket workshop-registration coverage checks to exclude creative and leadership workshops. This release also adds a ticket handler test for workshop registration status flow.
+
+### Changed
+
+- **Notification history retrieval (`portal/handlers/notification.py`)**: Refactored `get_user_notification_list` to use a distinct notification subquery and stable ordering (`notification_id`, `created_at`, `id`) before projecting result rows, then applies final descending `created_at` ordering for API response output.
+- **Ticket workshop-registration coverage scope (`portal/handlers/ticket.py`)**: Updated `_get_workshop_registration_status` workshop and registration queries to filter out `is_creative` and `is_leadership` workshops, so overlap checks only evaluate relevant standard workshops in active conferences.
+
+### Added
+
+- **Workshop registration status test (`tests/handlers/test_ticket.py`)**: Added async handler test for `_get_workshop_registration_status` using `TEST_USER_ID` fixture-style environment input, increasing regression coverage for ticket workshop status logic.
+
+### Breaking changes
+
+None.
+
 ## [0.2.22] - 2026-04-26
 
 ### Summary
