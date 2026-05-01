@@ -13,6 +13,7 @@ from portal.libs.database import RedisPool
 from portal.libs.events.publisher import publish_event_in_background
 from portal.libs.events.types import TicketTypeSyncEvent
 from portal.libs.logger import logger
+from portal.queues.arq_pool import close_arq_pool
 
 
 @asynccontextmanager
@@ -49,10 +50,17 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to initialize FastAPILimiter: {e}")
         else:
-            yield
-            await FastAPILimiter.close()
-            await redis_connection.close()
+            try:
+                yield
+            finally:
+                await FastAPILimiter.close()
+                await redis_connection.close()
         finally:
+            await close_arq_pool()
             logger.info("Lifespan finished")
     else:
-        yield
+        try:
+            yield
+        finally:
+            await close_arq_pool()
+            logger.info("Lifespan finished")

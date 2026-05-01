@@ -18,7 +18,6 @@ from portal.libs.database.session_proxy import SessionProxy
 from portal.libs.events.bus import EventBus
 from portal.libs.events.types import (
     AdminOperationLogEvent,
-    NotificationCreatedEvent,
     SendSignInLinkEvent,
     TicketTypeSyncEvent,
 )
@@ -336,10 +335,6 @@ class Container(containers.DeclarativeContainer):
         :param container: Container instance to use for creating handlers
         :return:
         """
-        # Register notification event handlers
-        event_bus_instance.subscribe(
-            NotificationCreatedEvent, container.notification_created_event_handler()
-        )
         # Register send sign-in link event handler
         event_bus_instance.subscribe(
             SendSignInLinkEvent, container.send_sign_in_link_event_handler()

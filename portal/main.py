@@ -5,13 +5,11 @@ main application
 from collections import defaultdict
 from urllib.parse import urlparse
 
-import firebase_admin
 import sentry_sdk
 from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
-from firebase_admin import credentials
 from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
@@ -33,6 +31,7 @@ from portal.libs.database.transient_db_http_response import (
 )
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
+from portal.libs.firebase_init import init_firebase_safe
 from portal.libs.events.publisher import set_global_container
 from portal.libs.utils.lifespan import lifespan
 from portal.middlewares import (
@@ -125,17 +124,6 @@ def register_middleware(application: FastAPI) -> None:
         allow_origin_regex=settings.CORS_ALLOW_ORIGINS_REGEX,
     )
     application.add_middleware(HttpDisconnectProbeMiddleware)
-
-
-def init_firebase():
-    """
-    init firebase
-    :return:
-    """
-    credential = credentials.Certificate(settings.GOOGLE_FIREBASE_CERTIFICATE)
-    firebase_admin.initialize_app(
-        credential=credential,
-    )
 
 
 def register_exception_handler(application: FastAPI) -> None:
@@ -268,11 +256,7 @@ def get_application() -> FastAPI:
     # Set global container for event publisher
     set_global_container(container)
 
-    # init firebase
-    try:
-        init_firebase()
-    except Exception as e:
-        logger.error(f"Error initializing firebase: {e}")
+    init_firebase_safe()
 
     register_middleware(application=application)
     register_router(application=application)

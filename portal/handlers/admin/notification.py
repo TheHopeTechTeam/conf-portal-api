@@ -10,8 +10,7 @@ from portal.libs.consts.enums import NotificationMethod, NotificationType, Notif
 from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session
 from portal.libs.decorators.sentry_tracer import distributed_trace
-from portal.libs.events.types import NotificationCreatedEvent
-from portal.libs.events.publisher import publish_event_in_background
+from portal.queues.arq_pool import enqueue_send_notification
 from portal.libs.logger import logger
 from portal.handlers.admin.log import AdminLogHandler
 from portal.models import (
@@ -85,10 +84,9 @@ class AdminNotificationHandler:
             .execute()
         )
 
-        # Publish event for async notification sending
-        publish_event_in_background(event=NotificationCreatedEvent(notification_id=notification_id, model=model))
+        await enqueue_send_notification(notification_id, model.model_dump(mode="json"))
 
-        logger.info(f"Notification {notification_id} created and event published for sending")
+        logger.info(f"Notification {notification_id} created and ARQ job enqueued for sending")
         self._log_handler.create_log(
             OperationType.CREATE,
             record_id=notification_id,

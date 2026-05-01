@@ -95,6 +95,12 @@ class Configuration(BaseSettings):
     REDIS_URL: Optional[str] = os.getenv(key="REDIS_URL")
     REDIS_DB: int = int(os.getenv(key="REDIS_DB", default="0"))
 
+    # [ARQ] background jobs (separate Redis DB from app cache / limiter by default)
+    ARQ_REDIS_URL: Optional[str] = os.getenv(key="ARQ_REDIS_URL")
+    ARQ_REDIS_DB: int = int(os.getenv(key="ARQ_REDIS_DB", default="2"))
+    ARQ_JOB_TIMEOUT: int = int(os.getenv(key="ARQ_JOB_TIMEOUT", default="600"))
+    ARQ_MAX_TRIES: int = int(os.getenv(key="ARQ_MAX_TRIES", default="1"))
+
     # [Database]
     DATABASE_HOST: str = os.getenv(key="DATABASE_HOST", default="localhost")
     DATABASE_USER: str = os.getenv(key="DATABASE_USER", default="postgres")
