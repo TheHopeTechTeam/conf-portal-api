@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.25] - 2026-04-30
+
+### Summary
+
+Batches Firebase Cloud Messaging push delivery to respect multicast token limits, and excludes soft-deleted workshop registrations from admin paginated workshop registered counts so capacity metrics stay aligned with active rows.
+
+### Changed
+
+- **Push notification delivery (`portal/handlers/events/notification.py`)**:
+  - Added `FCM_MAX_MULTICAST_TOKENS` (500) to match Firebase Admin multicast limits.
+  - Sends push in token batches via `send_each_for_multicast`, aggregating success and failure counts and appending per-device notification history for each batch.
+  - Refactored `_resolve_push_targets` to collect tokens and device IDs with explicit loops for clarity.
+
+### Fixed
+
+- **Admin workshop registered count (`portal/handlers/admin/workshop.py`)**: The paginated workshop list `registered_count` subquery now filters `PortalWorkshopRegistration.is_deleted == false` in addition to `unregistered_at IS NULL`, so withdrawn soft-deleted registrations no longer inflate counts.
+
+### Breaking changes
+
+None.
+
 ## [0.2.24] - 2026-04-30
 
 ### Summary
