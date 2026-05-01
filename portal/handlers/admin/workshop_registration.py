@@ -12,9 +12,16 @@ from redis.asyncio import Redis
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.cache_keys import (
+    create_workshop_detail_key,
+    create_workshop_mine_key,
+    create_workshop_registered_key,
+    create_workshop_schedule_list_key,
+)
 from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalWorkshopRegistration, PortalWorkshop, PortalUser, PortalUserProfile
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -39,6 +46,29 @@ class AdminWorkshopRegistrationHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._log_handler = log_handler
+
+    async def _invalidate_workshop_registration_related_caches(
+        self,
+        *,
+        workshop_id: uuid.UUID,
+        user_id: Optional[uuid.UUID],
+    ) -> None:
+        cache_keys = [
+            create_workshop_schedule_list_key(),
+            create_workshop_detail_key(str(workshop_id)),
+        ]
+        if user_id:
+            cache_keys.extend(
+                [
+                    create_workshop_registered_key(str(user_id)),
+                    create_workshop_mine_key(str(user_id)),
+                ]
+            )
+        try:
+            for cache_key in cache_keys:
+                await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_invalidate_workshop_registration_related_caches: failed to delete cache keys: {exc}")
 
     @distributed_trace()
     async def get_workshop_registration_pages(self, query_model: AdminWorkshopRegistrationQuery) -> AdminWorkshopRegistrationPages:
@@ -154,6 +184,10 @@ class AdminWorkshopRegistrationHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_workshop_registration_related_caches(
+                workshop_id=model.workshop_id,
+                user_id=model.user_id,
+            )
             self._log_handler.create_log(
                 OperationType.CREATE,
                 record_id=registration_id,
@@ -179,6 +213,8 @@ class AdminWorkshopRegistrationHandler:
                 PortalWorkshopRegistration.id,
                 PortalWorkshopRegistration.registered_at,
                 PortalWorkshopRegistration.unregistered_at,
+                PortalWorkshopRegistration.workshop_id,
+                PortalWorkshopRegistration.user_id,
             )
             .where(PortalWorkshopRegistration.id == registration_id)
             .where(PortalWorkshopRegistration.is_deleted == False)
@@ -205,6 +241,10 @@ class AdminWorkshopRegistrationHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_workshop_registration_related_caches(
+                workshop_id=registration.workshop_id,
+                user_id=registration.user_id,
+            )
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 record_id=registration_id,
@@ -220,6 +260,14 @@ class AdminWorkshopRegistrationHandler:
         :param model:
         :return:
         """
+        registration = await (
+            self._session.select(
+                PortalWorkshopRegistration.workshop_id,
+                PortalWorkshopRegistration.user_id,
+            )
+            .where(PortalWorkshopRegistration.id == registration_id)
+            .fetchrow()
+        )
         try:
             if not model.permanent:
                 await (
@@ -241,6 +289,11 @@ class AdminWorkshopRegistrationHandler:
                 debug_detail=str(e),
             )
         else:
+            if registration:
+                await self._invalidate_workshop_registration_related_caches(
+                    workshop_id=registration["workshop_id"],
+                    user_id=registration["user_id"],
+                )
             if model.permanent:
                 self._log_handler.create_log(
                     OperationType.DELETE,

@@ -4,11 +4,14 @@ AdminNotificationHandler
 import uuid
 
 import sqlalchemy as sa
+from redis.asyncio import Redis
 
+from portal.config import settings
 from portal.exceptions.responses.base import ApiBaseException
+from portal.libs.consts.cache_keys import create_notification_list_key, create_notification_list_pattern_key
 from portal.libs.consts.enums import NotificationMethod, NotificationType, NotificationStatus
 from portal.libs.consts.enums import OperationType
-from portal.libs.database import Session
+from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.queues.arq_pool import enqueue_send_notification
 from portal.libs.logger import logger
@@ -39,10 +42,28 @@ class AdminNotificationHandler:
     def __init__(
         self,
         session: Session,
+        redis_client: RedisPool,
         log_handler: AdminLogHandler,
     ):
         self._session = session
+        self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._log_handler = log_handler
+
+    async def _invalidate_notification_list_cache(self, user_ids: list[uuid.UUID] | None = None) -> None:
+        if user_ids:
+            try:
+                for user_id in user_ids:
+                    cache_key = create_notification_list_key(str(user_id))
+                    await self._redis.delete(cache_key)
+            except Exception as exc:
+                logger.warning(f"_invalidate_notification_list_cache: failed to delete user cache keys: {exc}")
+            return
+        try:
+            pattern = create_notification_list_pattern_key()
+            async for cache_key in self._redis.scan_iter(match=pattern):
+                await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_invalidate_notification_list_cache: failed to delete pattern cache keys: {exc}")
 
     @distributed_trace()
     async def create_notification(self, model: AdminNotificationCreate) -> UUIDBaseModel:
@@ -87,6 +108,7 @@ class AdminNotificationHandler:
         await enqueue_send_notification(notification_id, model.model_dump(mode="json"))
 
         logger.info(f"Notification {notification_id} created and ARQ job enqueued for sending")
+        await self._invalidate_notification_list_cache(user_ids=model.user_ids)
         self._log_handler.create_log(
             OperationType.CREATE,
             record_id=notification_id,

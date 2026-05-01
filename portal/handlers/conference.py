@@ -11,6 +11,12 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from portal.config import settings
 from portal.exceptions.responses import ApiBaseException, NotFoundException
 from portal.handlers import AdminFileHandler
+from portal.libs.consts.cache_keys import (
+    CacheExpiry,
+    create_conference_active_key,
+    create_conference_detail_key,
+    create_conference_list_key,
+)
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.libs.logger import logger
@@ -37,6 +43,13 @@ class ConferenceHandler:
         Get conference
         :return:
         """
+        cache_key = create_conference_list_key()
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return ConferenceList.model_validate_json(cached)
+        except Exception as exc:
+            logger.warning(f"get_conferences: failed to read cache: {exc}")
         conferences: list[ConferenceBase] = await (
             self._session.select(
                 PortalConference.id,
@@ -48,7 +61,12 @@ class ConferenceHandler:
             .order_by(PortalConference.start_date.desc())
             .fetch(as_model=ConferenceBase)
         )
-        return ConferenceList(conferences=conferences)
+        result = ConferenceList(conferences=conferences)
+        try:
+            await self._redis.set(cache_key, result.model_dump_json(), ex=CacheExpiry.MINUTE * 10)
+        except Exception as exc:
+            logger.warning(f"get_conferences: failed to write cache: {exc}")
+        return result
 
     @distributed_trace()
     async def get_active_conference(self) -> ConferenceDetail:
@@ -56,6 +74,13 @@ class ConferenceHandler:
         Get an active conference
         :return:
         """
+        cache_key = create_conference_active_key()
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return ConferenceDetail.model_validate_json(cached)
+        except Exception as exc:
+            logger.warning(f"get_active_conference: failed to read cache: {exc}")
         conference_id: Optional[uuid.UUID] = await (
             self._session.select(PortalConference.id)
             .where(PortalConference.is_deleted == False)
@@ -65,6 +90,10 @@ class ConferenceHandler:
         if not conference_id:
             raise ValueError("No active conference found")
         active_obj = await self.get_conference_detail(conference_id=conference_id)
+        try:
+            await self._redis.set(cache_key, active_obj.model_dump_json(), ex=CacheExpiry.MINUTE * 5)
+        except Exception as exc:
+            logger.warning(f"get_active_conference: failed to write cache: {exc}")
         return active_obj
 
     @distributed_trace()
@@ -74,6 +103,13 @@ class ConferenceHandler:
         :param conference_id:
         :return:
         """
+        cache_key = create_conference_detail_key(str(conference_id))
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return ConferenceDetail.model_validate_json(cached)
+        except Exception as exc:
+            logger.warning(f"get_conference_detail: failed to read cache: {exc}")
         try:
             instructor_cte = (
                 self._session.select(
@@ -158,6 +194,10 @@ class ConferenceHandler:
             for instructor in conference.instructors:
                 instructor_urls = signed_urls_by_resource.get(instructor.id)
                 instructor.image_url = instructor_urls[0] if instructor_urls else None
+            try:
+                await self._redis.set(cache_key, conference.model_dump_json(), ex=CacheExpiry.MINUTE * 10)
+            except Exception as exc:
+                logger.warning(f"get_conference_detail: failed to write cache: {exc}")
             return conference
         except ApiBaseException as e:
             raise e

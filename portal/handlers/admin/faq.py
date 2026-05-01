@@ -11,9 +11,17 @@ from redis.asyncio import Redis
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException, BadRequestException
 from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.cache_keys import (
+    create_faq_categories_key,
+    create_faq_category_faqs_key,
+    create_faq_category_faqs_pattern_key,
+    create_faq_category_key,
+    create_faq_item_key,
+)
 from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalFaq, PortalFaqCategory
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -49,6 +57,45 @@ class AdminFaqHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._log_handler = log_handler
+
+    async def _delete_cache_pattern(self, pattern: str) -> None:
+        try:
+            async for cache_key in self._redis.scan_iter(match=pattern):
+                await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_delete_cache_pattern: failed for pattern {pattern}: {exc}")
+
+    async def _invalidate_faq_caches(
+        self,
+        *,
+        faq_ids: Optional[list[uuid.UUID]] = None,
+        category_ids: Optional[list[uuid.UUID]] = None,
+    ) -> None:
+        cache_keys = [
+            create_faq_categories_key(),
+        ]
+        if faq_ids:
+            cache_keys.extend(
+                create_faq_item_key(str(faq_id))
+                for faq_id in faq_ids
+            )
+        if category_ids:
+            cache_keys.extend(
+                create_faq_category_key(str(category_id))
+                for category_id in category_ids
+            )
+            cache_keys.extend(
+                create_faq_category_faqs_key(str(category_id))
+                for category_id in category_ids
+            )
+        try:
+            for cache_key in cache_keys:
+                await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_invalidate_faq_caches: failed to delete cache keys: {exc}")
+        await self._delete_cache_pattern(
+            create_faq_category_faqs_pattern_key()
+        )
 
     def _faq_pages_base_query(self, model: AdminFaqQuery):
         """
@@ -225,6 +272,7 @@ class AdminFaqHandler:
                 detail="Internal Server Error",
             )
         else:
+            await self._invalidate_faq_caches(faq_ids=[faq_id], category_ids=[model.category_id])
             self._log_handler.create_log(
                 OperationType.CREATE,
                 record_id=faq_id,
@@ -266,6 +314,7 @@ class AdminFaqHandler:
                 detail="Internal Server Error",
             )
         else:
+            await self._invalidate_faq_caches(faq_ids=[faq_id], category_ids=[model.category_id] if model.category_id else None)
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 record_id=faq_id,
@@ -281,6 +330,11 @@ class AdminFaqHandler:
         :param model:
         :return:
         """
+        category_id: Optional[uuid.UUID] = await (
+            self._session.select(PortalFaq.category_id)
+            .where(PortalFaq.id == faq_id)
+            .fetchval()
+        )
         try:
             if not model.permanent:
                 await (
@@ -302,6 +356,10 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_faq_caches(
+                faq_ids=[faq_id],
+                category_ids=[category_id] if category_id else None,
+            )
             if model.permanent:
                 self._log_handler.create_log(
                     OperationType.DELETE,
@@ -338,6 +396,15 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
         else:
+            category_ids = await (
+                self._session.select(PortalFaq.category_id)
+                .where(PortalFaq.id.in_(model.ids))
+                .fetch()
+            )
+            await self._invalidate_faq_caches(
+                faq_ids=model.ids,
+                category_ids=[row["category_id"] for row in category_ids if row["category_id"]],
+            )
             self._log_handler.create_log(
                 OperationType.RESTORE,
                 operation_code=PortalFaq.__tablename__,
@@ -422,6 +489,7 @@ class AdminFaqHandler:
                 detail="Internal Server Error",
             )
         else:
+            await self._invalidate_faq_caches(category_ids=[category_id])
             self._log_handler.create_log(
                 OperationType.CREATE,
                 record_id=category_id,
@@ -463,6 +531,7 @@ class AdminFaqHandler:
                 detail="Internal Server Error",
             )
         else:
+            await self._invalidate_faq_caches(category_ids=[category_id])
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 record_id=category_id,
@@ -499,6 +568,7 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_faq_caches(category_ids=[category_id])
             if model.permanent:
                 self._log_handler.create_log(
                     OperationType.DELETE,
@@ -535,6 +605,7 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_faq_caches(category_ids=model.ids)
             self._log_handler.create_log(
                 OperationType.RESTORE,
                 operation_code=PortalFaqCategory.__tablename__,
@@ -569,6 +640,7 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_faq_caches(category_ids=[model.id, model.another_id])
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 operation_code=PortalFaqCategory.__tablename__,
@@ -619,6 +691,10 @@ class AdminFaqHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_faq_caches(
+                faq_ids=[model.id, model.another_id],
+                category_ids=[category_id_a],
+            )
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 operation_code=PortalFaq.__tablename__,

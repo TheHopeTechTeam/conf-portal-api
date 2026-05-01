@@ -11,9 +11,11 @@ from redis.asyncio import Redis
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.cache_keys import create_event_schedule_key
 from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalEventSchedule, PortalConference
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.v1.admin.event_info import AdminEventInfoList, AdminEventInfoItem, AdminEventInfoDetail, AdminEventInfoCreate, AdminEventInfoUpdate
@@ -31,6 +33,13 @@ class AdminEventInfoHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._log_handler = log_handler
+
+    async def _invalidate_event_schedule_cache(self, conference_id: uuid.UUID) -> None:
+        cache_key = create_event_schedule_key(str(conference_id))
+        try:
+            await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_invalidate_event_schedule_cache: failed to delete cache key: {exc}")
 
     @distributed_trace()
     async def get_event_info_list(self, conference_id: uuid.UUID) -> AdminEventInfoList:
@@ -124,6 +133,7 @@ class AdminEventInfoHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_event_schedule_cache(conference_id=model.conference_id)
             self._log_handler.create_log(
                 OperationType.CREATE,
                 record_id=event_id,
@@ -168,6 +178,15 @@ class AdminEventInfoHandler:
                 debug_detail=str(e),
             )
         else:
+            conference_id = model.conference_id
+            if conference_id is None:
+                conference_id = await (
+                    self._session.select(PortalEventSchedule.conference_id)
+                    .where(PortalEventSchedule.id == event_id)
+                    .fetchval()
+                )
+            if conference_id:
+                await self._invalidate_event_schedule_cache(conference_id=conference_id)
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 record_id=event_id,
@@ -182,6 +201,11 @@ class AdminEventInfoHandler:
         :param event_id:
         :return:
         """
+        conference_id: Optional[uuid.UUID] = await (
+            self._session.select(PortalEventSchedule.conference_id)
+            .where(PortalEventSchedule.id == event_id)
+            .fetchval()
+        )
         try:
             await (
                 self._session.delete(PortalEventSchedule)
@@ -195,6 +219,8 @@ class AdminEventInfoHandler:
                 debug_detail=str(e),
             )
         else:
+            if conference_id:
+                await self._invalidate_event_schedule_cache(conference_id=conference_id)
             self._log_handler.create_log(
                 OperationType.DELETE,
                 record_id=event_id,

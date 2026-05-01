@@ -22,6 +22,8 @@ class AdminWorkshopRegistrationQuery(GenericQueryBaseModel):
 
 class AdminWorkshopRegistrationItem(UUIDBaseModel):
     """Workshop Registration page item"""
+    workshop_id: Optional[UUID] = Field(default=None, description="Workshop ID", exclude=True)
+    user_id: Optional[UUID] = Field(default=None, description="User ID", exclude=True)
     workshop_title: Optional[str] = Field(default=None, serialization_alias="workshopTitle", description="Workshop title")
     user_email: Optional[str] = Field(default=None, serialization_alias="userEmail", description="User email")
     user_display_name: Optional[str] = Field(default=None, serialization_alias="userDisplayName", description="User display name")

@@ -3,11 +3,16 @@ NotificationHandler: user-facing notification APIs (list all with read status, m
 """
 from uuid import UUID
 
+from redis.asyncio import Redis
+
+from portal.config import settings
 from portal.exceptions.responses import ForbiddenException, NotFoundException
+from portal.libs.consts.cache_keys import CacheExpiry, create_notification_list_key
 from portal.libs.contexts.user_context import get_user_context
-from portal.libs.database import Session
+from portal.libs.database import Session, RedisPool
 from portal.libs.consts.enums import NotificationHistoryStatus
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import (
     PortalNotification,
     PortalNotificationHistory,
@@ -23,8 +28,9 @@ from portal.serializers.v1.notification import (
 class NotificationHandler:
     """NotificationHandler: get all notifications (with read status) and mark as read for current user."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, redis_client: RedisPool):
         self._session = session
+        self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
 
     def _require_user_id(self) -> UUID:
         user_ctx = get_user_context()
@@ -39,6 +45,13 @@ class NotificationHandler:
         :return: List of notification history items with notification content and read status.
         """
         user_id = self._require_user_id()
+        cache_key = create_notification_list_key(str(user_id))
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return UserNotificationList.model_validate_json(cached)
+        except Exception as exc:
+            logger.warning(f"get_notifications: failed to read cache: {exc}")
         distinct_notification_subquery = (
             self._session.select(
                 PortalNotificationHistory.id,
@@ -78,7 +91,12 @@ class NotificationHandler:
             .order_by(distinct_notification_subquery.c.created_at.desc())
             .fetch(as_model=UserNotificationItem)
         )
-        return UserNotificationList(items=items)
+        result = UserNotificationList(items=items)
+        try:
+            await self._redis.set(cache_key, result.model_dump_json(), ex=CacheExpiry.MINUTE)
+        except Exception as exc:
+            logger.warning(f"get_notifications: failed to write cache: {exc}")
+        return result
 
     @distributed_trace()
     async def mark_notification_as_read(self, notification_history_id: UUID) -> None:
@@ -115,6 +133,7 @@ class NotificationHandler:
             .where(PortalNotificationHistory.id == notification_history_id)
             .execute()
         )
+        await self._invalidate_notification_cache(user_id=user_id)
 
     @distributed_trace()
     async def mark_all_notifications_as_read(self) -> None:
@@ -140,3 +159,11 @@ class NotificationHandler:
             .where(PortalNotificationHistory.is_deleted == False)
             .execute()
         )
+        await self._invalidate_notification_cache(user_id=user_id)
+
+    async def _invalidate_notification_cache(self, user_id: UUID) -> None:
+        cache_key = create_notification_list_key(str(user_id))
+        try:
+            await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_invalidate_notification_cache: failed to delete cache key: {exc}")

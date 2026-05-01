@@ -13,6 +13,12 @@ from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException, BadRequestException
 from portal.handlers import AdminFileHandler
 from portal.handlers.admin.log import AdminLogHandler
+from portal.libs.consts.cache_keys import (
+    create_workshop_detail_key,
+    create_workshop_mine_pattern_key,
+    create_workshop_registered_pattern_key,
+    create_workshop_schedule_list_key,
+)
 from portal.libs.consts.enums import OperationType
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -53,6 +59,34 @@ class AdminWorkshopHandler:
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._file_handler = file_handler
         self._log_handler = log_handler
+
+    async def _delete_cache_pattern(self, pattern: str) -> None:
+        try:
+            async for cache_key in self._redis.scan_iter(match=pattern):
+                await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_delete_cache_pattern: failed for pattern {pattern}: {exc}")
+
+    async def _invalidate_workshop_caches(self, workshop_ids: Optional[list[uuid.UUID]] = None) -> None:
+        cache_keys = [
+            create_workshop_schedule_list_key(),
+        ]
+        if workshop_ids:
+            cache_keys.extend(
+                create_workshop_detail_key(str(workshop_id))
+                for workshop_id in workshop_ids
+            )
+        try:
+            for cache_key in cache_keys:
+                await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_invalidate_workshop_caches: failed to delete cache keys: {exc}")
+        await self._delete_cache_pattern(
+            create_workshop_registered_pattern_key()
+        )
+        await self._delete_cache_pattern(
+            create_workshop_mine_pattern_key()
+        )
 
     @distributed_trace()
     async def get_workshop_list(self) -> AdminWorkshopList:
@@ -266,6 +300,7 @@ class AdminWorkshopHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_workshop_caches(workshop_ids=[workshop_id])
             self._log_handler.create_log(
                 OperationType.CREATE,
                 record_id=workshop_id,
@@ -318,6 +353,7 @@ class AdminWorkshopHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_workshop_caches(workshop_ids=[workshop_id])
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 record_id=workshop_id,
@@ -352,6 +388,7 @@ class AdminWorkshopHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_workshop_caches(workshop_ids=[workshop_id])
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 operation_code=PortalWorkshop.__tablename__,
@@ -421,6 +458,7 @@ class AdminWorkshopHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_workshop_caches(workshop_ids=[model.id, model.another_id])
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 record_id=workshop_id,
@@ -457,6 +495,7 @@ class AdminWorkshopHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_workshop_caches(workshop_ids=[workshop_id])
             if model.permanent:
                 self._log_handler.create_log(
                     OperationType.DELETE,
@@ -493,6 +532,7 @@ class AdminWorkshopHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_workshop_caches(workshop_ids=model.ids)
             self._log_handler.create_log(
                 OperationType.RESTORE,
                 operation_code=PortalWorkshop.__tablename__,

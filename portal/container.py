@@ -149,6 +149,7 @@ class Container(containers.DeclarativeContainer):
     notification_handler = providers.Factory(
         handlers.NotificationHandler,
         session=request_session,
+        redis_client=redis_client,
     )
     workshop_handler = providers.Factory(
         handlers.WorkshopHandler,
@@ -286,6 +287,7 @@ class Container(containers.DeclarativeContainer):
     admin_notification_handler = providers.Factory(
         handlers.AdminNotificationHandler,
         session=request_session,
+        redis_client=redis_client,
         log_handler=admin_log_handler,
     )
 

@@ -13,8 +13,15 @@ from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, ApiBaseException
 from portal.handlers.admin.log import AdminLogHandler
 from portal.libs.consts.enums import OperationType
+from portal.libs.consts.cache_keys import (
+    create_conference_active_key,
+    create_conference_detail_key,
+    create_conference_list_key,
+    create_event_schedule_key,
+)
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
+from portal.libs.logger import logger
 from portal.models import PortalConference, PortalLocation, PortalConferenceInstructors, PortalInstructor
 from portal.schemas.mixins import UUIDBaseModel
 from portal.serializers.mixins import DeleteBaseModel
@@ -46,6 +53,30 @@ class AdminConferenceHandler:
         self._session = session
         self._redis: Redis = redis_client.create(db=settings.REDIS_DB)
         self._log_handler = log_handler
+
+    async def _invalidate_conference_caches(
+        self,
+        *,
+        conference_ids: Optional[list[uuid.UUID]] = None,
+    ) -> None:
+        cache_keys = [
+            create_conference_list_key(),
+            create_conference_active_key(),
+        ]
+        if conference_ids:
+            cache_keys.extend(
+                create_conference_detail_key(str(conference_id))
+                for conference_id in conference_ids
+            )
+            cache_keys.extend(
+                create_event_schedule_key(str(conference_id))
+                for conference_id in conference_ids
+            )
+        try:
+            for cache_key in cache_keys:
+                await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_invalidate_conference_caches: failed to delete cache keys: {exc}")
 
     @distributed_trace()
     async def get_conference_pages(self, model: AdminConferenceQuery) -> AdminConferencePages:
@@ -216,6 +247,7 @@ class AdminConferenceHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_conference_caches(conference_ids=[conference_id])
             self._log_handler.create_log(
                 OperationType.CREATE,
                 record_id=conference_id,
@@ -263,6 +295,7 @@ class AdminConferenceHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_conference_caches(conference_ids=[conference_id])
             self._log_handler.create_log(
                 OperationType.UPDATE,
                 record_id=conference_id,
@@ -369,6 +402,7 @@ class AdminConferenceHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_conference_caches(conference_ids=[conference_id])
             if model.permanent:
                 self._log_handler.create_log(
                     OperationType.DELETE,
@@ -405,6 +439,7 @@ class AdminConferenceHandler:
                 debug_detail=str(e),
             )
         else:
+            await self._invalidate_conference_caches(conference_ids=model.ids)
             self._log_handler.create_log(
                 OperationType.RESTORE,
                 operation_code=PortalConference.__tablename__,

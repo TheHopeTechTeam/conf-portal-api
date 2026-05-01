@@ -16,6 +16,13 @@ import pydantic
 from portal.config import settings
 from portal.exceptions.responses import NotFoundException, ConflictErrorException, BadRequestException, UnauthorizedException
 from portal.handlers import AdminFileHandler
+from portal.libs.consts.cache_keys import (
+    CacheExpiry,
+    create_workshop_detail_key,
+    create_workshop_mine_key,
+    create_workshop_registered_key,
+    create_workshop_schedule_list_key,
+)
 from portal.libs.contexts.user_context import UserContext, get_user_context
 from portal.libs.database import Session, RedisPool
 from portal.libs.decorators.sentry_tracer import distributed_trace
@@ -141,6 +148,13 @@ class WorkshopHandler:
 
         :return:
         """
+        cache_key = create_workshop_schedule_list_key()
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return WorkshopScheduleList.model_validate_json(cached)
+        except Exception as exc:
+            logger.warning(f"get_workshop_schedule_list: failed to read cache: {exc}")
         workshops: Optional[list[WorkshopBase]] = await (
             self._session.select(
                 PortalWorkshop.id,
@@ -202,7 +216,12 @@ class WorkshopHandler:
             .fetch(as_model=WorkshopBase)
         )
         if not workshops:
-            return WorkshopScheduleList(schedule=[])
+            result = WorkshopScheduleList(schedule=[])
+            try:
+                await self._redis.set(cache_key, result.model_dump_json(), ex=CacheExpiry.MINUTE * 2)
+            except Exception as exc:
+                logger.warning(f"get_workshop_schedule_list: failed to write empty cache: {exc}")
+            return result
         location_ids = [w.location.id for w in workshops if w.location]
         signed_urls_by_resource = (
             await self._file_handler.get_signed_urls_by_resource_ids(location_ids)
@@ -233,7 +252,12 @@ class WorkshopHandler:
                 )
             )
 
-        return WorkshopScheduleList(schedule=workshop_schedules)
+        result = WorkshopScheduleList(schedule=workshop_schedules)
+        try:
+            await self._redis.set(cache_key, result.model_dump_json(), ex=CacheExpiry.MINUTE * 2)
+        except Exception as exc:
+            logger.warning(f"get_workshop_schedule_list: failed to write cache: {exc}")
+        return result
 
     @distributed_trace()
     async def get_workshop_detail(self, workshop_id: uuid.UUID) -> WorkshopDetail:
@@ -243,6 +267,13 @@ class WorkshopHandler:
         :param workshop_id:
         :return:
         """
+        cache_key = create_workshop_detail_key(str(workshop_id))
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return WorkshopDetail.model_validate_json(cached)
+        except Exception as exc:
+            logger.warning(f"get_workshop_detail: failed to read cache: {exc}")
         try:
             workshop: Optional[WorkshopDetail] = await (
                 self._session.select(
@@ -352,6 +383,10 @@ class WorkshopHandler:
                 workshop.instructor.image_url = instructor_urls[0] if instructor_urls else None
             workshop_urls = signed_urls_by_resource.get(workshop.id)
             workshop.image_url = workshop_urls[0] if workshop_urls else None
+            try:
+                await self._redis.set(cache_key, workshop.model_dump_json(), ex=CacheExpiry.MINUTE * 2)
+            except Exception as exc:
+                logger.warning(f"get_workshop_detail: failed to write cache: {exc}")
             return workshop
 
     @distributed_trace()
@@ -435,6 +470,7 @@ class WorkshopHandler:
             )
         except UniqueViolationError:
             raise ConflictErrorException(detail="You have already registered for this workshop.")
+        await self._invalidate_workshop_related_caches(workshop_id=workshop_id)
 
     @distributed_trace()
     async def unregister_workshop(self, workshop_id: uuid.UUID) -> None:
@@ -466,6 +502,7 @@ class WorkshopHandler:
             )
         except Exception as e:
             raise BadRequestException(detail=f"Unregister workshop failed: {e}")
+        await self._invalidate_workshop_related_caches(workshop_id=workshop_id)
 
     @distributed_trace()
     async def get_registered_workshops(self) -> dict[str, bool]:
@@ -473,6 +510,13 @@ class WorkshopHandler:
         Get registered workshops
         :return:
         """
+        cache_key = create_workshop_registered_key(str(self._user_ctx.user_id))
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return pydantic.TypeAdapter(dict[str, bool]).validate_json(cached)
+        except Exception as exc:
+            logger.warning(f"get_registered_workshops: failed to read cache: {exc}")
         raw_workshops: dict = await (
             self._session.select(
                 PortalWorkshop.id,
@@ -494,6 +538,10 @@ class WorkshopHandler:
         registered_workshops: dict[str, bool] = {
             str(workshop_id): bool(is_reg) for workshop_id, is_reg in raw_workshops.items()
         }
+        try:
+            await self._redis.set(cache_key, pydantic.TypeAdapter(dict[str, bool]).dump_json(registered_workshops), ex=CacheExpiry.MINUTE)
+        except Exception as exc:
+            logger.warning(f"get_registered_workshops: failed to write cache: {exc}")
         return registered_workshops
 
     @distributed_trace()
@@ -537,6 +585,13 @@ class WorkshopHandler:
 
         :return:
         """
+        cache_key = create_workshop_mine_key(str(self._user_ctx.user_id))
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return WorkshopRegisteredList.model_validate_json(cached)
+        except Exception as exc:
+            logger.warning(f"get_my_workshops: failed to read cache: {exc}")
         registered_workshops: WorkshopRegistered = await (
             self._session.select(
                 PortalWorkshop.id,
@@ -612,4 +667,24 @@ class WorkshopHandler:
                 location_urls = signed_urls_by_resource.get(workshop.location.id)
                 workshop.location.image_url = location_urls[0] if location_urls else None
             my_workshops.append(workshop)
-        return WorkshopRegisteredList(workshops=my_workshops)
+        result = WorkshopRegisteredList(workshops=my_workshops)
+        try:
+            await self._redis.set(cache_key, result.model_dump_json(), ex=CacheExpiry.MINUTE)
+        except Exception as exc:
+            logger.warning(f"get_my_workshops: failed to write cache: {exc}")
+        return result
+
+    async def _invalidate_workshop_related_caches(self, workshop_id: UUID) -> None:
+        if not self._user_ctx:
+            return
+        cache_keys = [
+            create_workshop_schedule_list_key(),
+            create_workshop_detail_key(str(workshop_id)),
+            create_workshop_registered_key(str(self._user_ctx.user_id)),
+            create_workshop_mine_key(str(self._user_ctx.user_id)),
+        ]
+        try:
+            for cache_key in cache_keys:
+                await self._redis.delete(cache_key)
+        except Exception as exc:
+            logger.warning(f"_invalidate_workshop_related_caches: failed to delete cache keys: {exc}")

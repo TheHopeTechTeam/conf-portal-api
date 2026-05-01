@@ -81,6 +81,7 @@ class CacheExpiry:
     """
     Cache expiry times in seconds
     """
+    MINUTE = 60
     HOUR = 3600
     DAY = 86400
     WEEK = 604800
@@ -111,3 +112,73 @@ class CacheKeys:
         """
         self.attributes.extend([attribute, separator])
         return self
+
+
+def create_conference_list_key() -> str:
+    return CacheKeys(resource="conference").add_attribute("list").build()
+
+
+def create_conference_active_key() -> str:
+    return CacheKeys(resource="conference").add_attribute("active").build()
+
+
+def create_conference_detail_key(conference_id: str) -> str:
+    return CacheKeys(resource="conference").add_attribute("detail").add_attribute(conference_id).build()
+
+
+def create_event_schedule_key(conference_id: str) -> str:
+    return CacheKeys(resource="event_schedule").add_attribute("conference").add_attribute(conference_id).build()
+
+
+def create_faq_categories_key() -> str:
+    return CacheKeys(resource="faq").add_attribute("categories").build()
+
+
+def create_faq_category_key(category_id: str) -> str:
+    return CacheKeys(resource="faq").add_attribute("category").add_attribute(category_id).build()
+
+
+def create_faq_item_key(faq_id: str) -> str:
+    return CacheKeys(resource="faq").add_attribute("item").add_attribute(faq_id).build()
+
+
+def create_faq_category_faqs_key(category_id: str) -> str:
+    return CacheKeys(resource="faq").add_attribute("category_faqs").add_attribute(category_id).build()
+
+
+def create_faq_category_faqs_pattern_key() -> str:
+    return CacheKeys(resource="faq").add_attribute("category_faqs").add_attribute("*").build()
+
+
+def create_workshop_schedule_list_key() -> str:
+    return CacheKeys(resource="workshop").add_attribute("schedule").add_attribute("list").build()
+
+
+def create_workshop_detail_key(workshop_id: str) -> str:
+    return CacheKeys(resource="workshop").add_attribute("detail").add_attribute(workshop_id).build()
+
+
+def create_workshop_registered_key(user_id: str) -> str:
+    return CacheKeys(resource="workshop").add_attribute("registered").add_attribute(user_id).build()
+
+
+def create_workshop_registered_pattern_key() -> str:
+    return CacheKeys(resource="workshop").add_attribute("registered").add_attribute("*").build()
+
+
+def create_workshop_mine_key(user_id: str) -> str:
+    return CacheKeys(resource="workshop").add_attribute("mine").add_attribute(user_id).build()
+
+
+def create_workshop_mine_pattern_key() -> str:
+    return CacheKeys(resource="workshop").add_attribute("mine").add_attribute("*").build()
+
+
+def create_notification_list_key(user_id: str) -> str:
+    return CacheKeys(resource="notification").add_attribute("list").add_attribute(user_id).build()
+
+
+def create_notification_list_pattern_key() -> str:
+    return CacheKeys(resource="notification").add_attribute("list").add_attribute("*").build()
+
+
