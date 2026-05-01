@@ -100,6 +100,7 @@ async def send_notification_task(ctx: dict, notification_id_str: str, payload: d
     token = set_event_session(session)
     handler = NotificationCreatedEventHandler(session=session)
     try:
+        logger.info("-" * 100)
         await handler.handle(event)
         await session.commit()
     except Exception:
@@ -108,6 +109,7 @@ async def send_notification_task(ctx: dict, notification_id_str: str, payload: d
     finally:
         reset_event_session(token)
         await session.close()
+        logger.info("-" * 100)
 
 
 class WorkerSettings:
