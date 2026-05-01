@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.27] - 2026-04-30
+
+### Summary
+
+Improves ARQ notification worker reliability and observability by introducing chunk-based fan-out processing for large push sends, adding chunk-indexed execution logs, and refining aggregate status updates to avoid race-prone chunk-local status decisions. This release also adds a lightweight demo script to verify numeric increment update semantics in the project session/update DSL.
+
+### Added
+
+- **Demo numeric increment verification script** (`test_demo_age_increment.py`):
+  - Added a standalone script that validates `age=Model.age + 1` style updates against the `Demo` model using a fixed demo UUID.
+  - Script performs increment, verification read, rollback decrement, and final restore check for quick local validation.
+
+### Changed
+
+- **ARQ notification worker fan-out architecture** (`portal/workers/arq_worker.py`):
+  - Refactored `send_notification_task` into a parent dispatch flow for push notifications that resolves targets once and enqueues child chunk jobs.
+  - Added `send_notification_chunk_task` for per-chunk FCM send, per-device history writes, and incremental success/failure count updates.
+  - Kept non-push and dry-run paths on the existing direct handler execution flow.
+- **Chunk-level logging and traceability** (`portal/workers/arq_worker.py`):
+  - Added structured lifecycle logs for parent/child jobs (start, target resolution, enqueue, send result, commit, finish, exception paths).
+  - Added `chunk_index/total_chunks` propagation so worker logs clearly indicate batch position (for example `chunk=3/10`).
+- **Aggregate status update semantics** (`portal/workers/arq_worker.py`):
+  - Updated notification status writes to derive from accumulated success counts (`CASE` expression) instead of chunk-local success only, preventing later failed chunks from overriding previously successful overall delivery state.
+
+### Breaking changes
+
+None.
+
 ## [0.2.26] - 2026-04-30
 
 ### Summary
