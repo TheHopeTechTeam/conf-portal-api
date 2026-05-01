@@ -11,6 +11,7 @@ on:
       - "gunicorn.conf.py"
       - "Dockerfile"
       - "entrypoint.sh"
+      - "worker.sh"
       - "pyproject.toml"
       - "poetry.lock"
       - ".github/workflows/*.yml"
@@ -106,6 +107,38 @@ jobs:
             --header 'content-type: application/json' \
             --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
             --data '{"value": "${{ steps.meta.outputs.version }}"}'
+  update-worker-service-stg:
+    if: github.ref == format('refs/heads/{0}', 'main')
+    needs: build-docker
+    runs-on: ubuntu-latest
+    name: "Update STG worker service (image)"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+          tags: |
+            type=sha,prefix=,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+      - name: Update worker service
+        run: |-
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          curl --location --request PATCH 'https://api.render.com/v1/services/${{ secrets.RENDER_WORKER_SERVICE_ID_STG }}' \
+            --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --data '{
+              "image": {
+                "ownerId":"${{ secrets.RENDER_OWNER_ID }}",
+                "registryCredentialId":"${{ secrets.RENDER_REGISTRY_CREDENTIAL_ID }}",
+                "imagePath":"${{ steps.meta.outputs.tags }}"
+              }
+            }'
   deploy-stg:
     if: github.ref == format('refs/heads/{0}', 'main')
     needs: update-service-stg
@@ -118,6 +151,21 @@ jobs:
           set -euo pipefail
 
           curl --location --request POST 'https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID_STG }}/deploys' \
+            --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+            --header 'Content-Type: application/json'
+
+  deploy-worker-stg:
+    if: github.ref == format('refs/heads/{0}', 'main')
+    needs: update-worker-service-stg
+    runs-on: ubuntu-latest
+    name: "Deploy STG worker"
+    steps:
+      - name: Deploy worker
+        run: |-
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          curl --location --request POST 'https://api.render.com/v1/services/${{ secrets.RENDER_WORKER_SERVICE_ID_STG }}/deploys' \
             --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
             --header 'Content-Type: application/json'
 

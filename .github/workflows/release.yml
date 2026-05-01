@@ -115,6 +115,54 @@ jobs:
             --header 'Authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
             --data '{"value": "${{ steps.meta.outputs.version }}"}'
 
+  update-worker-services:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build-docker
+    runs-on: ubuntu-latest
+    name: "Update worker services (STG + optional PROD image)"
+    env:
+      RENDER_WORKER_SERVICE_ID_PROD: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/') }}
+      - name: Update worker services
+        run: |-
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          curl --location --request PATCH 'https://api.render.com/v1/services/${{ secrets.RENDER_WORKER_SERVICE_ID_STG }}' \
+            --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --data '{
+              "image": {
+                "ownerId":"${{ secrets.RENDER_OWNER_ID }}",
+                "registryCredentialId":"${{ secrets.RENDER_REGISTRY_CREDENTIAL_ID }}",
+                "imagePath":"${{ steps.meta.outputs.tags }}"
+              }
+            }'
+
+          if [ -n "${RENDER_WORKER_SERVICE_ID_PROD}" ]; then
+            curl --location --request PATCH "https://api.render.com/v1/services/${RENDER_WORKER_SERVICE_ID_PROD}" \
+              --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+              --header 'Content-Type: application/json' \
+              --data '{
+                "image": {
+                  "ownerId":"${{ secrets.RENDER_OWNER_ID }}",
+                  "registryCredentialId":"${{ secrets.RENDER_REGISTRY_CREDENTIAL_ID }}",
+                  "imagePath":"${{ steps.meta.outputs.tags }}"
+                }
+              }'
+          fi
+
   deploy-stg:
     if: startsWith(github.ref, 'refs/tags/')
     needs: update-service-prod
@@ -130,10 +178,27 @@ jobs:
             --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
             --header 'Content-Type: application/json'
 
+  deploy-workers-stg:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: update-worker-services
+    runs-on: ubuntu-latest
+    name: "Deploy STG worker"
+    steps:
+      - name: Deploy STG worker
+        run: |-
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          curl --location --request POST 'https://api.render.com/v1/services/${{ secrets.RENDER_WORKER_SERVICE_ID_STG }}/deploys' \
+            --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}' \
+            --header 'Content-Type: application/json'
+
   github-release:
     name: Create GitHub Release
     if: github.ref_type == 'tag'
-    needs: deploy-stg
+    needs:
+      - deploy-stg
+      - deploy-workers-stg
     runs-on: ubuntu-latest
     permissions:
       contents: write
