@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.28] - 2026-04-30
+
+### Summary
+
+Fixes ARQ notification worker status persistence for chunked push delivery by replacing SQL `CASE`-based status assignments with explicit integer-safe update statements, preventing asyncpg datatype mismatch errors in production.
+
+### Fixed
+
+- **ARQ chunk status update type mismatch** (`portal/workers/arq_worker.py`):
+  - Replaced `sa.case(...)` status writes that could be rendered as text expressions by the current DB session layer and fail against integer `status` columns.
+  - Updated chunk success and error paths to use deterministic status updates:
+    - set `SENT` when a chunk has any success,
+    - set `FAILED` only when accumulated `success_count == 0`,
+    - preserve already-sent notifications from being overwritten by later failed chunks.
+
+### Breaking changes
+
+None.
+
 ## [0.2.27] - 2026-04-30
 
 ### Summary
