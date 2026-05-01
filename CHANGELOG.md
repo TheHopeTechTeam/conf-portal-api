@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.31] - 2026-05-01
+
+### Summary
+
+Introduces Redis cache-aside optimization for non-admin conference/event/FAQ/workshop/notification handlers, and adds admin-write invalidation to keep user-facing cached data consistent after create/update/delete operations.
+
+### Added
+
+- **Non-admin cache key helpers** (`portal/libs/consts/cache_keys.py`):
+  - Added helper functions for conference, event schedule, FAQ, workshop, and notification cache keys (including wildcard pattern helpers for scan-based invalidation).
+- **Cache behavior tests** (`tests/handlers/test_non_admin_cache.py`):
+  - Added focused tests for cache hit, cache fallback on Redis read failure, and workshop-related key invalidation behavior.
+
+### Changed
+
+- **User-facing read handlers now use cache-aside** (`portal/handlers/conference.py`, `portal/handlers/event_info.py`, `portal/handlers/faq.py`, `portal/handlers/workshop.py`, `portal/handlers/notification.py`):
+  - Read flows now attempt Redis `GET` first, then fallback to DB queries on miss.
+  - Successful query responses are serialized and written back to Redis with TTL.
+  - Redis read/write errors are handled gracefully without breaking API response flow.
+- **Admin write handlers now invalidate non-admin caches** (`portal/handlers/admin/conference.py`, `portal/handlers/admin/event_info.py`, `portal/handlers/admin/faq.py`, `portal/handlers/admin/workshop.py`, `portal/handlers/admin/workshop_registration.py`, `portal/handlers/admin/notification.py`):
+  - Added targeted key deletion and pattern-based invalidation after create/update/delete/restore style operations.
+  - Added admin-notification-triggered user notification list cache invalidation.
+- **Dependency injection wiring** (`portal/container.py`):
+  - Updated notification-related handler wiring to provide Redis dependencies required for cache operations and invalidation.
+- **Admin registration serializer internals** (`portal/serializers/v1/admin/workshop_registration.py`):
+  - Added internal `workshop_id` and `user_id` fields (excluded from response output) to support model-based invalidation logic.
+
+### Breaking changes
+
+None.
+
 ## [0.2.30] - 2026-05-01
 
 ### Summary
