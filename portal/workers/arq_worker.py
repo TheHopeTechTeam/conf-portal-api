@@ -6,6 +6,10 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 import sentry_sdk
+import sqlalchemy as sa
+from arq.connections import ArqRedis
+from firebase_admin import messaging
+from firebase_admin.exceptions import FirebaseError
 from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
@@ -13,12 +17,22 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from portal.config import settings
 from portal.container import Container
-from portal.handlers.events.notification import NotificationCreatedEventHandler
+from portal.handlers.events.notification import (
+    FCM_MAX_MULTICAST_TOKENS,
+    NotificationCreatedEventHandler,
+)
+from portal.libs.consts.enums import (
+    NotificationHistoryStatus,
+    NotificationMethod,
+    NotificationStatus,
+)
 from portal.libs.contexts.event_session_context import reset_event_session, set_event_session
 from portal.libs.events.publisher import set_global_container
 from portal.libs.events.types import NotificationCreatedEvent
 from portal.libs.firebase_init import init_firebase_safe
 from portal.libs.logger import logger
+from portal.models import PortalNotification, PortalNotificationHistory
+from portal.models.mixins.context import SYSTEM_USER_ID
 from portal.queues.arq_pool import ARQ_NOTIFICATION_QUEUE_NAME, close_arq_pool, get_arq_redis_settings
 from portal.serializers.v1.admin.notification import AdminNotificationCreate
 
@@ -84,23 +98,14 @@ async def worker_shutdown(ctx: dict) -> None:
     logger.info("ARQ worker shutdown complete")
 
 
-async def send_notification_task(ctx: dict, notification_id_str: str, payload: dict) -> None:
+async def _run_handler_in_session(container: Container, event: NotificationCreatedEvent) -> None:
     """
-    Run NotificationCreatedEventHandler for one notification (same logic as in-process event bus).
+    Execute existing notification handler with event-scoped session lifecycle.
     """
-    container: Container = ctx.get("container")
-    if container is None:
-        raise RuntimeError("ARQ worker container missing; on_startup did not run")
-
-    model = AdminNotificationCreate(**payload)
-    notification_id = UUID(notification_id_str)
-    event = NotificationCreatedEvent(notification_id=notification_id, model=model)
-
     session = container.db_session()
     token = set_event_session(session)
     handler = NotificationCreatedEventHandler(session=session)
     try:
-        logger.info("-" * 100)
         await handler.handle(event)
         await session.commit()
     except Exception:
@@ -109,7 +114,296 @@ async def send_notification_task(ctx: dict, notification_id_str: str, payload: d
     finally:
         reset_event_session(token)
         await session.close()
-        logger.info("-" * 100)
+
+
+async def send_notification_chunk_task(
+    ctx: dict,
+    notification_id_str: str,
+    payload: dict,
+    batch_tokens: list[str],
+    batch_device_id_strs: list[str],
+    chunk_index: int,
+    total_chunks: int,
+) -> None:
+    """
+    Send one FCM chunk and append corresponding notification history rows.
+    """
+    container: Container = ctx.get("container")
+    if container is None:
+        raise RuntimeError("ARQ worker container missing; on_startup did not run")
+
+    model = AdminNotificationCreate(**payload)
+    notification_id = UUID(notification_id_str)
+    batch_device_ids = [UUID(device_id) for device_id in batch_device_id_strs]
+    logger.info(
+        "Chunk task started notification_id=%s chunk=%s/%s method=%s token_count=%s",
+        notification_id,
+        chunk_index,
+        total_chunks,
+        model.method,
+        len(batch_tokens),
+    )
+
+    notification = messaging.Notification(
+        title=model.title,
+        body=model.message,
+    )
+    data = {
+        "notification_id": str(notification_id),
+        "type": str(model.type.value),
+    }
+    if model.url:
+        data["url"] = model.url
+
+    session = container.db_session()
+    token = set_event_session(session)
+    try:
+        multicast_message = messaging.MulticastMessage(
+            notification=notification,
+            data=data,
+            tokens=batch_tokens,
+        )
+        result = messaging.send_each_for_multicast(multicast_message)
+        success_count = result.success_count
+        failure_count = result.failure_count
+        logger.info(
+            "FCM chunk sent notification_id=%s chunk=%s/%s token_count=%s success=%s failure=%s",
+            notification_id,
+            chunk_index,
+            total_chunks,
+            len(batch_tokens),
+            success_count,
+            failure_count,
+        )
+
+        history_records = []
+        for index, device_id in enumerate(batch_device_ids):
+            if index < len(result.responses):
+                response = result.responses[index]
+                if response.success:
+                    status = NotificationHistoryStatus.SUCCESS.value
+                    message_id = response.message_id
+                    exception = None
+                else:
+                    status = NotificationHistoryStatus.FAILED.value
+                    message_id = None
+                    exception = str(response.exception) if response.exception else "Unknown error"
+            else:
+                status = NotificationHistoryStatus.FAILED.value
+                message_id = None
+                exception = "No response"
+            history_records.append(
+                {
+                    "notification_id": notification_id,
+                    "device_id": device_id,
+                    "message_id": message_id,
+                    "exception": exception,
+                    "status": status,
+                    "created_by": "system",
+                    "created_by_id": SYSTEM_USER_ID,
+                    "updated_by": "system",
+                    "updated_by_id": SYSTEM_USER_ID,
+                    "is_read": False,
+                    "is_deleted": False,
+                }
+            )
+
+        if history_records:
+            await (
+                session.insert(PortalNotificationHistory)
+                .values(history_records)
+                .execute()
+            )
+
+        # Update counts incrementally for each chunk. Final status becomes SENT if any chunk succeeds.
+        await (
+            session.update(PortalNotification)
+            .values(
+                success_count=PortalNotification.success_count + success_count,
+                failure_count=PortalNotification.failure_count + failure_count,
+                status=sa.case(
+                    (
+                        (PortalNotification.success_count + success_count) > 0,
+                        NotificationStatus.SENT.value,
+                    ),
+                    else_=NotificationStatus.FAILED.value,
+                ),
+            )
+            .where(PortalNotification.id == notification_id)
+            .execute()
+        )
+        await session.commit()
+        logger.info(
+            "Chunk task committed notification_id=%s chunk=%s/%s success_delta=%s failure_delta=%s",
+            notification_id,
+            chunk_index,
+            total_chunks,
+            success_count,
+            failure_count,
+        )
+    except FirebaseError as exc:
+        logger.warning(
+            "FCM FirebaseError in chunk notification_id=%s chunk=%s/%s token_count=%s error=%s",
+            notification_id,
+            chunk_index,
+            total_chunks,
+            len(batch_tokens),
+            exc,
+        )
+        history_records = [
+            {
+                "notification_id": notification_id,
+                "device_id": device_id,
+                "status": NotificationHistoryStatus.FAILED.value,
+                "exception": str(exc),
+                "created_by": "system",
+                "created_by_id": SYSTEM_USER_ID,
+                "updated_by": "system",
+                "updated_by_id": SYSTEM_USER_ID,
+                "is_read": False,
+                "is_deleted": False,
+            }
+            for device_id in batch_device_ids
+        ]
+        if history_records:
+            await (
+                session.insert(PortalNotificationHistory)
+                .values(history_records)
+                .execute()
+            )
+        await (
+            session.update(PortalNotification)
+            .values(
+                failure_count=PortalNotification.failure_count + len(batch_device_ids),
+                status=sa.case(
+                    (
+                        PortalNotification.success_count > 0,
+                        NotificationStatus.SENT.value,
+                    ),
+                    else_=NotificationStatus.FAILED.value,
+                ),
+            )
+            .where(PortalNotification.id == notification_id)
+            .execute()
+        )
+        await session.commit()
+        raise
+    except Exception:
+        logger.exception(
+            "Chunk task failed notification_id=%s chunk=%s/%s token_count=%s",
+            notification_id,
+            chunk_index,
+            total_chunks,
+            len(batch_tokens),
+        )
+        await session.rollback()
+        raise
+    finally:
+        reset_event_session(token)
+        await session.close()
+        logger.info(
+            "Chunk task finished notification_id=%s chunk=%s/%s token_count=%s",
+            notification_id,
+            chunk_index,
+            total_chunks,
+            len(batch_tokens),
+        )
+
+
+async def send_notification_task(ctx: dict, notification_id_str: str, payload: dict) -> None:
+    """
+    Parent notification task.
+    - Non-push or dry-run: execute existing handler directly.
+    - Push: fan out into multiple chunk tasks to keep each job short.
+    """
+    container: Container = ctx.get("container")
+    if container is None:
+        raise RuntimeError("ARQ worker container missing; on_startup did not run")
+
+    model = AdminNotificationCreate(**payload)
+    notification_id = UUID(notification_id_str)
+    event = NotificationCreatedEvent(notification_id=notification_id, model=model)
+    logger.info(
+        "Parent task started notification_id=%s method=%s dry_run=%s",
+        notification_id,
+        model.method,
+        model.dry_run,
+    )
+
+    if model.method != NotificationMethod.PUSH or model.dry_run:
+        logger.info(
+            "Parent task using direct handler path notification_id=%s method=%s dry_run=%s",
+            notification_id,
+            model.method,
+            model.dry_run,
+        )
+        await _run_handler_in_session(container, event)
+        logger.info("Parent task finished (direct path) notification_id=%s", notification_id)
+        return
+
+    # Resolve targets using existing handler implementation, then split into child chunk jobs.
+    session = container.db_session()
+    token = set_event_session(session)
+    handler = NotificationCreatedEventHandler(session=session)
+    try:
+        tokens, device_ids = await handler._resolve_push_targets(model)
+        logger.info(
+            "Parent task resolved targets notification_id=%s token_count=%s",
+            notification_id,
+            len(tokens),
+        )
+        if not tokens:
+            # Reuse existing handler behavior for no-token path (status update + failure semantics).
+            logger.warning("Parent task found no tokens notification_id=%s", notification_id)
+            await handler.handle(event)
+            await session.commit()
+            return
+    except Exception:
+        logger.exception("Parent task failed during target resolution notification_id=%s", notification_id)
+        await session.rollback()
+        raise
+    finally:
+        reset_event_session(token)
+        await session.close()
+
+    redis: ArqRedis | None = ctx.get("redis")
+    if redis is None:
+        raise RuntimeError("ARQ redis client missing in worker context")
+
+    batch_size = FCM_MAX_MULTICAST_TOKENS
+    total_chunks = (len(tokens) + batch_size - 1) // batch_size
+    chunk_count = 0
+    for offset in range(0, len(tokens), batch_size):
+        chunk_tokens = tokens[offset : offset + batch_size]
+        chunk_device_ids = [
+            str(device_id)
+            for device_id in device_ids[offset : offset + batch_size]
+        ]
+        await redis.enqueue_job(
+            "send_notification_chunk_task",
+            str(notification_id),
+            payload,
+            chunk_tokens,
+            chunk_device_ids,
+            chunk_count + 1,
+            total_chunks,
+            _queue_name=ARQ_NOTIFICATION_QUEUE_NAME,
+        )
+        chunk_count += 1
+        logger.info(
+            "Enqueued chunk notification_id=%s chunk=%s/%s chunk_size=%s",
+            notification_id,
+            chunk_count,
+            total_chunks,
+            len(chunk_tokens),
+        )
+    logger.info(
+        "Queued %s notification chunk jobs for %s targets (notification_id=%s)",
+        chunk_count,
+        len(tokens),
+        notification_id,
+    )
+    logger.info("Parent task finished notification_id=%s", notification_id)
 
 
 class WorkerSettings:
@@ -117,7 +411,7 @@ class WorkerSettings:
     ARQ worker configuration (arq CLI: arq portal.workers.arq_worker.WorkerSettings).
     """
 
-    functions = [send_notification_task]
+    functions = [send_notification_task, send_notification_chunk_task]
     redis_settings = get_arq_redis_settings()
     queue_name = ARQ_NOTIFICATION_QUEUE_NAME
     job_timeout = settings.ARQ_JOB_TIMEOUT
