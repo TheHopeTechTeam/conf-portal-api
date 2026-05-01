@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 import sentry_sdk
-import sqlalchemy as sa
 from arq.connections import ArqRedis
 from firebase_admin import messaging
 from firebase_admin.exceptions import FirebaseError
@@ -221,17 +220,26 @@ async def send_notification_chunk_task(
             .values(
                 success_count=PortalNotification.success_count + success_count,
                 failure_count=PortalNotification.failure_count + failure_count,
-                status=sa.case(
-                    (
-                        (PortalNotification.success_count + success_count) > 0,
-                        NotificationStatus.SENT.value,
-                    ),
-                    else_=NotificationStatus.FAILED.value,
-                ),
             )
             .where(PortalNotification.id == notification_id)
             .execute()
         )
+        if success_count > 0:
+            await (
+                session.update(PortalNotification)
+                .values(status=NotificationStatus.SENT.value)
+                .where(PortalNotification.id == notification_id)
+                .execute()
+            )
+        else:
+            # Only mark FAILED when no successful chunks have been committed so far.
+            await (
+                session.update(PortalNotification)
+                .values(status=NotificationStatus.FAILED.value)
+                .where(PortalNotification.id == notification_id)
+                .where(PortalNotification.success_count == 0)
+                .execute()
+            )
         await session.commit()
         logger.info(
             "Chunk task committed notification_id=%s chunk=%s/%s success_delta=%s failure_delta=%s",
@@ -275,15 +283,16 @@ async def send_notification_chunk_task(
             session.update(PortalNotification)
             .values(
                 failure_count=PortalNotification.failure_count + len(batch_device_ids),
-                status=sa.case(
-                    (
-                        PortalNotification.success_count > 0,
-                        NotificationStatus.SENT.value,
-                    ),
-                    else_=NotificationStatus.FAILED.value,
-                ),
             )
             .where(PortalNotification.id == notification_id)
+            .execute()
+        )
+        # Keep SENT if any successful chunks already exist; otherwise FAILED.
+        await (
+            session.update(PortalNotification)
+            .values(status=NotificationStatus.FAILED.value)
+            .where(PortalNotification.id == notification_id)
+            .where(PortalNotification.success_count == 0)
             .execute()
         )
         await session.commit()
