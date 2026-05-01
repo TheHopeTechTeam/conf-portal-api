@@ -30,6 +30,9 @@ from portal.models import (
 from portal.models.mixins.context import SYSTEM_USER_ID
 from portal.serializers.v1.admin.notification import AdminNotificationCreate, FcmDeviceTokenRow
 
+# FCM MulticastMessage.tokens limit (Firebase Admin SDK).
+FCM_MAX_MULTICAST_TOKENS = 500
+
 
 class NotificationCreatedEventHandler(EventHandler):
     """
@@ -196,8 +199,12 @@ class NotificationCreatedEventHandler(EventHandler):
                 .select_from(PortalFcmDevice)
                 .fetch(as_model=FcmDeviceTokenRow)
             )
-            tokens = [row.token for row in device_tokens if row.token]
-            device_ids = [row.id for row in device_tokens]
+            tokens = []
+            device_ids = []
+            for row in device_tokens:
+                if row.token:
+                    tokens.append(row.token)
+                    device_ids.append(row.id)
             return tokens, device_ids
 
         if not model.user_ids:
@@ -213,8 +220,12 @@ class NotificationCreatedEventHandler(EventHandler):
             .where(PortalFcmUserDevice.user_id.in_(model.user_ids))
             .fetch(as_model=FcmDeviceTokenRow)
         )
-        tokens = [row.token for row in device_tokens if row.token]
-        device_ids = [row.id for row in device_tokens]
+        tokens = []
+        device_ids = []
+        for row in device_tokens:
+            if row.token:
+                tokens.append(row.token)
+                device_ids.append(row.id)
 
         return tokens, device_ids
 
@@ -244,18 +255,7 @@ class NotificationCreatedEventHandler(EventHandler):
         if model.url:
             data["url"] = model.url
 
-        multicast_message = messaging.MulticastMessage(
-            notification=notification,
-            data=data,
-            tokens=tokens,
-        )
-
         try:
-            result = messaging.send_each_for_multicast(multicast_message)
-            success_count = result.success_count
-            failure_count = result.failure_count
-
-            # Create history records
             created_by = (
                 self._user_ctx.username
                 if self._user_ctx and self._user_ctx.username
@@ -266,36 +266,56 @@ class NotificationCreatedEventHandler(EventHandler):
                 if self._user_ctx and self._user_ctx.user_id
                 else SYSTEM_USER_ID
             )
+            success_count = 0
+            failure_count = 0
             history_records = []
-            for i, device_id in enumerate(device_ids):
-                if i < len(result.responses):
-                    response = result.responses[i]
-                    if response.success:
-                        status = NotificationHistoryStatus.SUCCESS.value
-                        message_id = response.message_id
-                        exception = None
+
+            for offset in range(0, len(tokens), FCM_MAX_MULTICAST_TOKENS):
+                batch_tokens = tokens[offset : offset + FCM_MAX_MULTICAST_TOKENS]
+                batch_device_ids = device_ids[offset : offset + FCM_MAX_MULTICAST_TOKENS]
+
+                multicast_message = messaging.MulticastMessage(
+                    notification=notification,
+                    data=data,
+                    tokens=batch_tokens,
+                )
+                result = messaging.send_each_for_multicast(multicast_message)
+                success_count += result.success_count
+                failure_count += result.failure_count
+
+                for i, device_id in enumerate(batch_device_ids):
+                    if i < len(result.responses):
+                        response = result.responses[i]
+                        if response.success:
+                            status = NotificationHistoryStatus.SUCCESS.value
+                            message_id = response.message_id
+                            exception = None
+                        else:
+                            status = NotificationHistoryStatus.FAILED.value
+                            message_id = None
+                            exception = (
+                                str(response.exception)
+                                if response.exception
+                                else "Unknown error"
+                            )
                     else:
                         status = NotificationHistoryStatus.FAILED.value
                         message_id = None
-                        exception = str(response.exception) if response.exception else "Unknown error"
-                else:
-                    status = NotificationHistoryStatus.FAILED.value
-                    message_id = None
-                    exception = "No response"
+                        exception = "No response"
 
-                history_records.append({
-                    "notification_id": notification_id,
-                    "device_id": device_id,
-                    "message_id": message_id,
-                    "exception": exception,
-                    "status": status,
-                    "created_by": created_by,
-                    "created_by_id": created_by_id,
-                    "updated_by": created_by,
-                    "updated_by_id": created_by_id,
-                    "is_read": False,
-                    "is_deleted": False,
-                })
+                    history_records.append({
+                        "notification_id": notification_id,
+                        "device_id": device_id,
+                        "message_id": message_id,
+                        "exception": exception,
+                        "status": status,
+                        "created_by": created_by,
+                        "created_by_id": created_by_id,
+                        "updated_by": created_by,
+                        "updated_by_id": created_by_id,
+                        "is_read": False,
+                        "is_deleted": False,
+                    })
 
             if history_records:
                 await (
