@@ -100,6 +100,7 @@ class Configuration(BaseSettings):
     ARQ_REDIS_DB: int = int(os.getenv(key="ARQ_REDIS_DB", default="2"))
     ARQ_JOB_TIMEOUT: int = int(os.getenv(key="ARQ_JOB_TIMEOUT", default="600"))
     ARQ_MAX_TRIES: int = int(os.getenv(key="ARQ_MAX_TRIES", default="1"))
+    ARQ_KEEP_RESULT_SECONDS: int = int(os.getenv(key="ARQ_KEEP_RESULT_SECONDS", default="86400"))
 
     # [Database]
     DATABASE_HOST: str = os.getenv(key="DATABASE_HOST", default="localhost")

@@ -517,5 +517,6 @@ class WorkerSettings:
     queue_name = ARQ_NOTIFICATION_QUEUE_NAME
     job_timeout = settings.ARQ_JOB_TIMEOUT
     max_tries = settings.ARQ_MAX_TRIES
+    keep_result = settings.ARQ_KEEP_RESULT_SECONDS
     on_startup = worker_startup
     on_shutdown = worker_shutdown
