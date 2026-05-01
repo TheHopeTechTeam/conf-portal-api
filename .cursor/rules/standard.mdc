@@ -125,4 +125,4 @@ alwaysApply: true
 
 ## Other
 
-- Currently being refactored, removing all Django-related functionality.
+- Do not do any git commit, push, pull, merge, revert, reset, cherry-pick, rebase without my approval
