@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.30] - 2026-05-01
+
+### Summary
+
+Adds configurable ARQ job result retention in Redis so completed job results remain available longer for inspection and debugging.
+
+### Added
+
+- **ARQ job result retention** (`portal/config.py`, `portal/workers/arq_worker.py`, `example.env`):
+  - `ARQ_KEEP_RESULT_SECONDS` environment variable (default `86400`) mapped to `WorkerSettings.keep_result`.
+
+### Breaking changes
+
+None.
+
 ## [0.2.29] - 2026-04-30
 
 ### Summary
