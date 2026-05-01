@@ -84,6 +84,7 @@ class AdminWorkshopHandler:
                 sa.func.count(PortalWorkshopRegistration.id).label("registered_count")
             )
             .where(PortalWorkshopRegistration.unregistered_at.is_(None))
+            .where(PortalWorkshopRegistration.is_deleted == sa.false())
             .group_by(PortalWorkshopRegistration.workshop_id)
             .subquery()
         )
