@@ -3,7 +3,7 @@ testpaths = ["portal", "tests"]
 
 [project]
 name = "conf-portal-api"
-version = "0.2.28"
+version = "0.2.29"
 description = ""
 authors = [{ name = "Jay Hsia", email = "jayhsia1997@gmail.com" }]
 readme = "README.md"

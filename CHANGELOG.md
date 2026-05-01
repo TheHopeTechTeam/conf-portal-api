@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.29] - 2026-04-30
+
+### Summary
+
+Improves push notification history consistency by committing PENDING rows before FCM, back-filling per-device results afterward, and exposing FCM multicast batch size via environment configuration. User-facing notification lists now only include successfully delivered items.
+
+### Added
+
+- **FCM batch size configuration** (`portal/config.py`, `example.env`):
+  - `FCM_MAX_MULTICAST_TOKENS` environment variable (default `500`) replaces the hard-coded module constant.
+
+### Changed
+
+- **ARQ chunk notification job** (`portal/workers/arq_worker.py`):
+  - Pre-insert `PortalNotificationHistory` rows with `PENDING` status and commit before calling FCM.
+  - Use `ON CONFLICT DO NOTHING` on `(notification_id, device_id)` for idempotent retries.
+  - After FCM, update existing rows to `SUCCESS` or `FAILED` instead of inserting new rows.
+  - On `FirebaseError`, bulk-update chunk devices to `FAILED` rather than inserting duplicates.
+  - On non-`FirebaseError` exceptions, rollback in-flight updates and fallback-mark remaining chunk `PENDING` rows as `FAILED` with exception details, then persist failure counters/status.
+- **Event handler push batching** (`portal/handlers/events/notification.py`):
+  - Uses `settings.FCM_MAX_MULTICAST_TOKENS` for multicast batch sizing.
+- **User notification list** (`portal/handlers/notification.py`):
+  - Filters to `NotificationHistoryStatus.SUCCESS` so PENDING/FAILED rows are not shown in the app.
+
+### Breaking changes
+
+None.
+
 ## [0.2.28] - 2026-04-30
 
 ### Summary
