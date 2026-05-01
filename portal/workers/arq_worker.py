@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 import sentry_sdk
+import sqlalchemy as sa
 from arq.connections import ArqRedis
 from firebase_admin import messaging
 from firebase_admin.exceptions import FirebaseError
@@ -16,10 +17,7 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from portal.config import settings
 from portal.container import Container
-from portal.handlers.events.notification import (
-    FCM_MAX_MULTICAST_TOKENS,
-    NotificationCreatedEventHandler,
-)
+from portal.handlers.events.notification import NotificationCreatedEventHandler
 from portal.libs.consts.enums import (
     NotificationHistoryStatus,
     NotificationMethod,
@@ -125,7 +123,7 @@ async def send_notification_chunk_task(
     total_chunks: int,
 ) -> None:
     """
-    Send one FCM chunk and append corresponding notification history rows.
+    Send one FCM chunk: pre-write PENDING history (commit), send FCM, back-fill history, update counts.
     """
     container: Container = ctx.get("container")
     if container is None:
@@ -157,12 +155,85 @@ async def send_notification_chunk_task(
     session = container.db_session()
     token = set_event_session(session)
     try:
+        pending_records = [
+            {
+                "notification_id": notification_id,
+                "device_id": device_id,
+                "message_id": None,
+                "exception": None,
+                "status": NotificationHistoryStatus.PENDING.value,
+                "created_by": "system",
+                "created_by_id": SYSTEM_USER_ID,
+                "updated_by": "system",
+                "updated_by_id": SYSTEM_USER_ID,
+                "is_read": False,
+                "is_deleted": False,
+            }
+            for device_id in batch_device_ids
+        ]
+        if pending_records:
+            await (
+                session.insert(PortalNotificationHistory)
+                .values(pending_records)
+                .on_conflict_do_nothing(index_elements=["notification_id", "device_id"])
+                .execute()
+            )
+        await session.commit()
+        logger.info(
+            "Chunk pre-write PENDING committed notification_id=%s chunk=%s/%s row_count=%s",
+            notification_id,
+            chunk_index,
+            total_chunks,
+            len(pending_records),
+        )
+
         multicast_message = messaging.MulticastMessage(
             notification=notification,
             data=data,
             tokens=batch_tokens,
         )
-        result = messaging.send_each_for_multicast(multicast_message)
+        try:
+            result = messaging.send_each_for_multicast(multicast_message)
+        except FirebaseError as exc:
+            logger.warning(
+                "FCM FirebaseError in chunk notification_id=%s chunk=%s/%s token_count=%s error=%s",
+                notification_id,
+                chunk_index,
+                total_chunks,
+                len(batch_tokens),
+                exc,
+            )
+            await (
+                session.update(PortalNotificationHistory)
+                .values(
+                    status=NotificationHistoryStatus.FAILED.value,
+                    message_id=None,
+                    exception=str(exc),
+                    updated_by="system",
+                    updated_by_id=SYSTEM_USER_ID,
+                )
+                .where(PortalNotificationHistory.notification_id == notification_id)
+                .where(PortalNotificationHistory.device_id.in_(batch_device_ids))
+                .execute()
+            )
+            await (
+                session.update(PortalNotification)
+                .values(
+                    failure_count=PortalNotification.failure_count + len(batch_device_ids),
+                )
+                .where(PortalNotification.id == notification_id)
+                .execute()
+            )
+            await (
+                session.update(PortalNotification)
+                .values(status=NotificationStatus.FAILED.value)
+                .where(PortalNotification.id == notification_id)
+                .where(PortalNotification.success_count == 0)
+                .execute()
+            )
+            await session.commit()
+            raise
+
         success_count = result.success_count
         failure_count = result.failure_count
         logger.info(
@@ -175,46 +246,55 @@ async def send_notification_chunk_task(
             failure_count,
         )
 
-        history_records = []
         for index, device_id in enumerate(batch_device_ids):
             if index < len(result.responses):
                 response = result.responses[index]
                 if response.success:
-                    status = NotificationHistoryStatus.SUCCESS.value
-                    message_id = response.message_id
-                    exception = None
+                    await (
+                        session.update(PortalNotificationHistory)
+                        .values(
+                            status=NotificationHistoryStatus.SUCCESS.value,
+                            message_id=response.message_id,
+                            exception=None,
+                            updated_by="system",
+                            updated_by_id=SYSTEM_USER_ID,
+                        )
+                        .where(PortalNotificationHistory.notification_id == notification_id)
+                        .where(PortalNotificationHistory.device_id == device_id)
+                        .execute()
+                    )
                 else:
-                    status = NotificationHistoryStatus.FAILED.value
-                    message_id = None
-                    exception = str(response.exception) if response.exception else "Unknown error"
+                    exception_text = (
+                        str(response.exception) if response.exception else "Unknown error"
+                    )
+                    await (
+                        session.update(PortalNotificationHistory)
+                        .values(
+                            status=NotificationHistoryStatus.FAILED.value,
+                            message_id=None,
+                            exception=exception_text,
+                            updated_by="system",
+                            updated_by_id=SYSTEM_USER_ID,
+                        )
+                        .where(PortalNotificationHistory.notification_id == notification_id)
+                        .where(PortalNotificationHistory.device_id == device_id)
+                        .execute()
+                    )
             else:
-                status = NotificationHistoryStatus.FAILED.value
-                message_id = None
-                exception = "No response"
-            history_records.append(
-                {
-                    "notification_id": notification_id,
-                    "device_id": device_id,
-                    "message_id": message_id,
-                    "exception": exception,
-                    "status": status,
-                    "created_by": "system",
-                    "created_by_id": SYSTEM_USER_ID,
-                    "updated_by": "system",
-                    "updated_by_id": SYSTEM_USER_ID,
-                    "is_read": False,
-                    "is_deleted": False,
-                }
-            )
+                await (
+                    session.update(PortalNotificationHistory)
+                    .values(
+                        status=NotificationHistoryStatus.FAILED.value,
+                        message_id=None,
+                        exception="No response",
+                        updated_by="system",
+                        updated_by_id=SYSTEM_USER_ID,
+                    )
+                    .where(PortalNotificationHistory.notification_id == notification_id)
+                    .where(PortalNotificationHistory.device_id == device_id)
+                    .execute()
+                )
 
-        if history_records:
-            await (
-                session.insert(PortalNotificationHistory)
-                .values(history_records)
-                .execute()
-            )
-
-        # Update counts incrementally for each chunk. Final status becomes SENT if any chunk succeeds.
         await (
             session.update(PortalNotification)
             .values(
@@ -232,7 +312,6 @@ async def send_notification_chunk_task(
                 .execute()
             )
         else:
-            # Only mark FAILED when no successful chunks have been committed so far.
             await (
                 session.update(PortalNotification)
                 .values(status=NotificationStatus.FAILED.value)
@@ -249,55 +328,10 @@ async def send_notification_chunk_task(
             success_count,
             failure_count,
         )
-    except FirebaseError as exc:
-        logger.warning(
-            "FCM FirebaseError in chunk notification_id=%s chunk=%s/%s token_count=%s error=%s",
-            notification_id,
-            chunk_index,
-            total_chunks,
-            len(batch_tokens),
-            exc,
-        )
-        history_records = [
-            {
-                "notification_id": notification_id,
-                "device_id": device_id,
-                "status": NotificationHistoryStatus.FAILED.value,
-                "exception": str(exc),
-                "created_by": "system",
-                "created_by_id": SYSTEM_USER_ID,
-                "updated_by": "system",
-                "updated_by_id": SYSTEM_USER_ID,
-                "is_read": False,
-                "is_deleted": False,
-            }
-            for device_id in batch_device_ids
-        ]
-        if history_records:
-            await (
-                session.insert(PortalNotificationHistory)
-                .values(history_records)
-                .execute()
-            )
-        await (
-            session.update(PortalNotification)
-            .values(
-                failure_count=PortalNotification.failure_count + len(batch_device_ids),
-            )
-            .where(PortalNotification.id == notification_id)
-            .execute()
-        )
-        # Keep SENT if any successful chunks already exist; otherwise FAILED.
-        await (
-            session.update(PortalNotification)
-            .values(status=NotificationStatus.FAILED.value)
-            .where(PortalNotification.id == notification_id)
-            .where(PortalNotification.success_count == 0)
-            .execute()
-        )
-        await session.commit()
+    except FirebaseError:
+        # Already handled, committed, and re-raised from inner block; do not rollback.
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception(
             "Chunk task failed notification_id=%s chunk=%s/%s token_count=%s",
             notification_id,
@@ -306,6 +340,64 @@ async def send_notification_chunk_task(
             len(batch_tokens),
         )
         await session.rollback()
+        try:
+            pending_count_row = await (
+                session.select(
+                    sa.func.count(PortalNotificationHistory.id).label("pending_count")
+                )
+                .where(PortalNotificationHistory.notification_id == notification_id)
+                .where(PortalNotificationHistory.device_id.in_(batch_device_ids))
+                .where(PortalNotificationHistory.status == NotificationHistoryStatus.PENDING.value)
+                .fetchrow()
+            )
+            pending_count = int((pending_count_row or {}).get("pending_count") or 0)
+            if pending_count > 0:
+                await (
+                    session.update(PortalNotificationHistory)
+                    .values(
+                        status=NotificationHistoryStatus.FAILED.value,
+                        message_id=None,
+                        exception=str(exc),
+                        updated_by="system",
+                        updated_by_id=SYSTEM_USER_ID,
+                    )
+                    .where(PortalNotificationHistory.notification_id == notification_id)
+                    .where(PortalNotificationHistory.device_id.in_(batch_device_ids))
+                    .where(PortalNotificationHistory.status == NotificationHistoryStatus.PENDING.value)
+                    .execute()
+                )
+                await (
+                    session.update(PortalNotification)
+                    .values(
+                        failure_count=PortalNotification.failure_count + pending_count,
+                    )
+                    .where(PortalNotification.id == notification_id)
+                    .execute()
+                )
+                await (
+                    session.update(PortalNotification)
+                    .values(status=NotificationStatus.FAILED.value)
+                    .where(PortalNotification.id == notification_id)
+                    .where(PortalNotification.success_count == 0)
+                    .execute()
+                )
+                await session.commit()
+                logger.warning(
+                    "Chunk task fallback marked pending rows as FAILED notification_id=%s chunk=%s/%s pending_count=%s",
+                    notification_id,
+                    chunk_index,
+                    total_chunks,
+                    pending_count,
+                )
+        except Exception:
+            await session.rollback()
+            logger.exception(
+                "Chunk task fallback failed notification_id=%s chunk=%s/%s token_count=%s",
+                notification_id,
+                chunk_index,
+                total_chunks,
+                len(batch_tokens),
+            )
         raise
     finally:
         reset_event_session(token)
@@ -379,7 +471,7 @@ async def send_notification_task(ctx: dict, notification_id_str: str, payload: d
     if redis is None:
         raise RuntimeError("ARQ redis client missing in worker context")
 
-    batch_size = FCM_MAX_MULTICAST_TOKENS
+    batch_size = settings.FCM_MAX_MULTICAST_TOKENS
     total_chunks = (len(tokens) + batch_size - 1) // batch_size
     chunk_count = 0
     for offset in range(0, len(tokens), batch_size):

@@ -30,9 +30,6 @@ from portal.models import (
 from portal.models.mixins.context import SYSTEM_USER_ID
 from portal.serializers.v1.admin.notification import AdminNotificationCreate, FcmDeviceTokenRow
 
-# FCM MulticastMessage.tokens limit (Firebase Admin SDK).
-FCM_MAX_MULTICAST_TOKENS = 500
-
 
 class NotificationCreatedEventHandler(EventHandler):
     """
@@ -270,9 +267,10 @@ class NotificationCreatedEventHandler(EventHandler):
             failure_count = 0
             history_records = []
 
-            for offset in range(0, len(tokens), FCM_MAX_MULTICAST_TOKENS):
-                batch_tokens = tokens[offset : offset + FCM_MAX_MULTICAST_TOKENS]
-                batch_device_ids = device_ids[offset : offset + FCM_MAX_MULTICAST_TOKENS]
+            batch_limit = settings.FCM_MAX_MULTICAST_TOKENS
+            for offset in range(0, len(tokens), batch_limit):
+                batch_tokens = tokens[offset : offset + batch_limit]
+                batch_device_ids = device_ids[offset : offset + batch_limit]
 
                 multicast_message = messaging.MulticastMessage(
                     notification=notification,

@@ -6,6 +6,7 @@ from uuid import UUID
 from portal.exceptions.responses import ForbiddenException, NotFoundException
 from portal.libs.contexts.user_context import get_user_context
 from portal.libs.database import Session
+from portal.libs.consts.enums import NotificationHistoryStatus
 from portal.libs.decorators.sentry_tracer import distributed_trace
 from portal.models import (
     PortalNotification,
@@ -53,6 +54,7 @@ class NotificationHandler:
             .join(PortalNotification, PortalNotificationHistory.notification_id == PortalNotification.id)
             .where(PortalFcmUserDevice.user_id == user_id)
             .where(PortalNotificationHistory.is_deleted == False)
+            .where(PortalNotificationHistory.status == NotificationHistoryStatus.SUCCESS.value)
             .distinct(PortalNotificationHistory.notification_id)
             .order_by(
                 [

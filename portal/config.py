@@ -164,6 +164,8 @@ class Configuration(BaseSettings):
 
     # [Notification]
     ENABLE_PUSH_NOTIFICATION: bool = os.getenv(key="ENABLE_PUSH_NOTIFICATION", default=True)
+    # FCM MulticastMessage.tokens batch size (Firebase Admin SDK limit is 500).
+    FCM_MAX_MULTICAST_TOKENS: int = int(os.getenv(key="FCM_MAX_MULTICAST_TOKENS", default=500))
 
     # [The Hope Ticket System]
     THEHOPE_TICKET_SYSTEM_URL: str = os.getenv(key="THE_HOPE_TICKET_SYSTEM_URL")
