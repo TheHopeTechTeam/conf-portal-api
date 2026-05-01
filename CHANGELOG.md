@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.26] - 2026-04-30
+
+### Summary
+
+Introduces ARQ-based background processing for admin notification dispatch by moving notification send execution to a dedicated worker queue, while preserving existing notification delivery and history behavior. This release also extends Render CI/CD automation to deploy the staging worker service alongside API image updates and documents required worker deployment secrets.
+
+### Added
+
+- **ARQ worker runtime and queue utilities** (`portal/workers/arq_worker.py`, `portal/queues/arq_pool.py`, `portal/queues/__init__.py`, `portal/workers/__init__.py`, `worker.sh`):
+  - Added ARQ worker entrypoint and `send_notification_task` execution flow.
+  - Added ARQ Redis pool helper and notification enqueue helper.
+  - Added worker startup wiring for container bootstrap and Firebase initialization.
+- **Firebase initialization helper** (`portal/libs/firebase_init.py`): Added shared Firebase bootstrap helpers used by API and worker startup paths.
+
+### Changed
+
+- **Notification dispatch path** (`portal/handlers/admin/notification.py`, `portal/container.py`, `portal/libs/utils/lifespan.py`):
+  - `create_notification` now enqueues ARQ jobs instead of publishing `NotificationCreatedEvent` through in-process background event bus.
+  - Removed notification event-bus subscription from container registration (other event subscriptions unchanged).
+  - Lifespan shutdown now closes ARQ pool resources.
+- **Configuration and environment template** (`portal/config.py`, `example.env`, `pyproject.toml`):
+  - Added ARQ-related settings (`ARQ_REDIS_URL`, `ARQ_REDIS_DB`, `ARQ_JOB_TIMEOUT`, `ARQ_MAX_TRIES`).
+  - Added ARQ dependency and lock updates for worker runtime.
+- **Render deployment workflows** (`.github/workflows/cicd.yml`, `.github/workflows/release.yml`):
+  - Added staging worker image update + deploy jobs.
+  - Added release-time worker service image update flow and staging worker deploy job.
+  - Expanded STG workflow trigger paths to include `worker.sh`.
+- **Worker observability** (`portal/workers/arq_worker.py`): Enhanced logging around worker-side notification task processing.
+- **Deployment docs** (`README.md`): Documented Render worker deployment secrets and release/deploy behavior updates.
+
+### Breaking changes
+
+None.
+
 ## [0.2.25] - 2026-04-30
 
 ### Summary
