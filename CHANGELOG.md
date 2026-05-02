@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.32] - 2026-05-02
+
+### Summary
+
+Removes max length constraint on testimony message field to allow longer testimonies.
+
+### Changed
+
+- Removed max length constraint on testimony message field.
+
 ## [0.2.31] - 2026-05-01
 
 ### Summary
