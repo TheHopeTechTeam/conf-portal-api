@@ -15,11 +15,7 @@ class TestimonyCreate(BaseModel):
     name: str = Field(..., description="Name")
     phone_number: Optional[str] = Field(None, description="Phone number")
     share: bool = Field(False, description="Share testimony")
-    message: str = Field(
-        ...,
-        description="Message",
-        max_length=200
-    )
+    message: str = Field(..., description="Message")
 
 
 class TestimonyCreateResponse(UUIDBaseModel):
