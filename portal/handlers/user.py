@@ -409,7 +409,8 @@ class UserHandler:
             self._session.update(PortalUser)
             .values(
                 is_active=False,
-                deleted_at=datetime.now(tz=pytz.UTC),
+                is_deleted=True,
+                delete_reason="user_self_delete",
             )
             .where(PortalUser.id == user_id)
             .execute()

@@ -1,0 +1,9 @@
+.venv
+.cursor
+.github
+.idea
+.vscode
+.pytest_cache
+
+alembic/
+tests/
