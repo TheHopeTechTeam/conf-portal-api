@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.33] - 2026-05-03
+
+### Summary
+
+Fixes self-service account deletion (`DELETE /api/v1/user/{id}`) by updating soft-delete fields to match `PortalUser` / `DeletedMixin` mappings (replacing an invalid `deleted_at` assignment that caused SQLAlchemy errors and HTTP 500). Adds a root `.dockerignore` to reduce Docker build context size.
+
+### Added
+
+- **Docker build exclusions** (`.dockerignore`): Ignore `.venv`, `.cursor`, `.github`, `.idea`, `.vscode`, `.pytest_cache`, `alembic/`, and `tests/` for faster, smaller image builds.
+
+### Fixed
+
+- **Self-service user delete** (`portal/handlers/user.py`): Replaced non-mapped `deleted_at` with `is_deleted=True`, `delete_reason="user_self_delete"`, and `is_active=False`, consistent with admin recycle/delete semantics and ORM columns.
+
+### Breaking changes
+
+None.
+
 ## [0.2.32] - 2026-05-02
 
 ### Summary
