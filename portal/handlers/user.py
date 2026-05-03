@@ -410,7 +410,7 @@ class UserHandler:
             .values(
                 is_active=False,
                 is_deleted=True,
-                delete_reason="user_self_delete",
+                delete_reason="User Self Delete",
             )
             .where(PortalUser.id == user_id)
             .execute()
